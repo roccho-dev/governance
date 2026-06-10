@@ -1,0 +1,72 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "extension-tdd",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "core-boundary-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "core-boundary-lint"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.extension-tdd",
+    "package": "extension-tdd",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "extension-tdd.package-build"
+    ],
+    "requiredCommands": [
+      "extension-tdd <spec-root>"
+    ],
+    "requiredOutputs": [
+      "packages.extension-tdd"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "ast-grep",
+        "zip",
+        "unzip",
+        "git"
+      ],
+      "requiredForFinal": [
+        "bash",
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "extension-tdd"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "extension-tdd",
+  "projectionDigest": "f2c73528527dd4cdf5eaf078341db3890931eaf6d05bca8818a79212aea441e9",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/extension-tdd/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.extension-tdd",
+  "status": "ready"
+}

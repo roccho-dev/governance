@@ -1,0 +1,73 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "sync-receiver",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.sync-receiver",
+    "package": "sync-receiver",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "sync",
+    "requiredChecks": [
+      "sync-receiver.package-contract",
+      "sync-receiver.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.sync-receiver",
+      "nixosModules.syncthing-receiver"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "sync-receiver"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "sync-receiver",
+  "projectionDigest": "ad24239e4f19e0b474b8e397bc8ffabd7aab41d76cdf8de41d4421dc14b44071",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/sync-receiver/",
+      "repos/sync/packages/sync-receiver/",
+      "sync/"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/sync",
+    "targetRepoId": "sync"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.sync-receiver",
+  "status": "planned-blocked"
+}

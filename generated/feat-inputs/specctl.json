@@ -1,0 +1,74 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "specctl",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "purpose-toolchain",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "purpose-toolchain"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.specctl",
+    "package": "specctl",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "governance-nix",
+    "requiredChecks": [
+      "specctl.package-build"
+    ],
+    "requiredCommands": [
+      "specctl surface",
+      "specctl make-devenv-pkg",
+      "specctl validate-devenv-pkg"
+    ],
+    "requiredOutputs": [
+      "packages.specctl"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "ast-grep",
+        "zip",
+        "unzip",
+        "git"
+      ],
+      "requiredForFinal": [
+        "bash",
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "specctl"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "specctl",
+  "projectionDigest": "b070f46fb7a2573e6aa6c4aa4e968499bd53077209863570dcceb42a89b00931",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/specctl/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/"
+    ],
+    "repoSourceUri": "path:../governance-nix-main",
+    "targetRepoId": "governance-nix"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.specctl",
+  "status": "ready"
+}

@@ -1,0 +1,9 @@
+{
+  "baseHash": "9a55d2ad8b53",
+  "generatedFeatInputCount": 202,
+  "kind": "governance.reducerProof.v1",
+  "plannedBlockedFeatInputCount": 23,
+  "rawAdrDirectRepoOperationAllowed": false,
+  "readyFeatInputCount": 179,
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl"
+}

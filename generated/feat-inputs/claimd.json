@@ -1,0 +1,80 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "claimd",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "caselaw",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "caselaw"
+      ]
+    },
+    {
+      "fromPackageId": "claimd",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "preaccident",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "preaccident"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.claimd",
+    "package": "claimd",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "buildlaw",
+    "requiredChecks": [
+      "checks.<system>.claimd-legacy-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.claimd"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "claimd"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "claimd",
+  "projectionDigest": "078eda85cbd9be77e1960a8f289c0ddad24f4ab378a076d1c6bf29fa0a3b8cfb",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/claimd/"
+    ],
+    "forbiddenPaths": [
+      "docs/law-by-claim active claimd docs",
+      "schemas/claimd active schemas",
+      "tests/claimd active tests",
+      "result/claimd active outputs"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/buildlaw",
+    "targetRepoId": "buildlaw"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.claimd",
+  "status": "planned-blocked"
+}

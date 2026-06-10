@@ -1,0 +1,89 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "issue-ledger-contracts",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "issue-ledger-contracts",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "prove-feat",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "prove-feat"
+      ]
+    },
+    {
+      "fromPackageId": "issue-ledger-contracts",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "unified-issue-composition",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "unified-issue-composition"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.issue-ledger-contracts",
+    "package": "issue-ledger-contracts",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "checkPackageContract",
+      "specctl surface"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.issue-ledger-contracts"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "issue-ledger-contracts"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "issue-ledger-contracts",
+  "projectionDigest": "1966ddf61fabe995a9654d5e0ac8bd62e8ff23497a3f84cf6aa602fce81fda11",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/issue-ledger-contracts/"
+    ],
+    "forbiddenPaths": [
+      "repo-local implementation",
+      "ops scripts",
+      "policy authority rules"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.issue-ledger-contracts",
+  "status": "ready"
+}

@@ -1,0 +1,87 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-artifact-collector",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "ops-artifact-collector",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-worker-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-worker-runtime-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-artifact-collector",
+    "package": "ops-artifact-collector",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "ops-artifact-collector.package-contract",
+      "ops-artifact-collector.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "ops-artifact-collector --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-artifact-collector",
+      "packages.<system>.chromium-cdp-list-artifacts",
+      "packages.<system>.chromium-cdp-fetch-artifact",
+      "packages.<system>.chromium-cdp-fetch-artifact-strict",
+      "packages.<system>.chromium-cdp-inspect-artifact"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-artifact-collector"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-artifact-collector",
+  "projectionDigest": "b5a942b28f9a43cf0cf64260a1beac0bce7255f10ada82c4bfd23fc58f36ed77",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-artifact-collector/",
+      "repos/ops/packages/ops-artifact-collector/",
+      "parts/cdp/*artifact*.mjs + parts/cdp/download-*.mjs"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-artifact-collector",
+  "status": "ready"
+}

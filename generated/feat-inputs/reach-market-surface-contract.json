@@ -1,0 +1,97 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "reach-market-surface-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-surface-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-env-binding-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-env-binding-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-surface-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-runtime-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-surface-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-repo-admission-policy",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-repo-admission-policy"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.reach-market-surface-contract",
+    "package": "reach-market-surface-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "reach-market-surface-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.reach-market-surface-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "reach-market-surface-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "reach-market-surface-contract",
+  "projectionDigest": "ae4f185817f3db47994b2513b8dfa9f695168f64cbbceb71a12698b8db2c9905",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/reach-market-surface-contract/"
+    ],
+    "forbiddenPaths": [
+      "runtime implementation",
+      "page content generation",
+      "SEO publishing implementation"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.reach-market-surface-contract",
+  "status": "ready"
+}

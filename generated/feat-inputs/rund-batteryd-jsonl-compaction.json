@@ -1,0 +1,117 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "rund-batteryd-jsonl-compaction",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "core-boundary-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "core-boundary-lint"
+      ]
+    },
+    {
+      "fromPackageId": "rund-batteryd-jsonl-compaction",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-to-reality-promotion-pipeline",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "rund-batteryd-jsonl-compaction",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "rund-batteryd-jsonl-compaction",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "policy-governed-compaction-promotion-engine",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "rund-batteryd-jsonl-compaction",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "port-adapter-library-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "port-adapter-library-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.rund-batteryd-jsonl-compaction",
+    "package": "rund-batteryd-jsonl-compaction",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "go",
+      "zip",
+      "unzip"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "rund-batteryd-jsonl-compaction.proof-rerun",
+      "rund-batteryd-jsonl-compaction.package-registration",
+      "rund-batteryd-jsonl-compaction.no-http-routing-guardd-seald"
+    ],
+    "requiredCommands": [
+      "run the preserved proof command from adrs-main/example/poc/usecase/rund-batteryd-jsonl-compaction-proof",
+      "PYTHONDONTWRITEBYTECODE=1 python3 repo-boundary-guard-main/tools/specsless_ci.py --root . --mode final --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.rund-batteryd-jsonl-compaction"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "duckdb"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "go",
+        "zip",
+        "unzip"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "rund-batteryd-jsonl-compaction"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "rund-batteryd-jsonl-compaction",
+  "projectionDigest": "168887144b8550935430de958362dbf35cf13401f039acbf98da19775c4b956f",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/rund-batteryd-jsonl-compaction/",
+      "../adrs-main/example/poc/usecase/rund-batteryd-jsonl-compaction-proof/",
+      "../artifacts/project-source-merge-20260605/rund-batteryd-jsonl-compaction-merge/",
+      "../artifacts/project-source-merge-20260605/rund-batteryd-specs-registration/"
+    ],
+    "forbiddenPaths": [
+      "HTTP listener implementation",
+      "routing layer",
+      "load balancer",
+      "external exposure",
+      "guardd",
+      "seald",
+      "vendor blob as package authority",
+      "runtime log as package authority",
+      "generated dist artifact as package authority"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.rund-batteryd-jsonl-compaction",
+  "status": "planned-blocked"
+}

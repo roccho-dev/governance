@@ -1,0 +1,69 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-artifact-materialize",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-artifact-materialize",
+    "package": "ops-artifact-materialize",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.ops-artifact-materialize"
+    ],
+    "requiredCommands": [
+      "ops-artifact-materialize --input <thread.json-or-text> --out-dir <dir> --strict-count"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-artifact-materialize"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-artifact-materialize"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-artifact-materialize",
+  "projectionDigest": "0cdae8b3d81586186e84e60e1fa064e17314e21b6d58c9d573193af7f8a2462c",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-artifact-materialize/"
+    ],
+    "forbiddenPaths": [
+      "raw run evidence as package source",
+      "AGENTS.md long-form knowledge copy"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-artifact-materialize",
+  "status": "ready"
+}

@@ -1,0 +1,60 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.adrs-obligation-guard",
+    "package": "adrs-obligation-guard",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "checks.<system>.adrs-obligation-guard"
+    ],
+    "requiredCommands": [
+      "bash ci/run-adrs-obligation-boundary-resolution.sh ."
+    ],
+    "requiredOutputs": [
+      "packages.<system>.adrs-obligation-guard"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3",
+        "nix"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "adrs-obligation-guard"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "adrs-obligation-guard",
+  "projectionDigest": "a3e0191d816446e48aec59af2c7d7280ac5878b9d3f7561aa883d026652f9424",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "repo-boundary-guard-main/",
+      "adrs-main/records/",
+      "fixtures/adrs-obligation/"
+    ],
+    "forbiddenPaths": [
+      "compacted-view-as-authority",
+      "example-as-authority",
+      "external-gate-skipped-as-pass"
+    ],
+    "repoSourceUri": "path:.",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.adrs-obligation-guard",
+  "status": "planned-blocked"
+}

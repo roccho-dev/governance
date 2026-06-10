@@ -1,0 +1,73 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "render-worktrees-agents",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.render-worktrees-agents",
+    "package": "render-worktrees-agents",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "render-worktrees-agents",
+    "requiredChecks": [
+      "render-worktrees-agents.static-preview",
+      "render-worktrees-agents.ir-load"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.render-worktrees-agents"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "render-worktrees-agents"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "render-worktrees-agents",
+  "projectionDigest": "bdfb6ac76a2195f281c3c0a1b00617644b022bfaebc8bb44987a728883624a71",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "index.html",
+      "data.html",
+      "scripts/generate-data-html.sh",
+      "Caddyfile"
+    ],
+    "forbiddenPaths": [
+      "server-side app state",
+      "repo feature code inside repos/specs"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/render-worktrees-agents",
+    "targetRepoId": "render-worktrees-agents"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.render-worktrees-agents",
+  "status": "ready"
+}

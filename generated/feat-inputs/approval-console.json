@@ -1,0 +1,96 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "approval-console",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "approval-audit-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "approval-audit-contract"
+      ]
+    },
+    {
+      "fromPackageId": "approval-console",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "approval-console",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "patch-proposal-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "patch-proposal-contract"
+      ]
+    },
+    {
+      "fromPackageId": "approval-console",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "patch-verifier",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "patch-verifier"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.approval-console",
+    "package": "approval-console",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "approval-console.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.approval-console"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "approval-console"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "approval-console",
+  "projectionDigest": "80e005900c0deb81dfb17f10a9d8859c563a51258afbde426f58bf45ef2960f2",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/approval-console/"
+    ],
+    "forbiddenPaths": [
+      "UI implementation",
+      "private API implementation"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.approval-console",
+  "status": "ready"
+}

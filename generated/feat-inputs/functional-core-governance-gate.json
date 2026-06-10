@@ -1,0 +1,111 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "functional-core-governance-gate",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "adr-jsonl-intent-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "adr-jsonl-intent-input"
+      ]
+    },
+    {
+      "fromPackageId": "functional-core-governance-gate",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-unified-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-unified-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "functional-core-governance-gate",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "functional-core-governance-gate",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "prove-feat",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "prove-feat"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.functional-core-governance-gate",
+    "package": "functional-core-governance-gate",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.functional-core-governance-gate",
+      "prove-feat contract-lint",
+      "issue-ledger audit-workspace against governance-records/policy/ops/adrs worktree"
+    ],
+    "requiredCommands": [
+      "functional-core-governance-gate check --manifest <manifest.json> --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.functional-core-governance-gate"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "functional-core-governance-gate"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "functional-core-governance-gate",
+  "projectionDigest": "fad4edd0be9fbac995253dcca7f37aae9de7c094aada3b5da9bbf1696692f7e4",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/functional-core-governance-gate/",
+      "issues/260603-functional-core-governance-gate.jsonl",
+      "../ops-main/packages/functional-core-governance-gate/",
+      "../ops-main/flake.nix",
+      "../ops-main/issues/260603-functional-core-governance-gate.jsonl",
+      "../adrs-main/records/raw/adr.v1.jsonl",
+      "../adrs-main/records/promoted/purpose-lineage.v1.jsonl",
+      "../adrs-main/records/promoted/destructive-case.v1.jsonl",
+      "../adrs-main/records/relations/adr-promotion.v1.jsonl",
+      "../adrs-main/issues/260603-functional-core-governance-policy-adr.jsonl",
+      "../adrs-main/issues/functional-core-governance-policy-adr-20260603/"
+    ],
+    "forbiddenPaths": [
+      "retired specs executable checker implementation",
+      "policy-master second checker semantics",
+      "example/poc/example as default authority",
+      "generated reports as functional-core authority",
+      "style-mandate rules unrelated to hidden effects, explicit inputs, effects-as-data, or dependency direction"
+    ],
+    "repoSourceUri": "devenv-pkg://repo/ops/target.bundle",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.functional-core-governance-gate",
+  "status": "ready"
+}

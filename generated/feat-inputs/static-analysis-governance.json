@@ -1,0 +1,87 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "static-analysis-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ast-contract-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ast-contract-lint"
+      ]
+    },
+    {
+      "fromPackageId": "static-analysis-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "opengrep-sast-gate",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "opengrep-sast-gate"
+      ]
+    },
+    {
+      "fromPackageId": "static-analysis-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "repository-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "repository-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.static-analysis-governance",
+    "package": "static-analysis-governance",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "static-analysis-governance",
+    "requiredChecks": [
+      "checks.<system>.static-analysis-governance"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.static-analysis-governance"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "static-analysis-governance"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "static-analysis-governance",
+  "projectionDigest": "51292930762db1ff3cfaa7b1ee192274fe8d6fd1cb4d288cf3194c74e5286964",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/static-analysis-governance/"
+    ],
+    "forbiddenPaths": [
+      "tool-specific implementation outside feat repo",
+      "ownerless abstract implementation bucket"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/static-analysis-governance",
+    "targetRepoId": "static-analysis-governance"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.static-analysis-governance",
+  "status": "ready"
+}

@@ -1,0 +1,86 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-host-git-validation",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "ops-host-git-validation",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-worker-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-worker-runtime-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-host-git-validation",
+    "package": "ops-host-git-validation",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "ops-host-git-validation.package-contract",
+      "ops-host-git-validation.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "ops-host-git-validation --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-host-git-validation",
+      "packages.<system>.chromium-cdp-git-ref-health",
+      "packages.<system>.chromium-cdp-host-git-two-worker-smoke",
+      "packages.<system>.chromium-cdp-host-git-workflow-regression"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-host-git-validation"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-host-git-validation",
+  "projectionDigest": "0662897404ce9932781110ceca41ebe8a0048b52cadb4c3e5bac4db7cada093e",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-host-git-validation/",
+      "repos/ops/packages/ops-host-git-validation/",
+      "parts/cdp/host-git-ops.mjs + parts/cdp/chromium-cdp-host-git-*.mjs + parts/cdp/chromium-cdp-git-ref-health.mjs"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-host-git-validation",
+  "status": "ready"
+}

@@ -1,0 +1,76 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "agent-tools-amp",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.agent-tools-amp",
+    "package": "agent-tools-amp",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "agent-tools",
+    "requiredChecks": [
+      "agent-tools-amp.package-contract",
+      "agent-tools-amp.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "agent-tools-amp --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.agent-tools-amp",
+      "packages.<system>.amp",
+      "checks.amp"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "agent-tools-amp"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "agent-tools-amp",
+  "projectionDigest": "1961dc746ca669320bb6cad84aa076fdb9447980fcbabda917f037d0daefa35f",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/agent-tools-amp/",
+      "repo:agent-tools:packages:agent-tools-amp/",
+      "parts/amp"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/agent-tools",
+    "targetRepoId": "agent-tools"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.agent-tools-amp",
+  "status": "ready"
+}

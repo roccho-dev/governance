@@ -1,0 +1,84 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "devtools-opencode-wrapper",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "devtools-opencode-wrapper",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-language-tooling-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-language-tooling-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.devtools-opencode-wrapper",
+    "package": "devtools-opencode-wrapper",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "devtools",
+    "requiredChecks": [
+      "devtools-opencode-wrapper.package-contract",
+      "devtools-opencode-wrapper.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "devtools-opencode-wrapper --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.devtools-opencode-wrapper",
+      "checks.opencode-*"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "devtools-opencode-wrapper"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "devtools-opencode-wrapper",
+  "projectionDigest": "c63527ef2b0462e93dcba9131409a9e0d98eb2d3982919f32f2ed1ba446e358a",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/devtools-opencode-wrapper/",
+      "repo:devtools:packages:devtools-opencode-wrapper/",
+      "parts/opencode"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/devtools",
+    "targetRepoId": "devtools"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.devtools-opencode-wrapper",
+  "status": "ready"
+}

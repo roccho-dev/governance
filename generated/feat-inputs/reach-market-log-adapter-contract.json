@@ -1,0 +1,125 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "reach-market-log-adapter-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-log-adapter-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-contract-validator",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-contract-validator"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-log-adapter-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-log-adapter-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-env-binding-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-env-binding-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-log-adapter-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-runtime-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-log-adapter-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-surface-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-surface-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-log-adapter-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-repo-admission-policy",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-repo-admission-policy"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.reach-market-log-adapter-contract",
+    "package": "reach-market-log-adapter-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "reach-market-log-adapter-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.reach-market-log-adapter-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "reach-market-log-adapter-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "reach-market-log-adapter-contract",
+  "projectionDigest": "8b67a8e5539db5630a3559fff95f69cb03b60d1b5765f360e31cb323f00b65aa",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/reach-market-log-adapter-contract/"
+    ],
+    "forbiddenPaths": [
+      "runtime telemetry implementation",
+      "log schema implementation",
+      "log-ingest implementation",
+      "Parquet or DuckDB implementation"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.reach-market-log-adapter-contract",
+  "status": "ready"
+}

@@ -1,0 +1,107 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "public-status-badge-projection",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "cmo-usage-generated-distribution-system",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "cmo-usage-generated-distribution-system"
+      ]
+    },
+    {
+      "fromPackageId": "public-status-badge-projection",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "shareable-governance-room",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "shareable-governance-room"
+      ]
+    },
+    {
+      "fromPackageId": "public-status-badge-projection",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "public-promotion-revenue-gates",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "public-promotion-revenue-gates"
+      ]
+    },
+    {
+      "fromPackageId": "public-status-badge-projection",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "single-meaning-surface",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "single-meaning-surface"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.public-status-badge-projection",
+    "package": "public-status-badge-projection",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "public-status-badge-projection.package-contract",
+      "public-status-badge-projection.projection-not-authority",
+      "public-status-badge-projection.claim-strength-boundary"
+    ],
+    "requiredCommands": [
+      "bash ci/run-cmo-usage-generated-distribution-proposal.sh"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.public-status-badge-projection"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "public-status-badge-projection"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "public-status-badge-projection",
+  "projectionDigest": "8a6cfe8a263e3a1cd74d77c2c48897af7c59154cc15cf4022a31ef9888655478",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/public-status-badge-projection/",
+      "issues/260608-cmo-usage-generated-distribution.jsonl",
+      "../artifacts/cmo-usage-generated-distribution-260608/",
+      "../PROPOSAL_CMO_USAGE_GENERATED_DISTRIBUTION_20260608.md",
+      "../PROPOSAL_MANIFEST_CMO_USAGE_GENERATED_DISTRIBUTION_20260608.json"
+    ],
+    "forbiddenPaths": [
+      "third-party certification claim adapter",
+      "manual badge upload as canonical state",
+      "badge minting without source digest",
+      "evergreen green badge",
+      "private evidence leak through click target"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.public-status-badge-projection",
+  "status": "planned-blocked"
+}

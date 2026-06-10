@@ -1,0 +1,83 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "interaction-history-core",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.interaction-history-core",
+    "package": "interaction-history-core",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "interaction-history-core",
+    "requiredChecks": [
+      "checks.<system>.interaction-history-core"
+    ],
+    "requiredCommands": [
+      "interaction-history-core validate --records <records.jsonl>",
+      "interaction-history-core inventory --records <records.jsonl> --out-dir <inventory>",
+      "interaction-history-core classify --records <records.jsonl> --out <STATUS.json>",
+      "interaction-history-core context-pack --records <records.jsonl> --out <context-pack.zip>",
+      "interaction-history-core sdui-input --records <records.jsonl> --out <sdui-input.json>",
+      "interaction-history-core pipeline --records <records.jsonl> --out-dir <out>",
+      "interaction-history-core test"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.interaction-history-core"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "interaction-history-core"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "interaction-history-core",
+  "projectionDigest": "4bd9ede10803d83e700169b4faa3465409719cd9a49615db29c92f7297f8eb1c",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/interaction-history-core/",
+      "repos/interaction-history-core/",
+      "repos/chatgpt-history-foundation/contracts/interaction-history-core/"
+    ],
+    "forbiddenPaths": [
+      "source adapter implementation",
+      "CDP browser transport",
+      "Codex runtime implementation",
+      "viewer UI files",
+      "ops-agent-events reducer implementation",
+      "protocol-contract vocabulary definitions"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/interaction-history-core",
+    "targetRepoId": "interaction-history-core"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.interaction-history-core",
+  "status": "ready"
+}

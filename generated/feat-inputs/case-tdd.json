@@ -1,0 +1,72 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "case-tdd",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specctl",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specctl"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.case-tdd",
+    "package": "case-tdd",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "case-tdd.package-build"
+    ],
+    "requiredCommands": [
+      "case-tdd <spec-root> <case>"
+    ],
+    "requiredOutputs": [
+      "packages.case-tdd"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "ast-grep",
+        "zip",
+        "unzip",
+        "git"
+      ],
+      "requiredForFinal": [
+        "bash",
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "case-tdd"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "case-tdd",
+  "projectionDigest": "be53277fe63d112e6fa7017d8c241c8aed4ae5b7ce4bb2fd0b3e1994d71e6237",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/case-tdd/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.case-tdd",
+  "status": "ready"
+}

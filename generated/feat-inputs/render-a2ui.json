@@ -1,0 +1,82 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "render-a2ui",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "a2ui-component-registry",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "a2ui-component-registry"
+      ]
+    },
+    {
+      "fromPackageId": "render-a2ui",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.render-a2ui",
+    "package": "render-a2ui",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "board-view",
+    "requiredChecks": [
+      "render-a2ui.activation-criteria",
+      "render-a2ui.boundary-taxonomy"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.render-a2ui"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "render-a2ui"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "render-a2ui",
+  "projectionDigest": "fa7892f163ca62dc935353b88aa530f557d09207f147a4e345b9062d539bb389",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/render-a2ui/"
+    ],
+    "forbiddenPaths": [
+      "browser DOM implementation",
+      "server-side app state",
+      "WebMCP host code",
+      "domain semantic reducers",
+      "generated views as authority"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/board-view",
+    "targetRepoId": "board-view"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.render-a2ui",
+  "status": "planned-blocked"
+}

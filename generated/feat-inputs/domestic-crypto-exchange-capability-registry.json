@@ -1,0 +1,103 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "domestic-crypto-exchange-capability-registry",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "functional-core-governance-gate",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "functional-core-governance-gate"
+      ]
+    },
+    {
+      "fromPackageId": "domestic-crypto-exchange-capability-registry",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "domestic-crypto-exchange-capability-registry",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "port-adapter-library-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "port-adapter-library-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.domestic-crypto-exchange-capability-registry",
+    "package": "domestic-crypto-exchange-capability-registry",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "domestic-crypto-exchange-capability-registry.package-contract",
+      "domestic-crypto-exchange-capability-registry.schema-parse",
+      "domestic-crypto-exchange-capability-registry.catalog-parse",
+      "domestic-crypto-exchange-capability-registry.destructive-casebook-parse",
+      "domestic-crypto-exchange-capability-registry.secret-boundary-lint",
+      "domestic-crypto-exchange-capability-registry.no-live-trade-claim",
+      "domestic-crypto-exchange-capability-registry.tax-non-finality-claim"
+    ],
+    "requiredCommands": [
+      "PYTHONDONTWRITEBYTECODE=1 python3 repo-boundary-guard-main/tools/specsless_ci.py --root . --mode final --json",
+      "python3 artifacts/domestic-crypto-exchange-capability-registry-260609/reports/validate-json-artifacts.py"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.domestic-crypto-exchange-capability-registry"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "domestic-crypto-exchange-capability-registry"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "domestic-crypto-exchange-capability-registry",
+  "projectionDigest": "4b6bb07039a750fed39794cb5ac106784ac03fd06f594952695963188765153d",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/domestic-crypto-exchange-capability-registry/",
+      "../artifacts/domestic-crypto-exchange-capability-registry-260609/",
+      "PROPOSAL_DOMESTIC_CRYPTO_EXCHANGE_CAPABILITY_REGISTRY_20260609.md",
+      "WORKTREE_RUN_REPORT_DOMESTIC_CRYPTO_EXCHANGE_CAPABILITY_REGISTRY_20260609.md"
+    ],
+    "forbiddenPaths": [
+      "live exchange API credentials",
+      "runtime order execution implementation",
+      "withdrawal automation implementation",
+      "tax advice or final tax classification",
+      "overseas restricted exchange production adoption",
+      "seed phrase or wallet private key material"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.domestic-crypto-exchange-capability-registry",
+  "status": "planned-blocked"
+}

@@ -1,0 +1,104 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "incident-normalizer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "error-spec",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "error-spec"
+      ]
+    },
+    {
+      "fromPackageId": "incident-normalizer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "event-scrubber",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "event-scrubber"
+      ]
+    },
+    {
+      "fromPackageId": "incident-normalizer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-contract"
+      ]
+    },
+    {
+      "fromPackageId": "incident-normalizer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "incident-normalizer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "signal-envelope-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "signal-envelope-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.incident-normalizer",
+    "package": "incident-normalizer",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "incident-normalizer.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.incident-normalizer"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "incident-normalizer"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "incident-normalizer",
+  "projectionDigest": "222866e5e99d0b909f759a40be3243c1d706bfc66fbfad49aab8c5e3801c9ccd",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/incident-normalizer/"
+    ],
+    "forbiddenPaths": [
+      "incident runtime service implementation"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.incident-normalizer",
+  "status": "ready"
+}

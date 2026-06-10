@@ -1,0 +1,110 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "issue-ledger-unified-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "issue-ledger-unified-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "issue-ledger-unified-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "prove-feat",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "prove-feat"
+      ]
+    },
+    {
+      "fromPackageId": "issue-ledger-unified-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "unified-issue-composition",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "unified-issue-composition"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-issue-ledger",
+    "package": "issue-ledger-unified-kernel",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.ops-issue-ledger",
+      "prove-feat contract-lint",
+      "workspace audit against governance-records/policy/ops/adrs worktree"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.ops-issue-ledger",
+      "checks.<system>.ops-issue-ledger"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "issue-ledger-unified-kernel"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "issue-ledger-unified-kernel",
+  "projectionDigest": "3836b3af87d21045353bf5db49f95b395b536f9cee2e56d023f72fb7d96c7999",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/issue-ledger-unified-kernel/",
+      "issues/260603-issue-ledger-unified-kernel.jsonl",
+      "issues/260603-cleaned-non-v1-intents.jsonl",
+      "issues/evidence/non-v1-issue-jsonl-cleanup-20260603/",
+      "../ops-main/packages/ops-issue-ledger/",
+      "../ops-main/flake.nix",
+      "../policy-master/.agents/issue-ledger.md",
+      "../policy-master/.agents/tests/check-issue-workspace-strict.sh",
+      "../adrs-main/issues/260603-issue-ledger-adoption.jsonl"
+    ],
+    "forbiddenPaths": [
+      "retired specs executable validator implementation",
+      "policy-master second validator semantics",
+      "generated reports as issue authority",
+      "example/poc/example as default issue authority",
+      "non-issue.record.v1 rows under issues/*.jsonl"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.issue-ledger-unified-kernel",
+  "status": "ready"
+}

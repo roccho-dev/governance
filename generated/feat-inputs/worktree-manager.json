@@ -1,0 +1,78 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "worktree-manager",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "actor-policy-sandbox",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "actor-policy-sandbox"
+      ]
+    },
+    {
+      "fromPackageId": "worktree-manager",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.worktree-manager",
+    "package": "worktree-manager",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "worktree-manager.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.worktree-manager"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "worktree-manager"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "worktree-manager",
+  "projectionDigest": "2220d6f7e5d320345d33064c979b73cb68f5a1e5082e24b9f1dfeb74df18ccb1",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/worktree-manager/"
+    ],
+    "forbiddenPaths": [
+      "worktree runtime implementation",
+      "canonical checkout state"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.worktree-manager",
+  "status": "ready"
+}

@@ -1,0 +1,85 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-integration-smoke",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "ops-integration-smoke",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-worker-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-worker-runtime-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-integration-smoke",
+    "package": "ops-integration-smoke",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "ops-integration-smoke.package-contract",
+      "ops-integration-smoke.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "ops-integration-smoke --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-integration-smoke",
+      "packages.<system>.test-integration",
+      "packages.<system>.test-e2e"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-integration-smoke"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-integration-smoke",
+  "projectionDigest": "2c82b741ea170414f05caf6cbc2d6f8890505f4e73a5185f24370161851a72f4",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-integration-smoke/",
+      "repos/ops/packages/ops-integration-smoke/",
+      "parts/tests/packages.<system>.nix"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-integration-smoke",
+  "status": "ready"
+}

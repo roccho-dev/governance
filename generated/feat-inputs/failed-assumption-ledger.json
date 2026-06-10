@@ -1,0 +1,155 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "failed-assumption-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "failed-assumption-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "core-boundary-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "core-boundary-lint"
+      ]
+    },
+    {
+      "fromPackageId": "failed-assumption-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "domain-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "domain-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "failed-assumption-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "failed-assumption-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "prove-feat",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "prove-feat"
+      ]
+    },
+    {
+      "fromPackageId": "failed-assumption-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "source-artifact-ledger",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "source-artifact-ledger"
+      ]
+    },
+    {
+      "fromPackageId": "failed-assumption-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-conformance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-conformance"
+      ]
+    },
+    {
+      "fromPackageId": "failed-assumption-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-nix-data-boundary",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-nix-data-boundary"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.failed-assumption-ledger",
+    "package": "failed-assumption-ledger",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "failed-assumption-ledger",
+    "requiredChecks": [
+      "checks.<system>.failed-assumption-ledger",
+      "failed-assumption-ledger.src-layout",
+      "failed-assumption-ledger.pytest",
+      "failed-assumption-ledger.policy-proof.matches-expected",
+      "failed-assumption-ledger.contribution-proof.matches-expected",
+      "failed-assumption-ledger.jsonl-ledger-not-if-then",
+      "failed-assumption-ledger.projection-fallback",
+      "failed-assumption-ledger.guard-promotion-gate"
+    ],
+    "requiredCommands": [
+      "PYTHONPATH=src python -m pytest -q",
+      "PYTHONPATH=src python example/poc/example/policy_guard/run_usecase.py",
+      "PYTHONPATH=src python example/poc/example/contribution_external_factors/run_usecase.py",
+      "prove-feat",
+      "spec-conformance"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.failed-assumption-ledger"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "PM4Py",
+        "AALpy",
+        "Hypothesis"
+      ],
+      "requiredForFinal": [
+        "bash",
+        "python3",
+        "git"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "failed-assumption-ledger"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "failed-assumption-ledger",
+  "projectionDigest": "bff920decc27e5b995b5554a7a203ef74a4745fff92e08bcd2f6fd1be8f195db",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/failed-assumption-ledger/",
+      "repos/failed-assumption-ledger/",
+      "issues/domain-kernel-failed-assumption-ledger-catalog-20260603/"
+    ],
+    "forbiddenPaths": [
+      "embedded zip payload under specs",
+      "raw ADR JSONL under specs package truth",
+      "JSONL if then execution language",
+      "domain oracle truth inside reusable ledger core",
+      "business contribution taxonomy inside reusable ledger core",
+      "live hosted model e2e as Tier-S required check",
+      "hand-edited projection as source of truth"
+    ],
+    "repoSourceUri": "devenv-pkg://repo/failed-assumption-ledger/target.bundle",
+    "targetRepoId": "failed-assumption-ledger"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.failed-assumption-ledger",
+  "status": "ready"
+}

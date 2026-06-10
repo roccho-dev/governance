@@ -1,0 +1,82 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "canonical-branch-guard",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-runbook-checks",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-runbook-checks"
+      ]
+    },
+    {
+      "fromPackageId": "canonical-branch-guard",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.canonical-branch-guard",
+    "package": "canonical-branch-guard",
+    "preflightRequiredTools": [
+      "git",
+      "python3"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.canonical-branch-guard"
+    ],
+    "requiredCommands": [
+      "canonical-branch-guard attach-only-check --repo <repo> --canonical <branch> --candidate <branch>",
+      "canonical-branch-guard no-drift-check --repo <repo> --reviewed-base <sha> --canonical <branch>",
+      "canonical-branch-guard detect-direct-commit --repo <repo> --canonical <branch>",
+      "canonical-branch-guard quarantine-direct-commit --repo <repo> --canonical <branch> --out <dir>"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.canonical-branch-guard"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "git",
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "git",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "canonical-branch-guard"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "canonical-branch-guard",
+  "projectionDigest": "d54ab1cf633ed28fda9e4de88dbcc89c12c6439cf8a1eb41ad2fb6f5e7d93303",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/canonical-branch-guard/"
+    ],
+    "forbiddenPaths": [
+      "AGENTS.md as HOWTO",
+      "packages/repository-governance/ implementation duplication",
+      "direct canonical branch edits",
+      "root-level tools or scripts"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.canonical-branch-guard",
+  "status": "ready"
+}

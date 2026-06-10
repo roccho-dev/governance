@@ -1,0 +1,129 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "cdp",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "cdp",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "purpose-toolchain",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "purpose-toolchain"
+      ]
+    },
+    {
+      "fromPackageId": "cdp",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "repository-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "repository-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.cdp",
+    "package": "cdp",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "cdp.package-build",
+      "cdp.kuri-http-contract",
+      "cdp.no-flakes-cdp-bridge",
+      "cdp.no-raw-cdp-transport-in-mjs",
+      "cdp.mjs-boundary-asset-manifest",
+      "cdp.chatgpt-ir-warm-path",
+      "cdp.compat-wrappers",
+      "cdp.final-naming-contract",
+      "cdp.rename-ledger",
+      "cdp.alias-retire-conditions",
+      "cdp.risk-mitigation-contract",
+      "cdp.server-boundary",
+      "cdp.no-second-cdp-backend",
+      "cdp.future-host-deferred",
+      "cdp.kuri-release-locked",
+      "cdp.exception-proposal-ledger",
+      "cdp.local-exception-budget",
+      "cdp.extension-opt-in"
+    ],
+    "requiredCommands": [
+      "cdp serve",
+      "cdp health",
+      "cdp open",
+      "cdp snapshot",
+      "cdp chatgpt doctor",
+      "cdp chatgpt open-thread",
+      "cdp chatgpt read-thread",
+      "cdp chatgpt send",
+      "cdp chatgpt list-artifacts",
+      "cdp chatgpt fetch-artifact",
+      "cdp chatgpt inspect-artifact"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.cdp"
+    ],
+    "runtimeRequirements": {
+      "blockedWhenMissing": [
+        "quickjs-ng runtime is unavailable for final package checks",
+        "Kuri source, binary, hash, or license is unavailable",
+        "Chrome/Chromium live CDP endpoint is unavailable for live integration checks"
+      ],
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "curl"
+      ],
+      "requiredForFinal": [
+        "quickjs-ng",
+        "kuri",
+        "chromium-or-chrome-with-live-cdp"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "cdp"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "cdp",
+  "projectionDigest": "0e34905564e2515f0cad19bc45814fd437ffd38fcc184931b7ce07bc1f7434aa",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "../ops-main/packages/ops-cdp-core/",
+      "../ops-main/flake.nix"
+    ],
+    "forbiddenPaths": [
+      "parts/chromedevtoolprotocol.zig/",
+      "parts/qjs.zig/",
+      "parts/amp/",
+      "bundles/"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.cdp",
+  "status": "ready"
+}

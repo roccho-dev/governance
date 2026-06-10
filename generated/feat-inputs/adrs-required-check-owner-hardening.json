@@ -1,0 +1,61 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.adrs-required-check-owner-hardening",
+    "package": "adrs-required-check-owner-hardening",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "checks.<system>.adrs-required-check-owner-hardening"
+    ],
+    "requiredCommands": [
+      "PYTHONDONTWRITEBYTECODE=1 python3 repo-boundary-guard-main/tools/specsless_ci.py --root . --mode final --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.adrs-required-check-owner-hardening"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3",
+        "nix"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "adrs-required-check-owner-hardening"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "adrs-required-check-owner-hardening",
+  "projectionDigest": "61541b1225ea8efd380c042bc4ad007f690e18eec8084d1fff5f654ed5f55751",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "governance-records-main/records/specs/package-contract.v1.jsonl",
+      "governance-records-main/records/specs/projection-digest.v1.jsonl",
+      "governance-records-main/generated/feat-inputs/",
+      "governance-nix-main/tools/make-feat-input.py",
+      "repo-boundary-guard-main/tools/specsless_ci.py"
+    ],
+    "forbiddenPaths": [
+      "anonymous acceptance checks",
+      "advisory checks used as blockers"
+    ],
+    "repoSourceUri": "path:.",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.adrs-required-check-owner-hardening",
+  "status": "planned-blocked"
+}

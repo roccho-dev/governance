@@ -1,0 +1,165 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "adr-jsonl-intent-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "adr-jsonl-intent-input"
+      ]
+    },
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "feat-trusted-gates",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "feat-trusted-gates"
+      ]
+    },
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-unified-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-unified-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-output-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-output-governance"
+      ]
+    },
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "prove-feat",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "prove-feat"
+      ]
+    },
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "repo-map-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "repo-map-contract"
+      ]
+    },
+    {
+      "fromPackageId": "specsless-canonical-cutover",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-nix-data-boundary",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-nix-data-boundary"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-specsless-readiness",
+    "package": "specsless-canonical-cutover",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checkPackageContract",
+      "ops-specsless-readiness --mode proposal",
+      "repo-boundary-guard specsless_ci --mode proposal",
+      "projection digest smoke"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.ops-specsless-readiness",
+      "governance-records-main/records/specs/package-contract.v1.jsonl",
+      "governance-records-main/generated/feat-inputs.v1.jsonl",
+      "repo-boundary-guard-main/records/destructive-cases/specs-retirement.v1.jsonl",
+      "governance-records-main/records/purpose/purpose-generation.v1.jsonl"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "specsless-canonical-cutover"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "specsless-canonical-cutover",
+  "projectionDigest": "b11a3dfbb063eb4aee93f658e9d8e61b8ea5efba3e3c1fc981eae557eb79badb",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "governance-records-main/records/specs/package-contract.v1.jsonl",
+      "governance-records-main/records/specs/projection-digest.v1.jsonl",
+      "governance-records-main/generated/feat-inputs/",
+      "issue-ledger-main/issues/issue-record.v1.jsonl",
+      "adrs-main/records/",
+      "adrs-main/example/poc/usecase/specsless-canonical-cutover-proof/",
+      "ops-main/packages/ops-specsless-readiness/",
+      "governance-records-main/",
+      "governance-nix-main/",
+      "repo-boundary-guard-main/",
+      "issue-ledger-main/",
+      "evidence-archive-main/",
+      "ci/run-specsless-canonical-cutover.sh",
+      "PROPOSAL_MANIFEST.json",
+      "PROPOSAL.md",
+      "VALIDATION.md"
+    ],
+    "forbiddenPaths": [
+      "implementation code under retired specs package path: specsless-canonical-cutover/",
+      "raw ADR records under issues/*.jsonl",
+      "generated reports as accepted definition authority",
+      "retired specs repo deletion in proposal mode without final gate evidence"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.specsless-canonical-cutover",
+  "status": "planned-blocked"
+}

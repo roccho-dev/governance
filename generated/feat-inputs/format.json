@@ -1,0 +1,70 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "format",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.format",
+    "package": "format",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "format",
+    "requiredChecks": [
+      "checks.<system>.format"
+    ],
+    "requiredCommands": [
+      "nix flake check"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.format"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "format"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "format",
+  "projectionDigest": "ce52c71dfb8cee531854e68641ab1a4dc35e79b4795f6966131d66c7ba3cd9fc",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/format/"
+    ],
+    "forbiddenPaths": [
+      "feature implementation code inside repos/specs"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/format",
+    "targetRepoId": "format"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.format",
+  "status": "ready"
+}

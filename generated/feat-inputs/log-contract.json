@@ -1,0 +1,82 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "log-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "error-spec",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "error-spec"
+      ]
+    },
+    {
+      "fromPackageId": "log-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.log-contract",
+    "package": "log-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "log-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.log-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "log-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "log-contract",
+  "projectionDigest": "54e3c1b31fe66244f0c13981e49f79229e82a0af85ea21b85208407e934e5a73",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/log-contract/"
+    ],
+    "forbiddenPaths": [
+      "runtime logging implementation",
+      "raw log warehouse",
+      "collector runtime implementation",
+      "DuckDB or Parquet v1 implementation",
+      "standard OTel Collector runtime configuration as archive authority",
+      "log pipeline UI"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.log-contract",
+  "status": "ready"
+}

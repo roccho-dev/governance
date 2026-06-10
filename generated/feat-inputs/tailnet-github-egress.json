@@ -1,0 +1,99 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "tailnet-github-egress",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "github-git-remote",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "tailnet-github-egress",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "nixos-dev-host",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "tailnet-github-egress",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "nixos-egress-host",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "tailnet-github-egress",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "redacted-staging-evidence",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "tailnet-github-egress",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "tailscale-tailnet",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.tailnet-github-egress",
+    "package": "tailnet-github-egress",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "tailnet-github-egress-feat",
+    "requiredChecks": [
+      "plain-attrset",
+      "implements-json",
+      "staging-evidence-json",
+      "boundary-scan"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.prove-feat",
+      "checks.<system>.prove-feat"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "tailnet-github-egress"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "tailnet-github-egress",
+  "projectionDigest": "141c10858c160dbb367e85632bec1e0d615964fb23d1ec8ab68afd596ba70d4f",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/tailnet-github-egress/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/ except packages/tailnet-github-egress/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/tailnet-github-egress-feat",
+    "targetRepoId": "tailnet-github-egress-feat"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.tailnet-github-egress",
+  "status": "ready"
+}

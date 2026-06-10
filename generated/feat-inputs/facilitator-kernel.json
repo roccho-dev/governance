@@ -1,0 +1,128 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "facilitator-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "interaction-history-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "interaction-history-core"
+      ]
+    },
+    {
+      "fromPackageId": "facilitator-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "jsonl-board-policy-workspace",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "jsonl-board-policy-workspace"
+      ]
+    },
+    {
+      "fromPackageId": "facilitator-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-agent-events",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-agent-events"
+      ]
+    },
+    {
+      "fromPackageId": "facilitator-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-handoff-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-handoff-core"
+      ]
+    },
+    {
+      "fromPackageId": "facilitator-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-thread-fsm",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-thread-fsm"
+      ]
+    },
+    {
+      "fromPackageId": "facilitator-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-worker-runner",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-worker-runner"
+      ]
+    },
+    {
+      "fromPackageId": "facilitator-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.facilitator-kernel",
+    "package": "facilitator-kernel",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "facilitator-kernel.package-contract",
+      "facilitator-kernel.minimum-loop-contract",
+      "facilitator-kernel.no-dual-truth"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.facilitator-kernel"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "facilitator-kernel"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "facilitator-kernel",
+  "projectionDigest": "cc8c375448a66b007e4c88d69fef9decf2b75a1f5e807e09a8c7ca1ecc5d30d2",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/facilitator-kernel/",
+      "repos/ops/packages/facilitator-kernel/"
+    ],
+    "forbiddenPaths": [
+      "Hermes application clone",
+      "internal LLM loop",
+      "primary CLI/TUI/chat UI",
+      "duplicate canonical Board or JSONL store"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.facilitator-kernel",
+  "status": "planned-blocked"
+}

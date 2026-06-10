@@ -1,0 +1,107 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "destructive-case-community-league",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "cmo-usage-generated-distribution-system",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "cmo-usage-generated-distribution-system"
+      ]
+    },
+    {
+      "fromPackageId": "destructive-case-community-league",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "governance-template-marketplace-ledger",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "governance-template-marketplace-ledger"
+      ]
+    },
+    {
+      "fromPackageId": "destructive-case-community-league",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "policy-gate-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "policy-gate-core"
+      ]
+    },
+    {
+      "fromPackageId": "destructive-case-community-league",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "jsonl-datamodeling-duckdb-ci",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "jsonl-datamodeling-duckdb-ci"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.destructive-case-community-league",
+    "package": "destructive-case-community-league",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "destructive-case-community-league.package-contract",
+      "destructive-case-community-league.projection-not-authority",
+      "destructive-case-community-league.claim-strength-boundary"
+    ],
+    "requiredCommands": [
+      "bash ci/run-cmo-usage-generated-distribution-proposal.sh"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.destructive-case-community-league"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "destructive-case-community-league"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "destructive-case-community-league",
+  "projectionDigest": "1b7d9c5a2521ca1cdb96263f0145ce5f15a7d938b484ba677e73d65c30f0ecbd",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/destructive-case-community-league/",
+      "issues/260608-cmo-usage-generated-distribution.jsonl",
+      "../artifacts/cmo-usage-generated-distribution-260608/",
+      "../PROPOSAL_CMO_USAGE_GENERATED_DISTRIBUTION_20260608.md",
+      "../PROPOSAL_MANIFEST_CMO_USAGE_GENERATED_DISTRIBUTION_20260608.json"
+    ],
+    "forbiddenPaths": [
+      "unreviewed exploit feed",
+      "official regression mutation without promotion event",
+      "public secret-bearing repro",
+      "bounty payout implementation",
+      "challenge as proof authority"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.destructive-case-community-league",
+  "status": "planned-blocked"
+}

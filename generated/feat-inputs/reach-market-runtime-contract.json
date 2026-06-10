@@ -1,0 +1,153 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-contract-validator",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-contract-validator"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-deploy-guard-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-deploy-guard-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-env-binding-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-env-binding-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-log-adapter-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-log-adapter-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-signal-review-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-signal-review-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-surface-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-surface-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-repo-admission-policy",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-repo-admission-policy"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-runtime-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-claim-approval-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-claim-approval-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.reach-market-runtime-contract",
+    "package": "reach-market-runtime-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "reach-market-runtime-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.reach-market-runtime-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "reach-market-runtime-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "reach-market-runtime-contract",
+  "projectionDigest": "c92ae02e240d4b1d555834a4438b679ae8ad2b409b1084d87b378a0736230fe5",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/reach-market-runtime-contract/"
+    ],
+    "forbiddenPaths": [
+      "reach-market runtime implementation",
+      "log-ingest implementation",
+      "log-pipeline schema/storage/compaction implementation",
+      "Cloudflare deployment code",
+      "business plan or monetization roadmap as technical acceptance"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.reach-market-runtime-contract",
+  "status": "ready"
+}

@@ -1,0 +1,65 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.package-facet-promotion-compaction-proof",
+    "package": "package-facet-promotion-compaction-proof",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "package-facet-promotion-compaction-proof.manifest",
+      "package-facet-promotion-compaction-proof.current-facets",
+      "package-facet-promotion-compaction-proof.blocker-quarantine-retention"
+    ],
+    "requiredCommands": [
+      "python3 governance-records-main/tools/check-package-facet-proof.py --root . --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.package-facet-promotion-compaction-proof"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3",
+        "nix"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "package-facet-promotion-compaction-proof"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "package-facet-promotion-compaction-proof",
+  "projectionDigest": "cf154db56b59f50e75dd439f439db63547278020b2fad4e97527ffbb57ea6e43",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "artifacts/package-facet-promotion-compaction-proof-260606/",
+      "governance-records-main/tools/check-package-facet-proof.py",
+      "governance-records-main/records/specs/package-contract.v1.jsonl",
+      "governance-records-main/records/specs/projection-digest.v1.jsonl",
+      "governance-records-main/generated/feat-inputs/"
+    ],
+    "forbiddenPaths": [
+      "DuckDB database as canonical authority",
+      "current facet files as hand-edited authority",
+      "secret values in current facet outputs",
+      "POC green as production scale proof"
+    ],
+    "repoSourceUri": "path:.",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.package-facet-promotion-compaction-proof",
+  "status": "planned-blocked"
+}

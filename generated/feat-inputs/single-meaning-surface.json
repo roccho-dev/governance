@@ -1,0 +1,148 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "a2ui-rendering-to-browser",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "a2ui-rendering-to-webmcp",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "core-boundary-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "core-boundary-lint"
+      ]
+    },
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "port-adapter-library-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "port-adapter-library-governance"
+      ]
+    },
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "presentation-surface-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "presentation-surface-governance"
+      ]
+    },
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "render-a2ui",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "single-meaning-surface",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "webmcp",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "webmcp"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.single-meaning-surface",
+    "package": "single-meaning-surface",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "single-meaning-surface.package-contract",
+      "single-meaning-surface.surface-equivalence-gate",
+      "single-meaning-surface.seo-honesty-gate",
+      "single-meaning-surface.no-host-authority-gate"
+    ],
+    "requiredCommands": [
+      "PYTHONDONTWRITEBYTECODE=1 python3 repo-boundary-guard-main/tools/specsless_ci.py --root . --mode final --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.single-meaning-surface"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "single-meaning-surface"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "single-meaning-surface",
+  "projectionDigest": "4315b8acc4000c8e81e1215aebfdc70dc0cb2b347ae85d33ad976ad921bc45ca",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/single-meaning-surface/",
+      "issues/260606-single-meaning-surface-public-discovery.jsonl",
+      "../artifacts/single-meaning-surface-20260606/"
+    ],
+    "forbiddenPaths": [
+      "runtime DOM implementation",
+      "browser host implementation",
+      "WebMCP registration implementation",
+      "server billing/auth implementation",
+      "private overlay data",
+      "generated static page as accepted authority",
+      "search-engine-only content",
+      "full-tree replacement"
+    ],
+    "repoSourceUri": "path:.",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.single-meaning-surface",
+  "status": "planned-blocked"
+}

@@ -1,0 +1,78 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "event-scrubber",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "event-scrubber",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "signal-envelope-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "signal-envelope-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.event-scrubber",
+    "package": "event-scrubber",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "event-scrubber.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.event-scrubber"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "event-scrubber"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "event-scrubber",
+  "projectionDigest": "6f5c4dcf9d5246c1b36778cf6d87ba8aae9af9e8f5b2b4d0f761dc566c5d1ca4",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/event-scrubber/"
+    ],
+    "forbiddenPaths": [
+      "raw log warehouse",
+      "secret material"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.event-scrubber",
+  "status": "ready"
+}

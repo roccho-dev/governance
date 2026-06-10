@@ -1,0 +1,87 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "spec-conformance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "spec-conformance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "spec-conformance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-manifest",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-manifest"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.spec-conformance",
+    "package": "spec-conformance",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "spec-conformance",
+    "requiredChecks": [
+      "checks.<system>.surface"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.spec-conformance"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "spec-conformance"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "spec-conformance",
+  "projectionDigest": "bbf5209e0059563adf5a7add60c2f9e8b3104b817e1d25bf7496e4e6b7e67998",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/spec-conformance/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/ except packages/spec-conformance/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/spec-conformance",
+    "targetRepoId": "spec-conformance"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.spec-conformance",
+  "status": "ready"
+}

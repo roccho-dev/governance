@@ -1,0 +1,81 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "a2ui-rendering-to-browser",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "a2ui-rendering-to-browser",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "render-a2ui",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "render-a2ui"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.a2ui-rendering-to-browser",
+    "package": "a2ui-rendering-to-browser",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "board-view",
+    "requiredChecks": [
+      "a2ui-rendering-to-browser.activation-criteria",
+      "a2ui-rendering-to-browser.same-information-source"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.a2ui-rendering-to-browser"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "a2ui-rendering-to-browser"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "a2ui-rendering-to-browser",
+  "projectionDigest": "e2eebc0c97eb0b40b8a9071c1f5824a8c78909be5319c37f94e457a140fce0e6",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/a2ui-rendering-to-browser/"
+    ],
+    "forbiddenPaths": [
+      "domain reducers",
+      "canonical state",
+      "approval endpoints",
+      "private component registry"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/board-view",
+    "targetRepoId": "board-view"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.a2ui-rendering-to-browser",
+  "status": "planned-blocked"
+}

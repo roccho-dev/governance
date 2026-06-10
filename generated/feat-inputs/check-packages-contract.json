@@ -1,0 +1,75 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "check-packages-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.check-packages-contract",
+    "package": "check-packages-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "checks.<system>.check-packages-contract"
+    ],
+    "requiredCommands": [
+      "check-packages-contract <spec-root>",
+      "specctl check-packages-contract <spec-root>"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.check-packages-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "check-packages-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "check-packages-contract",
+  "projectionDigest": "00d672161ab37fc334fe666d7308ab617737febdf8c90c4c2044c89861d7fc95",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/check-packages-contract/",
+      "packages/default.nix",
+      "packages/specctl/",
+      "specs.nix",
+      "flake.nix"
+    ],
+    "forbiddenPaths": [
+      "feature implementation code inside repos/specs"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.check-packages-contract",
+  "status": "ready"
+}

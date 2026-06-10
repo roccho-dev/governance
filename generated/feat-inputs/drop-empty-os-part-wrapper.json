@@ -1,0 +1,72 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "drop-empty-os-part-wrapper",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.drop-empty-os-part-wrapper",
+    "package": "drop-empty-os-part-wrapper",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "host-config",
+    "requiredChecks": [
+      "drop-empty-os-part-wrapper.package-contract",
+      "drop-empty-os-part-wrapper.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.drop-empty-os-part-wrapper"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "drop-empty-os-part-wrapper"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "drop-empty-os-part-wrapper",
+  "projectionDigest": "f6bc39cb73c5606d9d61f76fef966ac983704e9e6ff9f6a2a3960676d0ee72ad",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/drop-empty-os-part-wrapper/",
+      "repos/host-config/packages/drop-empty-os-part-wrapper/",
+      "parts/os/default.nix"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/host-config",
+    "targetRepoId": "host-config"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.drop-empty-os-part-wrapper",
+  "status": "ready"
+}

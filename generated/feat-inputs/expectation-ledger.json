@@ -1,0 +1,77 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "expectation-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "expectation-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.expectation-ledger",
+    "package": "expectation-ledger",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "expectation-ledger.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.expectation-ledger"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "expectation-ledger"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "expectation-ledger",
+  "projectionDigest": "eb11315879d98079c7f9fa7e9bcd1ca36f6a002d1a548266daeea2faa605b7c1",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/expectation-ledger/"
+    ],
+    "forbiddenPaths": [
+      "conversation-only expectation truth"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.expectation-ledger",
+  "status": "ready"
+}

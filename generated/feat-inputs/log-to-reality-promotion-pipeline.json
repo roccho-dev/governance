@@ -1,0 +1,135 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "log-to-reality-promotion-pipeline",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "adr-jsonl-intent-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "adr-jsonl-intent-input"
+      ]
+    },
+    {
+      "fromPackageId": "log-to-reality-promotion-pipeline",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "adr-specs-promotion-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "adr-specs-promotion-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "log-to-reality-promotion-pipeline",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "interaction-history-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "interaction-history-core"
+      ]
+    },
+    {
+      "fromPackageId": "log-to-reality-promotion-pipeline",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-unified-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-unified-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "log-to-reality-promotion-pipeline",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "merge-evidence-ledger",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "merge-evidence-ledger"
+      ]
+    },
+    {
+      "fromPackageId": "log-to-reality-promotion-pipeline",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "patch-proposal-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "patch-proposal-contract"
+      ]
+    },
+    {
+      "fromPackageId": "log-to-reality-promotion-pipeline",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "policy-governed-compaction-promotion-engine",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "policy-governed-compaction-promotion-engine"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.log-to-reality-promotion-pipeline",
+    "package": "log-to-reality-promotion-pipeline",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "log-to-reality-promotion-pipeline.contract-json-parse",
+      "log-to-reality-promotion-pipeline.no-engine-direct-dependency",
+      "log-to-reality-promotion-pipeline.issue-record-v1-only",
+      "log-to-reality-promotion-pipeline.scale-safety"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.log-to-reality-promotion-pipeline"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "log-to-reality-promotion-pipeline"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "log-to-reality-promotion-pipeline",
+  "projectionDigest": "d8b3e44f716251328b65dc12eb97cf247a4225fb0fe27b8eb0df654641372ffe",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/log-to-reality-promotion-pipeline/",
+      "issues/260605-log-to-reality-promotion-pipeline.jsonl",
+      "records/specs/spec.v1.jsonl",
+      "records/specs/spec-issue-scope.v1.jsonl",
+      "records/specs/spec-promotion.v1.jsonl",
+      "../artifacts/log-to-reality-promotion-pipeline-20260605/"
+    ],
+    "forbiddenPaths": [
+      "production runner implementation",
+      "DuckDB SQL owned by this package",
+      "Cedar policy owned by this package",
+      "direct package import from ADR issue proposal or specs phase packages to engine implementation",
+      "canonical branch mutation",
+      "issue closure or merge approval semantics"
+    ],
+    "repoSourceUri": "path:.",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.log-to-reality-promotion-pipeline",
+  "status": "planned-blocked"
+}

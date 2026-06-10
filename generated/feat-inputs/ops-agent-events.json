@@ -1,0 +1,93 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-agent-events",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "agent-status-core-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "agent-status-core-contract"
+      ]
+    },
+    {
+      "fromPackageId": "ops-agent-events",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-agent-events",
+    "package": "ops-agent-events",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops-agent-events",
+    "requiredChecks": [
+      "checks.<system>.ops-agent-events"
+    ],
+    "requiredCommands": [
+      "agent-events validate --events events.jsonl",
+      "agent-events validate-agent --events agent-events.jsonl",
+      "agent-events reduce-agent --events agent-events.jsonl --status status.json",
+      "agent-events build --events events.jsonl --state state.tsv --status status.md",
+      "agent-events append-node --events events.jsonl --parent-id 0000 --kind task --title <title>",
+      "agent-events append-worktree --events events.jsonl --node 0002 --worktree <worktree>",
+      "agent-events append-link --events events.jsonl --node 0002 --link chatgpt:https://chatgpt.com/...",
+      "agent-events append-status --events events.jsonl --node 0002 --status reviewing",
+      "agent-events append-memo --events events.jsonl --node 0002 --memo <memo>"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-agent-events"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "go"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-agent-events"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-agent-events",
+  "projectionDigest": "faa9d381398e51aaed0c8e2c15367376ab10994c3899ef191cbf04276b70d92a",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-agent-events/",
+      "packages/ops-agent-events/cmd/agent-events/",
+      "packages/ops-agent-events/internal/agent/"
+    ],
+    "forbiddenPaths": [
+      "root command-tools directory",
+      "packages/cdp/",
+      "packages/miritery/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/ops-agent-events",
+    "targetRepoId": "ops-agent-events"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-agent-events",
+  "status": "ready"
+}

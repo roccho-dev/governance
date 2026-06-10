@@ -1,0 +1,82 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "caselaw",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.caselaw",
+    "package": "caselaw",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "buildlaw",
+    "requiredChecks": [
+      "checks.<system>.caselaw",
+      "checks.<system>.caselaw-boundary"
+    ],
+    "requiredCommands": [
+      "caselaw --help",
+      "caselaw ingest --cases tests/caselaw/fixtures/cases.jsonl --out result/caselaw/normalized_cases.jsonl",
+      "caselaw fingerprint --cases result/caselaw/normalized_cases.jsonl --out result/caselaw/fingerprints.jsonl",
+      "caselaw synthesize --cases result/caselaw/normalized_cases.jsonl --fingerprints result/caselaw/fingerprints.jsonl --out result/caselaw/candidate_laws.jsonl --gates result/caselaw/gate_specs.jsonl",
+      "caselaw export-gates --gates result/caselaw/gate_specs.jsonl --out result/caselaw/exported_gates.json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.caselaw"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "caselaw"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "caselaw",
+  "projectionDigest": "2dd28b11ef2db15630e1728a4dced6b0999b780e2d2870a30425cf6bc668e4d9",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/caselaw/",
+      "docs/buildlaw/",
+      "schemas/caselaw/",
+      "tests/caselaw/",
+      "result/caselaw/"
+    ],
+    "forbiddenPaths": [
+      "repos/specs implementation code for caselaw",
+      "board renderer, board protocol, or board IR as caselaw-owned code",
+      "ledger, event, status, incident, policy, or gate runtime as caselaw-owned code",
+      "claimd command alias as MVP compatibility surface"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/buildlaw",
+    "targetRepoId": "buildlaw"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.caselaw",
+  "status": "ready"
+}

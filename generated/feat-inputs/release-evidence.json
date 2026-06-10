@@ -1,0 +1,94 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "release-evidence",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "feat-trusted-gates",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "feat-trusted-gates"
+      ]
+    },
+    {
+      "fromPackageId": "release-evidence",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "lean-oracle-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "lean-oracle-input"
+      ]
+    },
+    {
+      "fromPackageId": "release-evidence",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "secret-leak-guard",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "secret-leak-guard"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.release-evidence",
+    "package": "release-evidence",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      {
+        "evidenceDigestMatchesTrustedBuild": true,
+        "evidenceRedactsPrivateInputs": true,
+        "evidenceSchemaPresent": true,
+        "missingCredentialIsFailure": true
+      }
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "release-evidence.json",
+      "release-artifact-digest",
+      "trusted-check-attestation"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "release-evidence"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "release-evidence",
+  "projectionDigest": "fb756faaecbd675d735e740fbb968e3acbd36531b5fa29e1b0538cfbcbbe57e6",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/release-evidence/"
+    ],
+    "forbiddenPaths": [
+      "implementation code inside specs",
+      "private release evidence inside public specs"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.release-evidence",
+  "status": "ready"
+}

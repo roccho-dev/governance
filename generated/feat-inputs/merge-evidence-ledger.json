@@ -1,0 +1,119 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "merge-evidence-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "merge-evidence-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "merge-intent-linter",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "merge-intent-linter"
+      ]
+    },
+    {
+      "fromPackageId": "merge-evidence-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "merge-verification-matrix",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "merge-verification-matrix"
+      ]
+    },
+    {
+      "fromPackageId": "merge-evidence-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "merge-evidence-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "source-artifact-ledger",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "source-artifact-ledger"
+      ]
+    },
+    {
+      "fromPackageId": "merge-evidence-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "verify-report-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "verify-report-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.merge-evidence-ledger",
+    "package": "merge-evidence-ledger",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "merge-evidence-ledger.package-contract",
+      "issue-ledger",
+      "specctl surface"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.merge-evidence-ledger"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "merge-evidence-ledger"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "merge-evidence-ledger",
+  "projectionDigest": "cf2510e82793c76acbc89eaf3d861dabd7a447a3033f326c934af63b76656bd0",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/merge-evidence-ledger/"
+    ],
+    "forbiddenPaths": [
+      "report storage implementation inside specs",
+      "approval implementation",
+      "canonical merge implementation",
+      "dashboard as source of truth",
+      "Markdown-only RUN_REPORT as machine source"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.merge-evidence-ledger",
+  "status": "ready"
+}

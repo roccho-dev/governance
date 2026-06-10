@@ -1,0 +1,136 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "prove-feat",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "contract-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "contract-lint"
+      ]
+    },
+    {
+      "fromPackageId": "prove-feat",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "deadnix",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "deadnix"
+      ]
+    },
+    {
+      "fromPackageId": "prove-feat",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "format",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "format"
+      ]
+    },
+    {
+      "fromPackageId": "prove-feat",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "prove-feat",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "repo-structure",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "repo-structure"
+      ]
+    },
+    {
+      "fromPackageId": "prove-feat",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "repository-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "repository-governance"
+      ]
+    },
+    {
+      "fromPackageId": "prove-feat",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-conformance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-conformance"
+      ]
+    },
+    {
+      "fromPackageId": "prove-feat",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-manifest",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-manifest"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.prove-feat",
+    "package": "prove-feat",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.prove-feat"
+    ],
+    "requiredCommands": [
+      "prove-feat --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.prove-feat"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "prove-feat"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "prove-feat",
+  "projectionDigest": "7bdf3d3a0bbc79288d6fd53d3474f01c184478805759ff71c2c5515808ca53fa",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "../ops-main/packages/prove-feat/",
+      "../ops-main/flake.nix",
+      "../ops-main/flake.lock"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/ except packages/prove-feat/"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.prove-feat",
+  "status": "ready"
+}

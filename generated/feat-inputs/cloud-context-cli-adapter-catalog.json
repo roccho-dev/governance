@@ -1,0 +1,111 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "cloud-context-cli-adapter-catalog",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "actor-policy-sandbox",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "actor-policy-sandbox"
+      ]
+    },
+    {
+      "fromPackageId": "cloud-context-cli-adapter-catalog",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "functional-core-governance-gate",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "functional-core-governance-gate"
+      ]
+    },
+    {
+      "fromPackageId": "cloud-context-cli-adapter-catalog",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "cloud-context-cli-adapter-catalog",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "port-adapter-library-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "port-adapter-library-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.cloud-context-cli-adapter-catalog",
+    "package": "cloud-context-cli-adapter-catalog",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "cloud-context-cli-adapter-catalog.package-contract",
+      "cloud-context-cli-adapter-catalog.schema-parse",
+      "cloud-context-cli-adapter-catalog.catalog-parse",
+      "cloud-context-cli-adapter-catalog.destructive-casebook-parse",
+      "cloud-context-cli-adapter-catalog.secret-boundary-lint",
+      "cloud-context-cli-adapter-catalog.no-live-provider-claim"
+    ],
+    "requiredCommands": [
+      "PYTHONDONTWRITEBYTECODE=1 python3 repo-boundary-guard-main/tools/specsless_ci.py --root . --mode final --json",
+      "python3 artifacts/cloud-context-cli-adapter-catalog-260608/reports/validate-json-artifacts.py"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.cloud-context-cli-adapter-catalog"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "cloud-context-cli-adapter-catalog"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "cloud-context-cli-adapter-catalog",
+  "projectionDigest": "4541f9eb1ead24d47a2e6496a1ab07c445c1593baf81a76312872b04918f1fa6",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/cloud-context-cli-adapter-catalog/",
+      "../artifacts/cloud-context-cli-adapter-catalog-260608/",
+      "PROPOSAL_CLOUD_CONTEXT_CLI_ADAPTER_CATALOG_20260608.md",
+      "WORKTREE_RUN_REPORT_CLOUD_CONTEXT_CLI_ADAPTER_CATALOG_20260608.md"
+    ],
+    "forbiddenPaths": [
+      "provider secret values",
+      "live provider mutation implementation",
+      "universal CLI hiding native CLIs",
+      "GCP API-key-only operation model",
+      "single Akamai adapter mixing EdgeGrid and Linode token auth",
+      "Cloudflare Free quota-circumvention claim"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.cloud-context-cli-adapter-catalog",
+  "status": "planned-blocked"
+}

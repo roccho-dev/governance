@@ -1,0 +1,150 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-repo-admission-policy",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-repo-admission-policy"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "jsonl-board-policy-workspace",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "jsonl-board-policy-workspace"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-runtime-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-env-binding-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-env-binding-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-surface-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-surface-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-log-adapter-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-log-adapter-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-deploy-guard-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-deploy-guard-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-claim-approval-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-signal-review-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-signal-review-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.reach-market-claim-approval-contract",
+    "package": "reach-market-claim-approval-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "reach-market-claim-approval-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.reach-market-claim-approval-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "reach-market-claim-approval-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "reach-market-claim-approval-contract",
+  "projectionDigest": "81103387507f1b05220ad71ebe115f38bf92f759a80e9966011f701db2465608",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/reach-market-claim-approval-contract/"
+    ],
+    "forbiddenPaths": [
+      "policy-board state machine implementation",
+      "policy-board event store implementation",
+      "approval console implementation",
+      "executor implementation",
+      "reach-market runtime implementation",
+      "page generation implementation",
+      "telemetry client implementation",
+      "Cloudflare deployment code",
+      "DNS, OpenTofu, or secret changes",
+      "log-pipeline internals",
+      "company sale readiness, data room, buyer disclosure, valuation, revenue, IP, legal, tax, accounting, customer contract, or customer data workflows"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.reach-market-claim-approval-contract",
+  "status": "planned-blocked"
+}

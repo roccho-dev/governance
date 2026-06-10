@@ -1,0 +1,77 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.adrs-obligation-boundary-resolved",
+    "package": "adrs-obligation-boundary-resolved",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "checks.<system>.adrs-obligation-compiler",
+      "checks.<system>.adrs-obligation-guard",
+      "checks.<system>.prove-feat-obligation",
+      "checks.<system>.check-packages-contract"
+    ],
+    "requiredCommands": [
+      "bash ci/run-adrs-obligation-boundary-resolution.sh ."
+    ],
+    "requiredOutputs": [
+      "packages.<system>.adrs-obligation-compiler",
+      "packages.<system>.adrs-obligation-guard"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3",
+        "nix"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "adrs-obligation-boundary-resolved"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "adrs-obligation-boundary-resolved",
+  "projectionDigest": "07b625059f927aadd70c2c53a5674cce509d0f347625fb17ae08b322043d0c19",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "BOUNDARY_RESOLUTION_REVIEW.md",
+      "PROPOSAL_BOUNDARY_RESOLVED.md",
+      "adrs-main/tools/compile-adrs-feat-obligation.py",
+      "ops-main/packages/adrs-obligation-compiler/",
+      "governance-records-main/records/specs/package-contract.v1.jsonl",
+      "governance-records-main/records/specs/projection-digest.v1.jsonl",
+      "governance-records-main/generated/feat-inputs/",
+      "governance-records-main/generated/feat-obligations/",
+      "governance-records-main/generated/feat-obligations.v1.jsonl",
+      "governance-records-main/generated/feat-inputs.v1.jsonl",
+      "governance-records-main/generated/feat-inputs/adrs-feat-build-destructive-readiness-gate.json",
+      "fixtures/adrs-obligation/",
+      "ci/run-adrs-obligation-boundary-resolution.sh",
+      "artifacts/adrs-obligation-boundary-resolution-20260606/"
+    ],
+    "forbiddenPaths": [
+      "raw ADR direct repo operation authority",
+      "implementation code inside package-contract records",
+      "DuckDB compacted view as canonical ledger",
+      "generated RUN_REPORT as accepted definition authority",
+      "preflight proof as final Nix build evidence"
+    ],
+    "repoSourceUri": "path:.",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.adrs-obligation-boundary-resolved",
+  "status": "planned-blocked"
+}

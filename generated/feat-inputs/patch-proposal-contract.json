@@ -1,0 +1,87 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "patch-proposal-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "actor-session-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "actor-session-contract"
+      ]
+    },
+    {
+      "fromPackageId": "patch-proposal-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "patch-proposal-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "worktree-manager",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "worktree-manager"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.patch-proposal-contract",
+    "package": "patch-proposal-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "patch-proposal-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.patch-proposal-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "patch-proposal-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "patch-proposal-contract",
+  "projectionDigest": "982b45e4f90d8290e94b04ce47815bc952e702f41686ba1af111254a0ffc858b",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/patch-proposal-contract/"
+    ],
+    "forbiddenPaths": [
+      "PR implementation",
+      "canonical apply implementation"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.patch-proposal-contract",
+  "status": "ready"
+}

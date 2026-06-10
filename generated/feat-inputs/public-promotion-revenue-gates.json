@@ -1,0 +1,155 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "billing-channel-config",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "billing-channel-config"
+      ]
+    },
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "core-boundary-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "core-boundary-lint"
+      ]
+    },
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-contract"
+      ]
+    },
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-to-reality-promotion-pipeline",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-to-reality-promotion-pipeline"
+      ]
+    },
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-runtime-contract"
+      ]
+    },
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-signal-review-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-signal-review-contract"
+      ]
+    },
+    {
+      "fromPackageId": "public-promotion-revenue-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "single-meaning-surface",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "single-meaning-surface"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.public-promotion-revenue-gates",
+    "package": "public-promotion-revenue-gates",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "public-promotion-revenue-gates.package-contract",
+      "public-promotion-revenue-gates.public-disclosure-lint",
+      "public-promotion-revenue-gates.arr-evidence-lint",
+      "public-promotion-revenue-gates.projection-not-authority-gate"
+    ],
+    "requiredCommands": [
+      "PYTHONDONTWRITEBYTECODE=1 python3 repo-boundary-guard-main/tools/specsless_ci.py --root . --mode final --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.public-promotion-revenue-gates"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "public-promotion-revenue-gates"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "public-promotion-revenue-gates",
+  "projectionDigest": "423c0ee3c2bc48ca8e3b8630933078780e9a824ee72062871e555d981c298660",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/public-promotion-revenue-gates/",
+      "issues/260607-public-promotion-revenue-gates.jsonl",
+      "../artifacts/public-promotion-revenue-gates-20260607/"
+    ],
+    "forbiddenPaths": [
+      "X posting adapter implementation",
+      "Astro/static builder implementation",
+      "OpenTofu or single-tenant VPS implementation",
+      "billing provider connector implementation",
+      "accounting connector implementation",
+      "customer UI implementation",
+      "editing public artifact as canonical source",
+      "manual ARR total as authority",
+      "full-tree replacement"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.public-promotion-revenue-gates",
+  "status": "planned-blocked"
+}

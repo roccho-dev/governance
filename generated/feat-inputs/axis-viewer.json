@@ -1,0 +1,89 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "axis-viewer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "lean-vgd-semantics",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "lean-vgd-semantics"
+      ]
+    },
+    {
+      "fromPackageId": "axis-viewer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "repository-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "repository-governance"
+      ]
+    },
+    {
+      "fromPackageId": "axis-viewer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "urn-3d-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "urn-3d-core"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.axis-viewer",
+    "package": "axis-viewer",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "axis-viewer",
+    "requiredChecks": [
+      "axis-viewer.package-build",
+      "axis-viewer.module-eval"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.axis-viewer",
+      "nixosModules.axis-viewer"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "axis-viewer"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "axis-viewer",
+  "projectionDigest": "2d234274ee46aec591f99d3f01789b44676fe117650bdfb26a3beeb9f990b51d",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/axis-viewer/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/axis-viewer",
+    "targetRepoId": "axis-viewer"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.axis-viewer",
+  "status": "ready"
+}

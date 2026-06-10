@@ -1,0 +1,83 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "devtools-lazygit-delta",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "devtools-lazygit-delta",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-language-tooling-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-language-tooling-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.devtools-lazygit-delta",
+    "package": "devtools-lazygit-delta",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "devtools",
+    "requiredChecks": [
+      "devtools-lazygit-delta.package-contract",
+      "devtools-lazygit-delta.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "devtools-lazygit-delta --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.devtools-lazygit-delta"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "devtools-lazygit-delta"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "devtools-lazygit-delta",
+  "projectionDigest": "9d3c2239a3e9ee08dbb151b4569df0f26c9af0ee50aa2122d3d4d56b0a9164fb",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/devtools-lazygit-delta/",
+      "repo:devtools:packages:devtools-lazygit-delta/",
+      "parts/lazygit-delta"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/devtools",
+    "targetRepoId": "devtools"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.devtools-lazygit-delta",
+  "status": "ready"
+}

@@ -1,0 +1,125 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "policy-gate-core",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "policy-gate-core",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "jsonl-board-policy-workspace",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "jsonl-board-policy-workspace"
+      ]
+    },
+    {
+      "fromPackageId": "policy-gate-core",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "policy-gate-core",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "policy-governed-compaction-promotion-engine",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "policy-governed-compaction-promotion-engine"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.policy-gate-core",
+    "package": "policy-gate-core",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git",
+      "nodejs_22",
+      "npm"
+    ],
+    "repoId": "policy",
+    "requiredChecks": [
+      "policy-gate-core.package-contract",
+      "policy-gate-core.schema-gate",
+      "policy-gate-core.proof",
+      "policy-gate-core.node-test"
+    ],
+    "requiredCommands": [
+      "cd policy-master && bash .agents/tests/check-policy-schemas.sh",
+      "cd policy-master && npm run proof:policy-gate-core",
+      "cd policy-master && npm install --ignore-scripts --no-audit --no-fund && node --test test/policy-gate-core.test.mjs",
+      "python3 governance-nix-main/tools/make-feat-input.py <repo> policy-gate-core --out governance-records-main/generated/feat-inputs/policy-gate-core.json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.policy-gate-core"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "nodejs_22",
+        "npm"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git",
+        "nodejs_22",
+        "npm"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "policy-gate-core"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "policy-gate-core",
+  "projectionDigest": "d5020f6b86fc33c6c9923debd6b12a6778a93685b96e38c3557f9e345f597255",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      ".agents/policy-gate-core.md",
+      ".agents/protocol-fsm.md",
+      ".agents/schemas/proposal-falsification-proof.v1.schema.json",
+      ".agents/schemas/fresh-differential-eval-result.v1.schema.json",
+      ".agents/templates/proposal-falsification-proof.v1.json",
+      ".agents/templates/fresh-differential-eval-result.v1.json",
+      "packages/harness-evolution/src/policy-gate-core.mjs",
+      "packages/harness-evolution/scripts/policy-gate-core-proof.mjs",
+      "examples/policy-gate-core/",
+      "test/policy-gate-core.test.mjs",
+      "issues/policy-gate-core-runner-agnostic-worktree-20260607/"
+    ],
+    "forbiddenPaths": [
+      "CI-provider-specific authority",
+      "runner prose as promotion authority",
+      "judge self-approval",
+      "canonical promotion without human approval",
+      "fresh differential blocked state as pass",
+      "direct policy rewrite from evaluation output"
+    ],
+    "repoSourceUri": "path:../policy-master",
+    "targetRepoId": "policy"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.policy-gate-core",
+  "status": "planned-blocked"
+}

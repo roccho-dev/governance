@@ -1,0 +1,174 @@
+{
+  "baseHash": "9a55d2ad8b53",
+  "baseZip": "merged-9a55d2ad8b53-260603-213600.zip",
+  "createdAt": "2026-06-04T00:00:00+09:00",
+  "kind": "governance.sourceCanonical.v1",
+  "packageCountAfterProposalContract": 252,
+  "packageCountBeforeInteractionContractSurfaceProjectionBoundaryMerge": 235,
+  "packageCountBeforeJsonlDatamodelingDuckdbCiV2Merge": 234,
+  "packageCountBeforeLatestNewProposalsMerge": 232,
+  "packageCountBeforePolicyGateCoreMerge": 236,
+  "packageCountBeforeProposalContract": 202,
+  "packageCountUpdatedBy": "reach-market-claim-approval-ssot-merge-260609",
+  "postCanonicalMergeAdjustments": [
+    {
+      "kind": "specslessProjectionNormalization.v1",
+      "packages": [
+        "port-adapter-library-governance",
+        "presentation-surface-governance"
+      ],
+      "reason": "port-adapter-library-governance adds two accepted package contracts after specsless cutover; successor projections must remain governance-records-owned and aggregate feat-inputs must include every package-contract row",
+      "successorRepoId": "governance-records",
+      "updatedAt": "2026-06-05T00:00:00+09:00"
+    },
+    {
+      "kind": "proposalProofSpecsRegistration.v1",
+      "newPackageCountAfterProposalContract": 205,
+      "packageId": "rund-batteryd-jsonl-compaction",
+      "previousPackageCountAfterProposalContract": 204,
+      "reason": "proposal-rund-batteryd-jsonl-compaction declared package/runtime boundaries; evidence-only preservation was insufficient for specs discoverability, so a planned contract registration was added without promoting runtime/proof artifacts to production authority",
+      "status": "planned",
+      "updatedAt": "2026-06-05T16:35:00+09:00"
+    },
+    {
+      "kind": "proposalProofSpecsRegistration.v1",
+      "newPackageCountAfterProposalContract": 206,
+      "packageId": "browser-log-lib-core-port",
+      "previousPackageCountAfterProposalContract": 205,
+      "reason": "browser-log-lib-core-port proposal declared a canonical specs-main package path and local proof; overlay alone was insufficient for specsless/governance discoverability, so a planned contract registration was added without promoting runtime adapters or system closure.",
+      "status": "planned",
+      "updatedAt": "2026-06-05T21:05:00+09:00"
+    },
+    {
+      "kind": "correctiveSpecsRegistration.v1",
+      "newPackageCountAfterProposalContract": 207,
+      "packageId": "billing-channel-config",
+      "previousPackageCountAfterProposalContract": 206,
+      "reason": "billing-channel-config canonical diff added specs and ops package paths but lacked specs record/governance projection rows; registration was added without promoting provider runtime adapters or complete saleable-corporation authority.",
+      "status": "planned",
+      "updatedAt": "2026-06-06T05:55:00+09:00"
+    },
+    {
+      "kind": "existingPackageContractRefresh.v1",
+      "packageCountAfterProposalContract": 207,
+      "packages": [
+        "log-contract",
+        "log-contract-validator"
+      ],
+      "reason": "log-contract durable OTel ingest scoped correction changed existing package contract semantics; governance-records package-contract/projection-digest/feat-input rows were refreshed without adding a new package or promoting runtime collector implementation",
+      "updatedAt": "2026-06-06T06:24:00+09:00"
+    },
+    {
+      "kind": "batchSelectiveMergeProjectionRefresh.v1",
+      "newPackageCountAfterProposalContract": 211,
+      "packagesAdded": [
+        "ops-portable-runtime-pack",
+        "infra-vps-control-ledger",
+        "single-meaning-surface",
+        "modeldraw-adapter-validation-core-port"
+      ],
+      "packagesRefreshed": [
+        "check-packages-contract"
+      ],
+      "previousPackageCountAfterProposalContract": 207,
+      "reason": "batch merged local SSOT selective source changes plus rule lifecycle, infra VPS control ledger, single meaning surface, and modeldraw core-port proposals; projection and feat-input rows regenerated from governance records",
+      "updatedAt": "2026-06-06T16:45:00+09:00"
+    },
+    {
+      "kind": "latestNewProposalsProjectionRefresh.v1",
+      "newPackageCountAfterProposalContract": 234,
+      "packagesAdded": [
+        "jsonl-surface-lib-proof",
+        "public-promotion-revenue-gates"
+      ],
+      "packagesRefreshed": [
+        "localhost-gateway-sdui-pwa-runtime"
+      ],
+      "previousPackageCountAfterProposalContract": 232,
+      "reason": "Jun 7 new proposal batch added JSONL surface proof and public promotion revenue gates while preserving localhost overlay and ADR proposal trace ledger; package projection and feat inputs regenerated from governance records.",
+      "updatedAt": "2026-06-07T00:00:00+09:00"
+    },
+    {
+      "kind": "proposalProofSpecsRegistration.v1",
+      "newPackageCountAfterProposalContract": 235,
+      "packageId": "jsonl-datamodeling-duckdb-ci",
+      "previousPackageCountAfterProposalContract": 234,
+      "reason": "proposal-jsonl-datamodeling-duckdb-ci-v2 adds a DuckDB-required JSONL datamodeling CI contract; merge keeps package/source/provenance while blocking runtime green until DuckDB executable evidence exists.",
+      "status": "planned",
+      "updatedAt": "2026-06-07T00:00:00+09:00"
+    },
+    {
+      "kind": "proposalOnlyPackageContractRegistration.v1",
+      "newPackageCountAfterProposalContract": 236,
+      "packageId": "interaction-contract-surface-projection-boundary",
+      "previousPackageCountAfterProposalContract": 235,
+      "reason": "proposal-only interaction contract/surface projection boundary adds a planned package contract; runtime and canonical promotion are not claimed",
+      "updatedAt": "2026-06-07T00:00:00+09:00"
+    },
+    {
+      "kind": "proposalWorktreePackageCheckRegistration.v1",
+      "newPackageCountAfterProposalContract": 237,
+      "packageId": "policy-gate-core",
+      "previousPackageCountAfterProposalContract": 236,
+      "reason": "policy-gate-core worktree adds a runner-agnostic package-backed check for proposal falsification proof, fresh differential evidence, artifact binding, cause split, and human promotion boundary; provider-specific CI and self-approval are not promoted.",
+      "status": "planned",
+      "updatedAt": "2026-06-07T00:00:00+09:00"
+    },
+    {
+      "kind": "proposalOverlayPackageContractRegistration.v1",
+      "newPackageCountAfterProposalContract": 238,
+      "packageId": "cloud-context-cli-adapter-catalog",
+      "previousPackageCountAfterProposalContract": 237,
+      "reason": "cloud-context-cli-adapter-catalog proposal overlay adds a provider-neutral cloud context, credentialRef, provider adapter, doctor/guard, and destructive casebook contract; secret values, live provider calls, and runtime cloud mutation are not promoted.",
+      "status": "planned",
+      "updatedAt": "2026-06-08T00:00:00+09:00"
+    },
+    {
+      "activeSpecsMainPolicy": "forbidden in final specsless SSOT",
+      "blockedActiveSpecsMainFiles": 8,
+      "kind": "multiProposalSsotMerge.v1",
+      "newPackageCountAfterProposalContract": 251,
+      "packageIdsAdded": [
+        "anonymized-governance-benchmark-index",
+        "artifact-level-peer-review-ledger",
+        "cmo-usage-generated-distribution-system",
+        "customer-policy-passport",
+        "destructive-case-community-league",
+        "domestic-crypto-exchange-capability-registry",
+        "governance-template-marketplace-ledger",
+        "integration-surface-growth-cards",
+        "jsonl-replay-visual-surface",
+        "package-lib-level-governance",
+        "public-status-badge-projection",
+        "publishable-moment-detector",
+        "shareable-governance-room"
+      ],
+      "previousPackageCountAfterProposalContract": 238,
+      "proposalInputs": [
+        "cmo-usage-generated-distribution",
+        "domestic-crypto-exchange-capability-registry",
+        "package-lib-level-governance",
+        "jsonl-xlsx-workbook-core-port"
+      ],
+      "reason": "Union rebased package-contract proposals on latest specsless SSOT while preserving governance-records as package/build authority.",
+      "updatedAt": "2026-06-09T00:00:00+09:00"
+    },
+    {
+      "activeSpecsMainProposalPolicy": "all future proposals that introduce, restore, or require active specs-main are rejected before merge",
+      "kind": "reachMarketClaimApprovalSsotMerge.v1",
+      "newPackageCountAfterProposalContract": 252,
+      "packageIdsAdded": [
+        "reach-market-claim-approval-contract"
+      ],
+      "packagesRefreshed": [
+        "reach-market-runtime-contract"
+      ],
+      "previousPackageCountAfterProposalContract": 251,
+      "proposalId": "reach-market-claim-approval-ssot-rebase-20260609",
+      "proposalInput": "reach-market-claim-approval-rebase-ssot-worktree-260609.zip",
+      "reason": "Merge reach-market claim approval contract as a governance-records planned package while preserving plus-proposals already in SSOT and forbidding active specs-main proposal paths.",
+      "updatedAt": "2026-06-09T21:30:00+09:00"
+    }
+  ],
+  "proposalId": "specsless-canonical-cutover-20260604"
+}

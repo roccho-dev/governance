@@ -1,0 +1,134 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "browser-log-lib-core-port",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "browser-log-lib-core-port",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "core-boundary-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "core-boundary-lint"
+      ]
+    },
+    {
+      "fromPackageId": "browser-log-lib-core-port",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-to-reality-promotion-pipeline",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-to-reality-promotion-pipeline"
+      ]
+    },
+    {
+      "fromPackageId": "browser-log-lib-core-port",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "browser-log-lib-core-port",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "port-adapter-library-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "port-adapter-library-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.browser-log-lib-core-port",
+    "package": "browser-log-lib-core-port",
+    "preflightRequiredTools": [
+      "bash",
+      "node",
+      "npm",
+      "tsc",
+      "python3",
+      "zip",
+      "unzip"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "browser-log-lib-core-port.package-registration",
+      "browser-log-lib-core-port.no-runtime-adapter-package",
+      "browser-log-lib-core-port.spec-only-layout",
+      "browser-log-lib-core-port.system-runtime-closure-false"
+    ],
+    "requiredCommands": [
+      "PYTHONDONTWRITEBYTECODE=1 python3 repo-boundary-guard-main/tools/specsless_ci.py --root . --mode final --json",
+      "test ! -e governance-records-main/packages/browser-log-lib-core-port/package.json",
+      "test ! -d governance-records-main/packages/browser-log-lib-core-port/src",
+      "test ! -d governance-records-main/packages/browser-log-lib-core-port/dist",
+      "test ! -d governance-records-main/packages/browser-log-lib-core-port/test",
+      "test ! -d governance-records-main/packages/browser-log-lib-core-port/scripts"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.browser-log-lib-core-port"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "node",
+        "npm",
+        "tsc",
+        "python3",
+        "zip",
+        "unzip"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "browser-log-lib-core-port"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "browser-log-lib-core-port",
+  "projectionDigest": "633d9c3a0bb9b1832a07e29fc3f596cf5439dd5c825932cae7f9290ff321102f",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/browser-log-lib-core-port/",
+      "../adrs-main/example/poc/adapter/usecase/browser-log-lib-core-port-proof/",
+      "../artifacts/browser-log-lib-core-port-layout-correction-20260608/",
+      "../artifacts/source-proposals-20260608/browser-log-lib-core-port-layout-correction-bundle/",
+      "PROPOSAL_BROWSER_LOG_LIB_CORE_PORT_LAYOUT_CORRECTION_20260608.md",
+      "WORKTREE_RUN_REPORT_BROWSER_LOG_LIB_CORE_PORT_LAYOUT_CORRECTION_20260608.md",
+      "DELETE_MANIFEST_BROWSER_LOG_LIB_CORE_PORT_LAYOUT_CORRECTION_20260608.jsonl"
+    ],
+    "forbiddenPaths": [
+      "retired specs package path: browser-log-lib-core-port/src/",
+      "retired specs package path: browser-log-lib-core-port/dist/",
+      "retired specs package path: browser-log-lib-core-port/test/",
+      "retired specs package path: browser-log-lib-core-port/scripts/",
+      "retired specs package path: browser-log-lib-core-port/package.json",
+      "browser/fetch/IndexedDB adapter as authority",
+      "Caddy access log as event source of record",
+      "collector implementation in core package",
+      "GET-based durable authority",
+      "system runtime closure claim",
+      "generated dist artifact as accepted authority"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.browser-log-lib-core-port",
+  "status": "planned-blocked"
+}

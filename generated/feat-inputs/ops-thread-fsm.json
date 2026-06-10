@@ -1,0 +1,123 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-thread-fsm",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "merge-evidence-ledger",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "merge-evidence-ledger"
+      ]
+    },
+    {
+      "fromPackageId": "ops-thread-fsm",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-agent-events",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-agent-events"
+      ]
+    },
+    {
+      "fromPackageId": "ops-thread-fsm",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-artifact-materialize",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-artifact-materialize"
+      ]
+    },
+    {
+      "fromPackageId": "ops-thread-fsm",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-cdp-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-cdp-core"
+      ]
+    },
+    {
+      "fromPackageId": "ops-thread-fsm",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-runbook-checks",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-runbook-checks"
+      ]
+    },
+    {
+      "fromPackageId": "ops-thread-fsm",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-thread-fsm",
+    "package": "ops-thread-fsm",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.ops-thread-fsm"
+    ],
+    "requiredCommands": [
+      "ops-thread-fsm next --state-kind request-sent --dry-run",
+      "ops-thread-fsm evaluate-plan --input plan.json --json",
+      "ops-thread-fsm check-discussion --input discussion.json --json",
+      "ops-thread-fsm facilitate-discussion --input discussion-facilitation.json --json",
+      "ops-thread-fsm classify-readback --input readback.json --phase impl --request-kind work --json",
+      "ops-thread-fsm classify-readback --input review.json --phase impl --request-kind impl-review --json",
+      "ops-thread-fsm classify-readback --input review.json --phase merge --request-kind merge-review --json",
+      "ops-thread-fsm check-ready --delivery MATERIALIZE_MANIFEST.json --impl-review impl-review.json --local-gate local-gate.json --merge-review merge-review.json --run-evidence-ledger merge-evidence-ledger.jsonl --run-report RUN_REPORT.md --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-thread-fsm"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-thread-fsm"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-thread-fsm",
+  "projectionDigest": "ea8581de4ed6db6449aef4a378ec5362e5b1ac48667a3088a1966afbb90a398a",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-thread-fsm/"
+    ],
+    "forbiddenPaths": [
+      "CDP implementation inside ops-thread-fsm",
+      "artifact materializer implementation inside ops-thread-fsm",
+      "AGENTS.md long-form knowledge copy",
+      "canonical state.json"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-thread-fsm",
+  "status": "ready"
+}

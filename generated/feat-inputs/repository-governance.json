@@ -1,0 +1,187 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ast-contract-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ast-contract-lint"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "canon-tdd",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "canon-tdd"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "canonical-branch-guard",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "canonical-branch-guard"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "case-tdd",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "case-tdd"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "contract-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "contract-lint"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "core-boundary-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "core-boundary-lint"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "deadnix",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "deadnix"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "devenv-pkg-tdd",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "devenv-pkg-tdd"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "extension-tdd",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "extension-tdd"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "format",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "format"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "lean-export-modules",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "lean-export-modules"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "repo-structure",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "repo-structure"
+      ]
+    },
+    {
+      "fromPackageId": "repository-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-ir",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-ir"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.repository-governance",
+    "package": "repository-governance",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "repository-governance",
+    "requiredChecks": [
+      "checks.<system>.repository-governance"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.repository-governance",
+      "nixosModules.repository-governance"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "repository-governance"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "repository-governance",
+  "projectionDigest": "b57026c537dacf2d8a61428c8b623e561d5b1e5c49a2facedb777798a16f4c3a",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/repository-governance/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/ except packages/repository-governance/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/repository-governance",
+    "targetRepoId": "repository-governance"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.repository-governance",
+  "status": "ready"
+}

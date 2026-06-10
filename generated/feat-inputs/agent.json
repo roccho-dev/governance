@@ -1,0 +1,52 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.agent",
+    "package": "agent",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "agent",
+    "requiredChecks": [],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.agent"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "agent"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "agent",
+  "projectionDigest": "ec9e1bd6411fda6bc2aeee418a31777b2a9be894ae27b78ed2c3be94e34c43bb",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [],
+    "forbiddenPaths": [],
+    "repoSourceUri": "local:///home/nixos/repos/agent",
+    "targetRepoId": "agent"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.agent",
+  "status": "planned-blocked"
+}
