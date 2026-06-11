@@ -1,8 +1,11 @@
 # promotion-policy — records 受理規約
 
 本 repo の records/ は権威台帳である。台帳への row 受理(promotion)は本規約に従う。
-機械強制は records-gate(`tools/records-gate.py` — CUE schema vet + DuckDB
-assertion、`flake.nix` checks.<system>.records-gate)が行う。
+機械強制(blocking)は **cue vet のみ**が行う(C1 CUE 一本化):
+`policy/interface.json` の宣言に従い、per-file schema vet + relational vet
+(`policy/cue/relational.cue` `#All`)を `flake.nix`
+checks.<system>.records-gate が実行する。`tools/records-gate.py` は
+obligation-debt の report 専用(非 blocking・DuckDB)。
 
 ## 受理クラス
 
@@ -33,7 +36,9 @@ assertion、`flake.nix` checks.<system>.records-gate)が行う。
   - `featGate: {command, status: "pass"}` — 新契約を実証した feat 検証 run
 - 宣言方法: breaking な改訂 row は package-contract の
   `lifecycle.changeClass = "breaking"` を宣言する。
-- 機械強制: `policy/sql/assertions/breaking-change-evidence.sql`。
+- 機械強制: `policy/cue/relational.cue` `#All` の rule
+  `breaking-change-without-feat-evidence`(report 側 query:
+  `policy/sql/report/breaking-change-evidence.sql`)。
   `lifecycle.changeClass = "breaking"` の contract row に対し、同 packageId
   かつ newRecordDigest = recordDigest の evidence row が無ければ violation
   (gate 赤 = 受理拒否)。現 data に breaking 宣言 row は 0 件のため stub と

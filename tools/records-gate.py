@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
-"""records-gate: declarative validation gate over governance records.
+"""records-gate: NON-blocking obligation-debt REPORT over governance records.
 
-Pipeline (rc semantics):
-  1. CUE schema vet   — policy/cue/*.cue applied per record file (shape).
-  2. DuckDB asserts   — policy/sql/assertions/*.sql; every assertion SELECT
-                        returns violation rows, 0 rows == pass.
-  rc=0 iff every schema vets clean AND every assertion returns 0 rows;
-  otherwise all violations are listed and rc=1.
+Since C1 (CUE unification) the BLOCKING gate is `cue vet` only, driven by
+the declarations in policy/interface.json:
+  - per-file schema vet : cue vet policy/cue/*.cue <file> -d '<def>'
+  - relational vet      : grouped jsonl ledgers bundled into one labeled JSON
+                          and vetted against policy/cue/relational.cue #All
+(see flake.nix checks.<system>.records-gate for the generic plumbing).
 
---report PATH additionally writes a NON-blocking obligation-debt JSON
-(visibility only; never affects rc):
-  - accepted-without-feat-evidence : accepted contracts with no promotable
-    feat build evidence row (records/feat/build-evidence.v1.jsonl).
-  - membership-member-not-accepted : catalog members whose contract status is
-    not 'accepted' (stricter target state of the membership assertion).
-  - catalog-field-gap              : membership contracts whose rawDefinition
-    leaves a nominally-required catalog field null/missing (the 3 fields with
-    known historical gaps; see catalog-required-fields-nonnull.sql).
+This tool is REPORT-ONLY — demoted from the former blocking cue+sql flow:
+  --report PATH writes the obligation-debt JSON (shape/content unchanged from
+  the pre-C1 report; kind governance.obligationDebtReport.v1):
+    - accepted-without-feat-evidence : accepted contracts with no promotable
+      feat build evidence row (records/feat/build-evidence.v1.jsonl).
+    - membership-member-not-accepted : catalog members whose contract status
+      is not 'accepted' (stricter target state of the membership constraint).
+    - catalog-field-gap              : membership contracts whose
+      rawDefinition leaves a nominally-required catalog field null/missing
+      (the 3 fields with known historical gaps).
+  Additionally the DuckDB queries under policy/sql/report/ (the former
+  blocking assertions, retained as the report-side relational view) are run
+  informationally; their violation counts are printed but NEVER gate (the
+  blocking equivalents live in policy/cue/relational.cue #All).
+
+rc=0 unless the tool itself fails (unparseable records, missing files,
+query execution error) — violation rows found by the report queries do not
+affect rc.
 
 policy/ is resolved relative to this script (tool and policy version move
 together); records are resolved under --root.
@@ -32,24 +41,9 @@ import sys
 
 POLICY_DIR_NAME = "policy"
 
-# (records file relative to root, cue file, cue definition, required)
-SCHEMA_BINDINGS = [
-    ("records/specs/package-contract.v1.jsonl", "package-contract.cue", "#PackageContract", True),
-    ("records/specs/repo-placement.v1.jsonl", "repo-placement.cue", "#RepoPlacement", True),
-    ("records/specs/catalog-membership.v1.jsonl", "catalog-membership.cue", "#CatalogMembership", True),
-    ("records/specs/dependency-edge.v1.jsonl", "dependency-edge.cue", "#DependencyEdge", True),
-    ("records/decisions/specsless-final-cutover-acceptance.v1.jsonl", "decisions.cue", "#SpecslessFinalCutoverAcceptance", True),
-    ("records/decisions/specs-main-proposal-admission.v1.jsonl", "decisions.cue", "#SpecsMainProposalAdmissionDecision", True),
-    ("records/feat/breaking-change-evidence.v1.jsonl", "feat-evidence.cue", "#BreakingChangeEvidence", True),
-    ("records/feat/build-evidence.v1.jsonl", "build-evidence.cue", "#BuildEvidence", True),
-    # adrs typed-ladder files live in the adrs repo; vetted when present.
-    ("records/raw/adr.v1.jsonl", "adr-ladder.cue", "#AdrRaw", False),
-    ("records/promoted/adr.v1.jsonl", "adr-ladder.cue", "#AdrPromoted", False),
-    ("records/relations/adr-promotion.v1.jsonl", "adr-ladder.cue", "#AdrPromotionRelation", False),
-]
-
 # catalog fields with known historical rawDefinition gaps (tracked as debt,
-# see policy/sql/assertions/catalog-required-fields-nonnull.sql).
+# see policy/sql/report/catalog-required-fields-nonnull.sql and
+# policy/cue/relational.cue).
 DEBT_CATALOG_FIELDS = ["dependencyUse", "publicInterface", "checkPackageContract"]
 
 
@@ -65,46 +59,31 @@ def read_jsonl(path: pathlib.Path) -> list[dict]:
     return rows
 
 
-def run_cue_vet(cue_bin: str, root: pathlib.Path, policy: pathlib.Path) -> list[dict]:
-    violations = []
-    for rel, cue_file, definition, required in SCHEMA_BINDINGS:
-        data = root / rel
-        schema = policy / "cue" / cue_file
-        if not data.is_file():
-            if required:
-                violations.append({"stage": "cue", "rule": "required-record-file-missing",
-                                   "target": rel, "detail": str(data)})
-            continue
-        proc = subprocess.run(
-            [cue_bin, "vet", "-d", definition, str(schema), str(data)],
-            capture_output=True, text=True)
-        if proc.returncode != 0:
-            violations.append({"stage": "cue", "rule": "schema-vet-failed", "target": rel,
-                               "detail": (proc.stderr or proc.stdout).strip()})
-    return violations
+def run_report_queries(duckdb_bin: str, root: pathlib.Path, policy: pathlib.Path) -> list[tuple[str, int]]:
+    """Run the report-side DuckDB queries (former blocking assertions).
 
-
-def run_assertions(duckdb_bin: str, root: pathlib.Path, policy: pathlib.Path) -> tuple[list[dict], list[tuple[str, int]]]:
-    violations, summary = [], []
-    sql_dir = policy / "sql" / "assertions"
+    Informational only: returns (query, violation-row-count) pairs; a query
+    EXECUTION failure aborts (tool error), but violation rows never do.
+    """
+    summary = []
+    sql_dir = policy / "sql" / "report"
     sql_files = sorted(sql_dir.glob("*.sql"))
     if not sql_files:
-        raise SystemExit(f"records-gate: no assertion SQL found under {sql_dir}")
+        raise SystemExit(f"records-gate: no report SQL found under {sql_dir}")
     for sql_path in sql_files:
         script = f"SET VARIABLE root = '{root}';\n" + sql_path.read_text(encoding="utf-8")
         proc = subprocess.run([duckdb_bin, "-json", "-c", script],
                               capture_output=True, text=True)
         if proc.returncode != 0:
-            violations.append({"stage": "duckdb", "rule": "assertion-execution-failed",
-                               "target": sql_path.name, "detail": proc.stderr.strip()})
-            summary.append((sql_path.name, -1))
-            continue
+            raise SystemExit(f"records-gate: report query failed {sql_path.name}: "
+                             f"{proc.stderr.strip()}")
         out = proc.stdout.strip()
         rows = json.loads(out) if out else []
         summary.append((sql_path.name, len(rows)))
         for row in rows:
-            violations.append({"stage": "duckdb", "target": sql_path.name, **row})
-    return violations, summary
+            print(f"records-gate: report-query violation {sql_path.name}: "
+                  f"{json.dumps(row, ensure_ascii=False)}")
+    return summary
 
 
 def build_obligation_debt_report(root: pathlib.Path) -> dict:
@@ -159,44 +138,33 @@ def build_obligation_debt_report(root: pathlib.Path) -> dict:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="cue + duckdb validation gate over governance records")
+    ap = argparse.ArgumentParser(
+        description="NON-blocking obligation-debt report over governance records "
+                    "(the blocking gate is cue vet; see policy/interface.json)")
     ap.add_argument("--root", default=".", help="governance repo root holding records/")
-    ap.add_argument("--report", help="write NON-blocking obligation-debt JSON to this path")
-    ap.add_argument("--cue-bin", default=shutil.which("cue") or "cue")
+    ap.add_argument("--report", required=True,
+                    help="write the obligation-debt JSON to this path")
     ap.add_argument("--duckdb-bin", default=shutil.which("duckdb") or "duckdb")
     args = ap.parse_args()
 
     root = pathlib.Path(args.root).resolve()
     policy = pathlib.Path(__file__).resolve().parent.parent / POLICY_DIR_NAME
-    if not (policy / "cue").is_dir():
-        raise SystemExit(f"records-gate: policy dir missing: {policy}")
+    if not (policy / "sql" / "report").is_dir():
+        raise SystemExit(f"records-gate: policy report dir missing: {policy}/sql/report")
 
-    violations = run_cue_vet(args.cue_bin, root, policy)
-    assertion_violations, summary = run_assertions(args.duckdb_bin, root, policy)
-    violations.extend(assertion_violations)
-
-    schema_count = sum(1 for rel, *_ in SCHEMA_BINDINGS if (root / rel).is_file())
+    summary = run_report_queries(args.duckdb_bin, root, policy)
     for name, count in summary:
-        status = "pass" if count == 0 else ("error" if count < 0 else f"violations={count}")
-        print(f"records-gate: assertion {name}: {status}")
-    print(f"records-gate: schemas-vetted={schema_count} assertions={len(summary)} "
-          f"violations={len(violations)}")
+        status = "pass" if count == 0 else f"violations={count}"
+        print(f"records-gate: report-query {name}: {status}")
 
-    if args.report:
-        report_path = pathlib.Path(args.report)
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report = build_obligation_debt_report(root)
-        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                               encoding="utf-8")
-        print(f"records-gate: obligation-debt report (non-blocking) -> {report_path} "
-              f"counts={report['counts']}")
-
-    if violations:
-        print("records-gate: FAIL", file=sys.stderr)
-        for v in violations:
-            print(json.dumps(v, ensure_ascii=False), file=sys.stderr)
-        raise SystemExit(1)
-    print("records-gate: PASS")
+    report_path = pathlib.Path(args.report)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report = build_obligation_debt_report(root)
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                           encoding="utf-8")
+    print(f"records-gate: obligation-debt report (non-blocking) -> {report_path} "
+          f"counts={report['counts']}")
+    print("records-gate: REPORT DONE (non-blocking; blocking gate = cue vet)")
 
 
 if __name__ == "__main__":

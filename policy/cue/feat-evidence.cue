@@ -5,8 +5,9 @@
 //
 // The ledger is seeded with one self-describing schema-establishment row
 // (G2 precedent: typed ledgers are never empty files); that row is excluded
-// from the relational assertion
-// policy/sql/assertions/breaking-change-evidence.sql.
+// from the relational constraint breaking-change-without-feat-evidence
+// (policy/cue/relational.cue #All; report-side query
+// policy/sql/report/breaking-change-evidence.sql).
 package policy
 
 #BreakingChangeEvidence: {

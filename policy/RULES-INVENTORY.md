@@ -1,13 +1,17 @@
 # RULES-INVENTORY — bespoke validator rules absorbed/absorbable by records-gate
 
 棚卸し対象: governance records に対して規則を強制している既存 bespoke validator。
-records-gate(`tools/records-gate.py` = CUE schema vet + DuckDB assertion)への
-吸収対象 list。**退役はまだ行わない**(本 inventory は吸収マップであり、validator
+records-gate(C1 以降: blocking = cue vet — policy/interface.json 宣言駆動の
+per-file vet + `policy/cue/relational.cue` `#All`。`tools/records-gate.py` は
+obligation-debt report 専用・非 blocking)への吸収対象 list。
+**退役はまだ行わない**(本 inventory は吸収マップであり、validator
 削除の許可ではない)。
 
 凡例 — Gate 列:
 - `cue:<file>#<Def>` — policy/cue/ の schema で吸収済
-- `sql:<file>` — policy/sql/assertions/ の assertion で吸収済
+- `sql:<file>` — relational 制約で吸収済。C1(CUE 一本化)以降、blocking 強制は
+  `policy/cue/relational.cue` `#All` の同名 rule(cue vet)。同名の DuckDB query は
+  `policy/sql/report/` に report-only として残置(非 blocking 可視化)
 - `debt` — 非 blocking。records-gate `--report` の obligation-debt JSON で可視化
 - `out-of-scope` — records 検査ではない(projection 実行・artifact 検査・workspace 配線等)。records-gate の対象外として残置
 

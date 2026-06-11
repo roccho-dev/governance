@@ -1,5 +1,5 @@
 // records/feat/build-evidence.v1.jsonl — feat build-verification evidence.
-// Vetted by tools/records-gate.py: cue vet -d '#BuildEvidence'.
+// Bound via policy/interface.json: cue vet -d '#BuildEvidence'.
 //
 // Two row profiles share this ledger:
 //   - preflight rows (promotableBuildEvidence=false): non-nix preflight runs;

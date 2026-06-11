@@ -1,8 +1,8 @@
 // adrs typed-ladder record kinds (records/{raw,promoted,relations} in the
 // adrs repo). The ladder does not live in this repo; these schemas are the
 // policy declaration the gate applies whenever the corresponding files are
-// present under the validated root (tools/records-gate.py treats them as
-// optional bindings). Shapes follow the canonical ladder on
+// present under the validated root (policy/interface.json binds them with
+// required=false). Shapes follow the canonical ladder on
 // adrs claude/adrs-typed-ladder-260611.
 package policy
 

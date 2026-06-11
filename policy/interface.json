@@ -1,0 +1,13 @@
+[
+  {"file": "records/specs/package-contract.v1.jsonl", "def": "#PackageContract", "group": "contracts", "required": true},
+  {"file": "records/specs/repo-placement.v1.jsonl", "def": "#RepoPlacement", "group": "placement", "required": true},
+  {"file": "records/specs/catalog-membership.v1.jsonl", "def": "#CatalogMembership", "group": "membership", "required": true},
+  {"file": "records/specs/dependency-edge.v1.jsonl", "def": "#DependencyEdge", "group": "edges", "required": true},
+  {"file": "records/decisions/specsless-final-cutover-acceptance.v1.jsonl", "def": "#SpecslessFinalCutoverAcceptance", "required": true},
+  {"file": "records/decisions/specs-main-proposal-admission.v1.jsonl", "def": "#SpecsMainProposalAdmissionDecision", "required": true},
+  {"file": "records/feat/breaking-change-evidence.v1.jsonl", "def": "#BreakingChangeEvidence", "group": "evidence", "required": true},
+  {"file": "records/feat/build-evidence.v1.jsonl", "def": "#BuildEvidence", "required": true},
+  {"file": "records/raw/adr.v1.jsonl", "def": "#AdrRaw", "required": false},
+  {"file": "records/promoted/adr.v1.jsonl", "def": "#AdrPromoted", "required": false},
+  {"file": "records/relations/adr-promotion.v1.jsonl", "def": "#AdrPromotionRelation", "required": false}
+]

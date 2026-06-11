@@ -1,5 +1,5 @@
 // records/specs/package-contract.v1.jsonl — authoritative per-package contract.
-// Vetted by tools/records-gate.py: cue vet -d '#PackageContract'.
+// Bound via policy/interface.json: cue vet -d '#PackageContract'.
 package policy
 
 #PackageContract: {
@@ -14,8 +14,9 @@ package policy
 	definition: {...}
 	// source.rawDefinition carries the full original specs definition; it is
 	// the catalog projection input for membership packages. Object-ness for
-	// membership rows is enforced relationally in
-	// policy/sql/assertions/catalog-required-fields-nonnull.sql.
+	// membership rows is enforced relationally in policy/cue/relational.cue
+	// #All (rule membership-rawdefinition-not-object; report-side query
+	// policy/sql/report/catalog-required-fields-nonnull.sql).
 	source: {...}
 	lifecycle:     _
 	schemaVersion: _
