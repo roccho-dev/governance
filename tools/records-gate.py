@@ -41,6 +41,7 @@ SCHEMA_BINDINGS = [
     ("records/decisions/specsless-final-cutover-acceptance.v1.jsonl", "decisions.cue", "#SpecslessFinalCutoverAcceptance", True),
     ("records/decisions/specs-main-proposal-admission.v1.jsonl", "decisions.cue", "#SpecsMainProposalAdmissionDecision", True),
     ("records/feat/breaking-change-evidence.v1.jsonl", "feat-evidence.cue", "#BreakingChangeEvidence", True),
+    ("records/feat/build-evidence.v1.jsonl", "build-evidence.cue", "#BuildEvidence", True),
     # adrs typed-ladder files live in the adrs repo; vetted when present.
     ("records/raw/adr.v1.jsonl", "adr-ladder.cue", "#AdrRaw", False),
     ("records/promoted/adr.v1.jsonl", "adr-ladder.cue", "#AdrPromoted", False),
