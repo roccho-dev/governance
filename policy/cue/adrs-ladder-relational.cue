@@ -36,12 +36,18 @@ import "list"
 	// every named violation list must be empty for the gate to pass.
 	violations: [string]: list.MaxItems(0)
 
+	// NOTE: the guards below are sequential comprehension clauses (if ... let
+	// ... if ...), NOT `&&` — CUE `&&` does not short-circuit, so an
+	// interpolation of pf in the second operand would error on rows without
+	// promotedFrom instead of being skipped.
+
 	// (a) promotedFrom resolves to an existing raw row.
 	violations: "promoted-promotedfrom-not-in-raw": [
 		for p in promoted
 		let pf = *(p.promotedFrom & string) | null
-		if pf != null && !list.Contains(_rawIds, pf) {
-			{rule: "promoted-promotedfrom-not-in-raw", promotedId: p.id, detail: pf}
+		if pf != null
+		if !list.Contains(_rawIds, pf) {
+			{rule: "promoted-promotedfrom-not-in-raw", promotedId: p.id, detail: "promotedFrom=\(pf)"}
 		},
 	]
 
@@ -49,7 +55,9 @@ import "list"
 	violations: "promoted-promotion-relation-missing": [
 		for p in promoted
 		let pf = *(p.promotedFrom & string) | null
-		if pf != null && !list.Contains(_relationAdmits, "\(pf)::\(p.id)") {
+		if pf != null
+		let key = "\(pf)::\(p.id)"
+		if !list.Contains(_relationAdmits, key) {
 			{rule: "promoted-promotion-relation-missing", promotedId: p.id, detail: "promotedFrom=\(pf)"}
 		},
 	]
