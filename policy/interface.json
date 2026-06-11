@@ -7,6 +7,7 @@
   {"file": "records/decisions/specs-main-proposal-admission.v1.jsonl", "def": "#SpecsMainProposalAdmissionDecision", "required": true},
   {"file": "records/feat/breaking-change-evidence.v1.jsonl", "def": "#BreakingChangeEvidence", "group": "evidence", "required": true},
   {"file": "records/feat/build-evidence.v1.jsonl", "def": "#BuildEvidence", "required": true},
+  {"file": "records/decisions/residual-branch-disposition.v1.jsonl", "def": "#ResidualBranchDisposition", "required": false},
   {"file": "records/raw/adr.v1.jsonl", "def": "#AdrRaw", "required": false},
   {"file": "records/promoted/adr.v1.jsonl", "def": "#AdrPromoted", "required": false},
   {"file": "records/relations/adr-promotion.v1.jsonl", "def": "#AdrPromotionRelation", "required": false}
