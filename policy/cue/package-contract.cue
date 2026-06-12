@@ -6,7 +6,14 @@ package policy
 	kind:         "governance.packageContract.v1"
 	packageId:    =~"^[a-z0-9][a-z0-9_-]*$"
 	specId:       string & !=""
-	status:       "accepted" | "planned"
+	// "superseded": retired without fulfilment. supersededBy names the
+	// absorbing package/architecture decision, supersedeRef the recording ADR.
+	// Non-admissible everywhere accepted|planned is required (relational #All).
+	status: "accepted" | "planned" | "superseded"
+	if status == "superseded" {
+		supersededBy: string & !=""
+		supersedeRef: string & !=""
+	}
 	recordDigest: =~"^[0-9a-f]{64}$"
 	authority:    string & !=""
 	recordedAt:   string & !=""

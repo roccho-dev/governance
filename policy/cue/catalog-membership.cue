@@ -8,4 +8,8 @@ package policy
 	inSpecPackages:  bool
 	sourceAuthority: string & !=""
 	migratedAt:      string & !=""
+	// membership change provenance (set when inSpecPackages is flipped after
+	// the initial migration; ref points at the recording ADR).
+	membershipChangedAt?: string & !=""
+	membershipChangeRef?: string & !=""
 }
