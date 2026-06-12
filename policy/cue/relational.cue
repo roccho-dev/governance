@@ -30,6 +30,7 @@ import "list"
 	placement: [...{...}] // records/specs/repo-placement.v1.jsonl
 	edges: [...{...}] // records/specs/dependency-edge.v1.jsonl
 	evidence: [...{...}] // records/feat/breaking-change-evidence.v1.jsonl
+	proposals?: [...#A2uiBoardViewV3Gate] // records/proposals/a2ui-board-view-v3-gate.v1.jsonl
 
 	// ---- projected id sets -------------------------------------------------
 	_contractIds: [for c in contracts {c.packageId}]
