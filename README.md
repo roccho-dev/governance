@@ -8,7 +8,7 @@ projection tooling, merged into a single repo with both histories preserved.
 - `records/` — 権威台帳 (accepted JSONL record authority; the SSOT for accepted definitions)
 - `tools/` — projection 関数 (pure projection scripts: `make-spec-catalog.py`, `make-feat-input.py`, `check-package-facet-proof.py`)
 - `modules/` — env 部品 (Nix environment building blocks, e.g. `common-worker-env.nix`)
-- `generated/` — 射影出力 (projection outputs derived from `records/`; not definition authority)
+- `generated/` — 射影出力 (derived from `records/`; build/evidence artifact, ignored in source)
 - `issues/` — issue ledger records
 
 Generated/projection artifacts are never accepted definition authority; authority
@@ -22,3 +22,7 @@ governance-records@eaefe95 + governance-nix@683f0b3
 governance-nix branch `claude/governance-nix-catalog-bridge-260611`,
 merged with `--allow-unrelated-histories`). Both source lineages remain
 fully present in this repository's git history.
+
+## Report-only records debt tool
+
+`tools/records-gate.py` is report-only. Blocking record validation is the shared `tools/cue-records-gate.py` CUE gate driven by `policy/interface.json`; obligation-debt rows emitted by `records-gate.py` are visibility artifacts and do not imply merge blocking.

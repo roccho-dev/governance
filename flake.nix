@@ -42,13 +42,12 @@
               export HOME="$TMPDIR"
               cd ${self}
               mkdir -p "$out"
-              python3 -c 'import json,os; e=json.load(open("policy/interface.json")); m=[x["file"] for x in e if x.get("required") and not os.path.exists(x["file"])]; assert not m, "missing required record files: %s" % m; print("\n".join(x["file"]+" "+x["def"] for x in e if x.get("def") and os.path.exists(x["file"])))' > "$TMPDIR/per-file-defs"
-              while read -r file def; do
-                cue vet policy/cue/*.cue "$file" -d "$def"
-              done < "$TMPDIR/per-file-defs"
-              python3 -c 'import json,os; e=json.load(open("policy/interface.json")); g=sorted({x["group"] for x in e if x.get("group")}); print(json.dumps({k: [json.loads(l) for x in e if x.get("group")==k and os.path.exists(x["file"]) for l in open(x["file"], encoding="utf-8") if l.strip()] for k in g}))' > "$TMPDIR/relational-all.json"
-              cue vet policy/cue/*.cue "$TMPDIR/relational-all.json" -d '#All'
-              echo "records-gate: cue vet PASS (per-file + relational)"
+              python3 tools/cue-records-gate.py \
+                --root . \
+                --interface policy/interface.json \
+                --cue-dir policy/cue \
+                --relational-def '#All' \
+                --bundle-out "$TMPDIR/relational-all.json"
               python3 tools/records-gate.py --root . --report "$out/obligation-debt.json" > "$out/records-gate.log"
               tail -n 3 "$out/records-gate.log"
             '';
