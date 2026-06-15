@@ -1,5 +1,13 @@
 {
   "baseHash": "9a55d2ad8b53",
+  "currentStateRefresh": {
+    "featInputAuthority": "records-derived projection from package-contract and dependency-edge records",
+    "governanceGeneratedPresent": false,
+    "kind": "governance.finalStateCurrentRefresh.v1",
+    "packageAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+    "recordedAt": "2026-06-15T00:00:00+09:00",
+    "specsMainPresent": false
+  },
   "deletedOrRelocated": [
     {
       "from": "specs-main/packages/*/default.nix",
@@ -36,9 +44,10 @@
       "repo-boundary-guard-main",
       "issue-ledger-main",
       "ops-main",
-      "policy-master",
+      "policy",
       "evidence-archive-main"
     ],
+    "migrationCoverage": "resolved 41/41; open 0; partial 0",
     "rawAdrDirectRepoOperationAllowed": false,
     "repoOperationRequires": [
       "accepted JSONL record",
@@ -50,7 +59,8 @@
   "kind": "governance.specslessFinalStateManifest.v1",
   "proposalId": "specsless-canonical-cutover-20260604",
   "proposalMode": {
-    "activeSpecsRepoPresent": true,
-    "reason": "specs-main is retained as contract-review source for this proposal worktree only"
+    "activeSpecsRepoPresent": false,
+    "reason": "proposal-mode active specs checkout was superseded by final hardening/all-up package; specs-main is not active authority or workspace member",
+    "status": "retired"
   }
 }
