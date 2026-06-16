@@ -15,7 +15,40 @@
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
+      # Consumable machine-input output for the bootstrap pinned-flake-input
+      # consumer. A downstream flake pins this `governance` input and reads
+      # `${governance.packages.<system>.bootstrap-input}/bootstrap-input.json`
+      # (kind governance.bootstrapInput.v1). It is the committed projection of
+      # the accepted record records/decisions/bootstrap-minimal-acceptance.v1.jsonl
+      # produced by tools/make-bootstrap-input.py. URL slots in `ssotLocations`
+      # are null (NOT YET ACCEPTED) — see ssotLocationContract; the consumer must
+      # not fabricate URLs from null.
+      packages = forEachSystem (pkgs: {
+        bootstrap-input =
+          pkgs.runCommand "bootstrap-input" { } ''
+            mkdir -p "$out"
+            cp ${self}/generated/bootstrap-input/bootstrap-minimal-acceptance.json "$out/bootstrap-input.json"
+          '';
+      });
+
       checks = forEachSystem (pkgs: {
+        # bootstrap-input-projection: guard the committed machine input against
+        # drift from its accepted-record source (pure re-projection must match).
+        bootstrap-input-projection =
+          pkgs.runCommand "bootstrap-input-projection"
+            { nativeBuildInputs = [ pkgs.python3 ]; }
+            ''
+              set -euo pipefail
+              cd ${self}
+              python3 tools/make-bootstrap-input.py --root . --out "$TMPDIR/fresh.json"
+              if ! diff -u generated/bootstrap-input/bootstrap-minimal-acceptance.json "$TMPDIR/fresh.json"; then
+                echo "bootstrap-input projection is stale: re-run tools/make-bootstrap-input.py" >&2
+                exit 1
+              fi
+              echo "bootstrap-input-projection: committed == re-projected (PASS)"
+              touch "$out"
+            '';
+
         # records-gate: BLOCKING = cue vet only (C1 CUE unification).
         # Declaration-driven plumbing (identical shape across repos):
         # policy/interface.json lists {file, def, group};
