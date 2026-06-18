@@ -29,6 +29,25 @@
             mkdir -p "$out"
             cp ${self}/generated/bootstrap-input/bootstrap-minimal-acceptance.json "$out/bootstrap-input.json"
           '';
+
+        # validate-local-raw: governance function package for provisional
+        # feat-side discovery. Validates a feat-local raw.jsonl against the
+        # governance #AdrRaw CUE schema. Output is
+        # governance.localRawValidation.v1 JSON (explicitly non-authoritative).
+        # Feat repos consume this via:
+        #   nix run governance#validate-local-raw -- --raw ./local-raw.jsonl
+        validate-local-raw = pkgs.writeShellApplication {
+          name = "validate-local-raw";
+          runtimeInputs = [
+            pkgs.python3
+            pkgs.cue
+          ];
+          text = ''
+            exec python3 ${self}/tools/validate-local-raw.py \
+              --cue-dir ${self}/policy/cue \
+              "$@"
+          '';
+        };
       });
 
       checks = forEachSystem (pkgs: {
@@ -46,6 +65,37 @@
                 exit 1
               fi
               echo "bootstrap-input-projection: committed == re-projected (PASS)"
+              touch "$out"
+            '';
+
+        # validate-local-raw-proof: prove the governance function package
+        # correctly validates a provisional local raw.jsonl fixture against
+        # the #AdrRaw CUE schema and produces the expected non-authoritative
+        # governance.localRawValidation.v1 output.
+        validate-local-raw-proof =
+          pkgs.runCommand "validate-local-raw-proof"
+            {
+              nativeBuildInputs = [
+                pkgs.python3
+                pkgs.cue
+              ];
+            }
+            ''
+              set -euo pipefail
+              cd ${self}
+              python3 tools/validate-local-raw.py \
+                --cue-dir policy/cue \
+                --raw tests/fixtures/provisional-local-raw.jsonl \
+                --out "$TMPDIR/validation-result.json"
+              python3 -c "
+import json, sys
+r = json.load(open('$TMPDIR/validation-result.json'))
+assert r['kind'] == 'governance.localRawValidation.v1', f'unexpected kind: {r[\"kind\"]}'
+assert r['authoritative'] is False, 'must be non-authoritative'
+assert r['valid'] is True, f'validation failed: {r}'
+assert r['totalRows'] >= 1, 'must validate at least one row'
+print('validate-local-raw-proof: PASS')
+"
               touch "$out"
             '';
 
