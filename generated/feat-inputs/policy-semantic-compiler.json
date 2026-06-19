@@ -1,0 +1,93 @@
+{
+  "candidateStyle": "derived-candidate",
+  "cutoverAuthority": false,
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.policy-semantic-compiler",
+    "package": "policy-semantic-compiler",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "policy-semantic-compiler.package-contract",
+      "policy-semantic-compiler.projection-contract-parse",
+      "policy-semantic-compiler.native-output-kinds-present",
+      "policy-semantic-compiler.source-span-trace-required",
+      "policy-semantic-compiler.semantic-coverage-not-hardcoded",
+      "policy-semantic-compiler.generated-input-not-authority",
+      "policy-semantic-compiler.cutover-gates-blocked"
+    ],
+    "requiredCommands": [
+      "python3 - <<'PY'\nimport json, pathlib\nfor p in ['records/specs/policy-semantic-projection-contract.v1.jsonl','generated/feat-inputs/policy-semantic-compiler.json']:\n    text = pathlib.Path(p).read_text(encoding='utf-8')\n    if p.endswith('.jsonl'):\n        [json.loads(line) for line in text.splitlines() if line.strip()]\n    else:\n        json.loads(text)\nPY"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.policy-semantic-compiler",
+      "records/policy/policy.definition.v1.jsonl",
+      "records/policy/policy.activation.v1.jsonl",
+      "records/policy/policy.obligation.v1.jsonl",
+      "records/policy/policy.deny.v1.jsonl",
+      "records/policy/policy.superseded.v1.jsonl",
+      "records/policy/role.binding.v1.jsonl",
+      "records/policy/role.exit-edge.v1.jsonl"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl plus policy-semantic-projection-contract.v1.jsonl",
+    "targetPackage": "policy-semantic-compiler"
+  },
+  "generatedFromCandidate": true,
+  "generatedIsAuthority": false,
+  "kind": "feat.input.v1",
+  "migrationAuthority": false,
+  "packageId": "policy-semantic-compiler",
+  "projectionContract": "records/specs/policy-semantic-projection-contract.v1.jsonl",
+  "projectionDigest": "7ee1223ee605c07ff6e6d8f8a3fc98c1619129564d5c70cdbddfe314e26cdc41",
+  "rawAdrDirectAuthority": false,
+  "remainingBlockedGates": [
+    "old-policy-repo-consumers-zero",
+    "canonical-bootstrap-kernel",
+    "nix-consumer-cutover"
+  ],
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/policy-semantic-compiler/",
+      "records/specs/policy-semantic-projection-contract.v1.jsonl",
+      "records/specs/package-contract.v1.jsonl",
+      "records/specs/projection-digest.v1.jsonl",
+      "generated/feat-inputs/policy-semantic-compiler.json",
+      "docs/proposals/policy-semantic-native-contract-260619/"
+    ],
+    "forbiddenPaths": [
+      "policy.git deletion approval",
+      "consumer migration claims without repo diffs and executable checks",
+      "generated feat input as authority",
+      "hardcoded old policy counts as truth",
+      "new policy.semanticSpan.v1 authority family",
+      "bootstrap or ops ADR edits from this proposal"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "sourceRecordDigest": "da74b05b39b8583b3ebb0626869c81ab0bf3725456477a35b8e84c5c17660c71",
+  "specId": "pkg.policy-semantic-compiler",
+  "status": "planned-blocked"
+}
