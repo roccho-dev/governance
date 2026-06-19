@@ -32,6 +32,23 @@
       });
 
       checks = forEachSystem (pkgs: {
+        # feat-input-projection: guard the existing new-feat creation surface.
+        # This is a projection/continuity check, not definition authority. It
+        # stages the `governance-records-main/` checkout layout required by
+        # tools/make-feat-input.py, re-projects committed feat inputs, checks
+        # projection-digest alignment, and smokes accepted/planned package
+        # creation paths. PR CI should also pass --base-package-contract to
+        # enforce accepted package non-decrease against the merge base.
+        feat-input-projection =
+          pkgs.runCommand "feat-input-projection"
+            { nativeBuildInputs = [ pkgs.python3 ]; }
+            ''
+              set -euo pipefail
+              cd ${self}
+              python3 tools/check-feat-input-continuity.py --root .
+              touch "$out"
+            '';
+
         # bootstrap-input-projection: guard the committed machine input against
         # drift from its accepted-record source (pure re-projection must match).
         bootstrap-input-projection =
