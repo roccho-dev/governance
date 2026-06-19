@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Check that feat-input projection remains usable after governance cutover.
 
-This is a projection/continuity check only. It does not make governance an
-authority owner, and it does not resolve sourceAuthority to an active owner.
-Missing authority-owner rows remain a separate cutover blocker.
+This is the canonical gate function for the Gate 6 continuity condition. The
+condition itself is defined by the adrs.git ADR proposal
+(governance-authority-cutover-acceptance), which is its SSOT/authority; this
+script is governance.git's canonical implementation of that condition, not
+definition authority. It is a projection/continuity check only: it does not
+make governance an authority owner, and it does not resolve sourceAuthority to
+an active owner. Missing authority-owner rows remain a separate cutover blocker.
 """
 from __future__ import annotations
 

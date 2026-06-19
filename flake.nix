@@ -32,13 +32,16 @@
       });
 
       checks = forEachSystem (pkgs: {
-        # feat-input-projection: guard the existing new-feat creation surface.
-        # This is a projection/continuity check, not definition authority. It
-        # stages the `governance-records-main/` checkout layout required by
-        # tools/make-feat-input.py, re-projects committed feat inputs, checks
-        # projection-digest alignment, and smokes accepted/planned package
-        # creation paths. PR CI should also pass --base-package-contract to
-        # enforce accepted package non-decrease against the merge base.
+        # feat-input-projection: the canonical gate function implementing the
+        # Gate 6 continuity condition defined by the adrs.git ADR proposal
+        # (governance-authority-cutover-acceptance). adrs.git is the SSOT for the
+        # condition; this check is governance.git's canonical implementation of
+        # it, not definition authority. It guards the existing new-feat creation
+        # surface: it stages the `governance-records-main/` checkout layout
+        # required by tools/make-feat-input.py, re-projects committed feat
+        # inputs, checks projection-digest alignment, and smokes accepted/planned
+        # package creation paths. PR CI should also pass --base-package-contract
+        # to enforce accepted package non-decrease against the merge base.
         feat-input-projection =
           pkgs.runCommand "feat-input-projection"
             { nativeBuildInputs = [ pkgs.python3 ]; }
