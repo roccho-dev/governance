@@ -1,5 +1,5 @@
 {
-  description = "governance: authoritative records (SSOT) + records-gate policy checks";
+  description = "governance: record projections and records-gate policy checks";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -40,7 +40,7 @@
         # surface: it stages the `governance-records-main/` checkout layout
         # required by tools/make-feat-input.py, re-projects committed feat
         # inputs, checks projection-digest alignment, and smokes accepted/planned
-        # package creation paths. PR CI should also pass --base-package-contract
+        # package creation paths. PR CI must run tools/check-feat-input-pr-continuity.sh
         # to enforce accepted package non-decrease against the merge base.
         feat-input-projection =
           pkgs.runCommand "feat-input-projection"
@@ -50,6 +50,41 @@
               cd ${self}
               python3 tools/check-feat-input-continuity.py --root .
               touch "$out"
+            '';
+
+        # feat-input-base-selftest: prove the accepted-set non-decrease path is
+        # executable and fails closed when a base accepted package is missing at
+        # HEAD. This is a self-test for the canonical gate function; real PR CI
+        # must still supply the merge-base contract through
+        # tools/check-feat-input-pr-continuity.sh.
+        feat-input-base-selftest =
+          pkgs.runCommand "feat-input-base-selftest"
+            { nativeBuildInputs = [ pkgs.gnugrep pkgs.python3 ]; }
+            ''
+              set -euo pipefail
+              cd ${self}
+              mkdir -p "$out"
+              cp records/specs/package-contract.v1.jsonl "$TMPDIR/base-package-contract.v1.jsonl"
+              python3 tools/check-feat-input-continuity.py \
+                --root . \
+                --require-base \
+                --base-package-contract "$TMPDIR/base-package-contract.v1.jsonl" \
+                > "$out/pass.log"
+              grep -q 'accepted-set-non-decrease: PASS' "$out/pass.log"
+
+              cp "$TMPDIR/base-package-contract.v1.jsonl" "$TMPDIR/synthetic-drop-base.v1.jsonl"
+              chmod u+w "$TMPDIR/synthetic-drop-base.v1.jsonl"
+              printf '%s\n' '{"packageId":"__synthetic_removed_accepted__","status":"accepted"}' >> "$TMPDIR/synthetic-drop-base.v1.jsonl"
+              if python3 tools/check-feat-input-continuity.py \
+                --root . \
+                --require-base \
+                --base-package-contract "$TMPDIR/synthetic-drop-base.v1.jsonl" \
+                > "$out/synthetic-drop.log" 2>&1; then
+                echo "synthetic accepted-package drop unexpectedly passed" >&2
+                exit 1
+              fi
+              grep -q '__synthetic_removed_accepted__' "$out/synthetic-drop.log"
+              touch "$out/ok"
             '';
 
         # bootstrap-input-projection: guard the committed machine input against
