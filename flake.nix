@@ -3,10 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    adrsRecords = {
+      url = "git+ssh://100.124.250.91/home/nixos/repos/adrs.git?ref=refs/heads/proposal/record-jsonl-reproof-rehome-260619&rev=deb5e1ca5edfed1624143db96e483aaa675ed7de";
+      flake = false;
+    };
   };
 
   outputs =
-    { self, nixpkgs }:
+    { self, nixpkgs, adrsRecords }:
     let
       systems = [
         "x86_64-linux"
@@ -47,8 +51,19 @@
             { nativeBuildInputs = [ pkgs.python3 ]; }
             ''
               set -euo pipefail
+              workspace="$TMPDIR/adrs-projection-workspace"
+              mkdir -p "$workspace"
+              python3 ${adrsRecords}/tools/materialize-governance-records-projection.py \
+                --adrs-root ${adrsRecords} \
+                --workspace "$workspace" \
+                --manifest-out "$TMPDIR/adrs-projection-manifest.json"
+              gate_root="$workspace/gate-root"
+              mkdir -p "$gate_root"
+              ln -s "$workspace/governance-records-main/records" "$gate_root/records"
+              ln -s "$workspace/governance-records-main/generated" "$gate_root/generated"
+              ln -s ${self}/tools "$gate_root/tools"
               cd ${self}
-              python3 tools/check-feat-input-continuity.py --root .
+              python3 tools/check-feat-input-continuity.py --root "$gate_root"
               touch "$out"
             '';
 
@@ -62,11 +77,22 @@
             { nativeBuildInputs = [ pkgs.gnugrep pkgs.python3 ]; }
             ''
               set -euo pipefail
+              workspace="$TMPDIR/adrs-projection-workspace"
+              mkdir -p "$workspace"
+              python3 ${adrsRecords}/tools/materialize-governance-records-projection.py \
+                --adrs-root ${adrsRecords} \
+                --workspace "$workspace" \
+                --manifest-out "$TMPDIR/adrs-projection-manifest.json"
+              projection_root="$workspace/gate-root"
+              mkdir -p "$projection_root"
+              ln -s "$workspace/governance-records-main/records" "$projection_root/records"
+              ln -s "$workspace/governance-records-main/generated" "$projection_root/generated"
+              ln -s ${self}/tools "$projection_root/tools"
               cd ${self}
               mkdir -p "$out"
-              cp records/specs/package-contract.v1.jsonl "$TMPDIR/base-package-contract.v1.jsonl"
+              cp "$projection_root/records/specs/package-contract.v1.jsonl" "$TMPDIR/base-package-contract.v1.jsonl"
               python3 tools/check-feat-input-continuity.py \
-                --root . \
+                --root "$projection_root" \
                 --require-base \
                 --base-package-contract "$TMPDIR/base-package-contract.v1.jsonl" \
                 > "$out/pass.log"
@@ -76,7 +102,7 @@
               chmod u+w "$TMPDIR/synthetic-drop-base.v1.jsonl"
               printf '%s\n' '{"packageId":"__synthetic_removed_accepted__","status":"accepted"}' >> "$TMPDIR/synthetic-drop-base.v1.jsonl"
               if python3 tools/check-feat-input-continuity.py \
-                --root . \
+                --root "$projection_root" \
                 --require-base \
                 --base-package-contract "$TMPDIR/synthetic-drop-base.v1.jsonl" \
                 > "$out/synthetic-drop.log" 2>&1; then
