@@ -1,0 +1,94 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "feat-trusted-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "lean-oracle-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "lean-oracle-input"
+      ]
+    },
+    {
+      "fromPackageId": "feat-trusted-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "secret-leak-guard",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "secret-leak-guard"
+      ]
+    },
+    {
+      "fromPackageId": "feat-trusted-gates",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-private-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-private-input"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.feat-trusted-gates",
+    "package": "feat-trusted-gates",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      {
+        "lanesAreSeparate": true,
+        "missingCredentialIsFailure": true,
+        "releaseGateDependsOnTrustedPass": true,
+        "trustedGateChecksCredentialPresence": true
+      }
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "feat-public-public-check",
+      "feat-public-trusted-check",
+      "feat-public-release-gate-check"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "feat-trusted-gates"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "feat-trusted-gates",
+  "projectionDigest": "1279c99827f4ea55eaadf4605b9727bc271a132d84d539d9c08148da06eb6d59",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/feat-trusted-gates/"
+    ],
+    "forbiddenPaths": [
+      "implementation code inside specs",
+      "credential material inside specs"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.feat-trusted-gates",
+  "status": "ready"
+}

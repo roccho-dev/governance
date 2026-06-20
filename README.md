@@ -1,37 +1,44 @@
 # governance
 
-Unified governance repository: accepted JSONL record authority plus its Nix-side
-projection tooling, merged into a single repo with both histories preserved.
+This repository provides non-authoritative reference implementations,
+deterministic projectors, checks, and evidence materializers derived from
+accepted authority sources.
+
+It does not own accepted policy conditions, record-location authority, or
+repo-local domain facts.
+
+## Authority Boundary
+
+- ADRs own accepted purposes, conditions, non-goals, and destructive cases.
+- The SSOT registry owns exact record locations, replacements, and lifecycle.
+- policy owns schemas, rules, and admission contracts.
+- Each owning repository owns its package/build/runtime domain facts.
+- governance tools may compute checks and projections, but their code and
+  generated output are not normative authority.
+- old `records/**` and `generated/**` content, while retained during migration,
+  is frozen non-authority migration evidence and must not receive new writes.
+
+Do not infer authority from this README, a path name, generated output, cache,
+dashboard, or compatibility input name. Resolve it through the accepted ADR,
+SSOT registry, and policy records.
 
 ## Layout
 
-- `records/` — 権威台帳 (accepted JSONL record authority; the SSOT for accepted definitions)
-- `tools/` — projection 関数 (pure projection scripts: `make-spec-catalog.py`, `make-feat-input.py`, `check-package-facet-proof.py`)
-- `modules/` — env 部品 (Nix environment building blocks, e.g. `common-worker-env.nix`)
-- `generated/` — 射影出力 (projection outputs derived from `records/`; not definition authority)
-- `issues/` — issue ledger records
+- `records/` - frozen migration source during cutover; not active authority
+- `generated/` - frozen projection evidence during cutover; not active authority
+- `tools/` - reference implementation/projector/check scripts
+- `modules/` - Nix environment building blocks
+- `issues/` - issue ledger records
 
-### bootstrap consumable input
+## bootstrap consumable input
 
-`packages.<system>.bootstrap-input` exposes
-`generated/bootstrap-input/bootstrap-minimal-acceptance.json`
-(`governance.bootstrapInput.v1`), the projection of the accepted record
-`records/decisions/bootstrap-minimal-acceptance.v1.jsonl` produced by
-`tools/make-bootstrap-input.py`. The bootstrap pinned-flake-input consumer reads
-`requiredSsot` / `specsOptional` / `outOfScope` from it. The `ssotLocations` URL
-slots are `null` (NOT YET ACCEPTED): no policy/ops SSOT URL is an accepted
-governance definition, so the consumer must not fabricate URLs — see
-`ssotLocationContract` in the projection. Drift is gated by the
-`bootstrap-input-projection` flake check.
-
-Generated/projection artifacts are never accepted definition authority; authority
-lives exclusively in `records/`.
+`packages.<system>.bootstrap-input` exposes `bootstrap-input.json`
+(`governance.bootstrapInput.v1`) from the ADRS governance-records projection.
+The bootstrap pinned-flake-input consumer reads `requiredSsot`, `specsOptional`,
+and `outOfScope` from it. The `ssotLocations` URL slots are `null` (NOT YET
+ACCEPTED): the consumer must not fabricate URLs from null.
 
 ## Provenance
 
-This repository is the history-preserving merge of
-governance-records@eaefe95 + governance-nix@683f0b3
-(governance-records branch `claude/gr-catalog-membership-260611` and
-governance-nix branch `claude/governance-nix-catalog-bridge-260611`,
-merged with `--allow-unrelated-histories`). Both source lineages remain
-fully present in this repository's git history.
+This repository is the history-preserving merge of governance-records@eaefe95 +
+governance-nix@683f0b3. Both source lineages remain present in git history.

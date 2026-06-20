@@ -1,0 +1,73 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "package-architecture-map",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.package-architecture-map",
+    "package": "package-architecture-map",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.package-architecture-map"
+    ],
+    "requiredCommands": [
+      "package-architecture-map --inventory <inventory.json> --out-dir dist --name <map-name>",
+      "package-architecture-map --inventory <inventory.json> --validate-only"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.package-architecture-map"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "package-architecture-map"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "package-architecture-map",
+  "projectionDigest": "8977dd492825f875e9e39d0df19ea2a07210220de2196d0c2ecd779d34b9b486",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/package-architecture-map/",
+      "flake.nix"
+    ],
+    "forbiddenPaths": [
+      "Caddyfile as required package output",
+      "server-side app state",
+      "approval or merge logic",
+      "repo architecture facts hardcoded in policy"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.package-architecture-map",
+  "status": "ready"
+}

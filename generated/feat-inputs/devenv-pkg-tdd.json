@@ -1,0 +1,81 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "devenv-pkg-tdd",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "devenv-pkg-preflight",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "devenv-pkg-preflight"
+      ]
+    },
+    {
+      "fromPackageId": "devenv-pkg-tdd",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specctl",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specctl"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.devenv-pkg-tdd",
+    "package": "devenv-pkg-tdd",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "devenv-pkg-tdd.package-build"
+    ],
+    "requiredCommands": [
+      "devenv-pkg-tdd <spec-root> <package>"
+    ],
+    "requiredOutputs": [
+      "packages.devenv-pkg-tdd"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "ast-grep",
+        "zip",
+        "unzip",
+        "git"
+      ],
+      "requiredForFinal": [
+        "bash",
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "devenv-pkg-tdd"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "devenv-pkg-tdd",
+  "projectionDigest": "2b280b2e588f4dca2e7a7a3aca0b2bcdde96bd8ba2900f90b4c07afea1970326",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/devenv-pkg-tdd/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.devenv-pkg-tdd",
+  "status": "ready"
+}

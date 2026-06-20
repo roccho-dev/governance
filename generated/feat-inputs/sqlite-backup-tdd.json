@@ -1,0 +1,84 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "sqlite-backup-tdd",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "sqlite-backup-tdd",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "sqlite-backup",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "sqlite-backup"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.sqlite-backup-tdd",
+    "package": "sqlite-backup-tdd",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "sqlite-backup",
+    "requiredChecks": [
+      "sqlite-backup-tdd.package-contract",
+      "sqlite-backup-tdd.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "sqlite-backup-tdd --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.sqlite-backup-tdd",
+      "checks.sqlite-backup-*"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "sqlite-backup-tdd"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "sqlite-backup-tdd",
+  "projectionDigest": "14949742dd0696a679f542c1e31ef5bd889b5a387e4355c0ae0f6ae4e39ff333",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/sqlite-backup-tdd/",
+      "repos/sqlite-backup/packages/sqlite-backup-tdd/",
+      "parts/tests/sqlite-backup-*.nix + parts/sqlite/backup/test/*.md"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/sqlite-backup",
+    "targetRepoId": "sqlite-backup"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.sqlite-backup-tdd",
+  "status": "ready"
+}

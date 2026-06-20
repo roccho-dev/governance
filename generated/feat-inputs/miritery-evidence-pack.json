@@ -1,0 +1,92 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "miritery-evidence-pack",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-mission-ir",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-mission-ir"
+      ]
+    },
+    {
+      "fromPackageId": "miritery-evidence-pack",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-oracle-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-oracle-contract"
+      ]
+    },
+    {
+      "fromPackageId": "miritery-evidence-pack",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-safety-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-safety-kernel"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.miritery-evidence-pack",
+    "package": "miritery-evidence-pack",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "mission-vgd-kit",
+    "requiredChecks": [
+      "miritery-evidence-pack.package-build",
+      "miritery-evidence-pack.module-eval"
+    ],
+    "requiredCommands": [
+      "miritery-evidence-pack build",
+      "miritery-evidence-pack verify-hash-manifest"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.miritery-evidence-pack",
+      "nixosModules.miritery-evidence-pack"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "miritery-evidence-pack"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "miritery-evidence-pack",
+  "projectionDigest": "03496cef1cfbd316131f3145de056e4862a61ffbfef3cb85de5659b748d2f2f0",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/miritery/evidence-pack/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/miritery/lean-oracle/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/mission-vgd-kit",
+    "targetRepoId": "mission-vgd-kit"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.miritery-evidence-pack",
+  "status": "ready"
+}

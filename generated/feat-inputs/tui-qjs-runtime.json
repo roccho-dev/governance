@@ -1,0 +1,85 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "tui-qjs-runtime",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "tui-qjs-runtime",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-contract-frontend-corpus",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-contract-frontend-corpus"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.tui-qjs-runtime",
+    "package": "tui-qjs-runtime",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "tui-qjs",
+    "requiredChecks": [
+      "tui-qjs-runtime.package-contract",
+      "tui-qjs-runtime.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "tui-qjs-runtime --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.tui-qjs-runtime",
+      "packages.<system>.tui-qjs-*",
+      "checks.tui-qjs-suite"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "tui-qjs-runtime"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "tui-qjs-runtime",
+  "projectionDigest": "6459405349db8157d2dfdf6afd39ce051ce0167178e5c08f5d33fc9daeeb9fb9",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/tui-qjs-runtime/",
+      "repos/tui-qjs/packages/tui-qjs-runtime/",
+      "parts/tui-qjs"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/tui-qjs",
+    "targetRepoId": "tui-qjs"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.tui-qjs-runtime",
+  "status": "ready"
+}

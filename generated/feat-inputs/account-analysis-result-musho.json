@@ -1,0 +1,69 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "account-analysis-result-musho",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "account-analysis-reuse",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "account-analysis-reuse"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.account-analysis-result-musho",
+    "package": "account-analysis-result-musho",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "account-analysis",
+    "requiredChecks": [
+      "checks.<system>.account-analysis-result-musho"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.account-analysis-result-musho"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "account-analysis-result-musho"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "account-analysis-result-musho",
+  "projectionDigest": "652290a8c7278d8005e11c837a242b9a6d3252bdfced0b9b3e528f087d7c91c8",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "cases/musho/"
+    ],
+    "forbiddenPaths": [
+      "raw private data",
+      "unverified post-count claims marked as fact"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/account-analysis",
+    "targetRepoId": "account-analysis"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.account-analysis-result-musho",
+  "status": "ready"
+}

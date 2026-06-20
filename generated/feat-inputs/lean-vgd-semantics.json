@@ -1,0 +1,80 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "lean-vgd-semantics",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "lean-export-modules",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "lean-export-modules"
+      ]
+    },
+    {
+      "fromPackageId": "lean-vgd-semantics",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "urn-3d-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "urn-3d-core"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.lean-vgd-semantics",
+    "package": "lean-vgd-semantics",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "lean-vgd-semantics",
+    "requiredChecks": [
+      "lean-vgd-semantics.package-build",
+      "lean-vgd-semantics.module-eval"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.lean-vgd-semantics",
+      "nixosModules.lean-vgd-semantics"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "lean-vgd-semantics"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "lean-vgd-semantics",
+  "projectionDigest": "9e06f8731fed8782a0533bb1b97925a5e0c1d72b295946692b61ef587ab0d35e",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/lean-vgd-semantics/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/lean-vgd-semantics",
+    "targetRepoId": "lean-vgd-semantics"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.lean-vgd-semantics",
+  "status": "ready"
+}

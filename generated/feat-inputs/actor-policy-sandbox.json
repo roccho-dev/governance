@@ -1,0 +1,78 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "actor-policy-sandbox",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "actor-session-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "actor-session-contract"
+      ]
+    },
+    {
+      "fromPackageId": "actor-policy-sandbox",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.actor-policy-sandbox",
+    "package": "actor-policy-sandbox",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "actor-policy-sandbox.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.actor-policy-sandbox"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "actor-policy-sandbox"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "actor-policy-sandbox",
+  "projectionDigest": "d4897ebb599b64572936c3ec7bf1b0f2e98a0780ab5e7d1b2621d1d0531b1465",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/actor-policy-sandbox/"
+    ],
+    "forbiddenPaths": [
+      "canonical repo apply implementation",
+      "secret material"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.actor-policy-sandbox",
+  "status": "ready"
+}

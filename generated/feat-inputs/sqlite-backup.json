@@ -1,0 +1,75 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "sqlite-backup",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.sqlite-backup",
+    "package": "sqlite-backup",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "sqlite-backup",
+    "requiredChecks": [
+      "sqlite-backup.package-contract",
+      "sqlite-backup.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "sqlite-backup --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.sqlite-backup",
+      "checks.sqlite-backup-* through tests"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "sqlite-backup"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "sqlite-backup",
+  "projectionDigest": "d12629849adc8497b2bdb2c3cdd575a57dddbaaffaea581e35c808c100560d80",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/sqlite-backup/",
+      "repos/sqlite-backup/packages/sqlite-backup/",
+      "parts/sqlite/backup"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/sqlite-backup",
+    "targetRepoId": "sqlite-backup"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.sqlite-backup",
+  "status": "ready"
+}

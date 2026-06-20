@@ -1,0 +1,78 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "signal-envelope-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-contract"
+      ]
+    },
+    {
+      "fromPackageId": "signal-envelope-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.signal-envelope-contract",
+    "package": "signal-envelope-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-nix",
+    "requiredChecks": [
+      "signal-envelope-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.signal-envelope-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "signal-envelope-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "signal-envelope-contract",
+  "projectionDigest": "8f5cb7f0f3786d60113094b019a4f4d4c00607b85895775c5d4584176386b819",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/signal-envelope-contract/"
+    ],
+    "forbiddenPaths": [
+      "client runtime implementation",
+      "server shipper implementation"
+    ],
+    "repoSourceUri": "path:../governance-nix-main",
+    "targetRepoId": "governance-nix"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.signal-envelope-contract",
+  "status": "ready"
+}

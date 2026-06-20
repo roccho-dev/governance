@@ -1,0 +1,72 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "app-toyhobby-dev-env",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.app-toyhobby-dev-env",
+    "package": "app-toyhobby-dev-env",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "app-toyhobby",
+    "requiredChecks": [
+      "app-toyhobby-dev-env.package-contract",
+      "app-toyhobby-dev-env.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.app-toyhobby-dev-env"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "app-toyhobby-dev-env"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "app-toyhobby-dev-env",
+  "projectionDigest": "5b669e8bf7d8d7ae4ee19f406862f5a46c7ed80846e13d949602380a90ee5ca8",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/app-toyhobby-dev-env/",
+      "repos/app-toyhobby/packages/app-toyhobby-dev-env/",
+      "parts/local/app-toyhobby.nix"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/app-toyhobby",
+    "targetRepoId": "app-toyhobby"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.app-toyhobby-dev-env",
+  "status": "planned-blocked"
+}

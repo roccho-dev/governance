@@ -35,11 +35,11 @@
       });
 
       checks = forEachSystem (pkgs: {
-        # feat-input-projection: the canonical gate function implementing the
+        # feat-input-projection: reference gate function implementing the
         # Gate 6 continuity condition defined by the adrs.git ADR proposal
-        # (governance-authority-cutover-acceptance). adrs.git is the SSOT for the
-        # condition; this check is governance.git's canonical implementation of
-        # it, not definition authority. It guards the existing new-feat creation
+        # (governance-authority-cutover-acceptance). adrs.git is the authority
+        # for the condition; this check is governance.git's non-authority
+        # reference implementation. It guards the existing new-feat creation
         # surface: it stages the `governance-records-main/` checkout layout
         # required by tools/make-feat-input.py, re-projects committed feat
         # inputs, checks projection-digest alignment, and smokes accepted/planned
@@ -134,17 +134,21 @@
               touch "$out"
             '';
 
-        # no-local-governance-records: cutover proof. Governance may own gate
-        # functions and package surfaces, but not active records/generated data.
-        no-local-governance-records =
-          pkgs.runCommand "no-local-governance-records" { } ''
-            set -euo pipefail
-            if [ -e ${self}/records ] || [ -e ${self}/generated ]; then
-              echo "governance must not carry local records/ or generated/ after adrs projection cutover" >&2
-              exit 1
-            fi
-            touch "$out"
-          '';
+        # governance-records-frozen-migration-source: governance may retain the
+        # former records/generated trees as frozen migration evidence during the
+        # phase-gated cutover. Active package/check surfaces read adrsRecords;
+        # physical deletion is a later phase, not this proposal's completion
+        # claim.
+        governance-records-frozen-migration-source =
+          pkgs.runCommand "governance-records-frozen-migration-source"
+            { nativeBuildInputs = [ pkgs.diffutils ]; }
+            ''
+              set -euo pipefail
+              test -f ${self}/MIGRATION_SOURCE.md
+              diff -qr ${self}/records ${adrsRecords}/records/projections/governance-records-main/records
+              diff -qr ${self}/generated ${adrsRecords}/records/projections/governance-records-main/generated
+              touch "$out"
+            '';
       });
     };
 }

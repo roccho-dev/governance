@@ -1,0 +1,92 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "package-output-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "package-output-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "package-output-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "repository-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "repository-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.package-output-governance",
+    "package": "package-output-governance",
+    "preflightRequiredTools": [
+      "python3"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "checks.<system>.package-output-governance"
+    ],
+    "requiredCommands": [
+      "package-output-governance <spec-root>",
+      "package-output-governance <spec-root> --self-test"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.package-output-governance"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "zip",
+        "unzip",
+        "git"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "package-output-governance"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "package-output-governance",
+  "projectionDigest": "c0f505f4fd827c237d61685e7870fc2a23d1e99b930d6e37d82ab346a34349d6",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/package-output-governance/",
+      "issues/260527.jsonl",
+      "issues/specs-package-output-governance-20260527/",
+      "flake.nix"
+    ],
+    "forbiddenPaths": [
+      "packages/package-output-responsibility-graph/",
+      "packages/package-output-adoption-map/",
+      "packages/package-output-intake-map/",
+      "feature implementation code inside repos/specs"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.package-output-governance",
+  "status": "ready"
+}

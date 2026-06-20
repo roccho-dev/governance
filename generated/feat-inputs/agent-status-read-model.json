@@ -1,0 +1,91 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "agent-status-read-model",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "agent-status-core-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "agent-status-core-contract"
+      ]
+    },
+    {
+      "fromPackageId": "agent-status-read-model",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.agent-status-read-model",
+    "package": "agent-status-read-model",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "agent-status-read-model",
+    "requiredChecks": [
+      "checks.<system>.agent-status-read-model.golden",
+      "checks.<system>.agent-status-read-model.negative-fixtures",
+      "checks.<system>.agent-status-read-model.static-boundary"
+    ],
+    "requiredCommands": [
+      "agent-status-read-model build --status fixtures/agent-status-core.status.v1.completed.json --out <records.json>",
+      "agent-status-read-model check-golden --status fixtures/agent-status-core.status.v1.completed.json --expected fixtures/agent-status-read-model.records.v1.completed.json",
+      "agent-status-read-model check-negative --fixtures fixtures/negative/"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.agent-status-read-model"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "agent-status-read-model"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "agent-status-read-model",
+  "projectionDigest": "3935e09d6f152a006d340451175cb9a33b4801169c2b55cdbc625ea490267570",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/agent-status-read-model/",
+      "src/agent-status-read-model/",
+      "fixtures/agent-status-read-model/",
+      "tests/agent-status-read-model/"
+    ],
+    "forbiddenPaths": [
+      "ops-agent-events reducer implementation",
+      "protocol-contract vocabulary definitions",
+      "agent-status-view rendering implementation",
+      "board-view composition implementation",
+      "webmcp query implementation",
+      "source adapter parser implementation"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/agent-status-read-model",
+    "targetRepoId": "agent-status-read-model"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.agent-status-read-model",
+  "status": "ready"
+}

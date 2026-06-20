@@ -1,0 +1,71 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "deadnix",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.deadnix",
+    "package": "deadnix",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "deadnix",
+    "requiredChecks": [
+      "checks.<system>.deadnix"
+    ],
+    "requiredCommands": [
+      "deadnix",
+      "nix flake check"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.deadnix"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "deadnix"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "deadnix",
+  "projectionDigest": "2532005b505a70136d42327c937021a7c504dd313691959b543a35ecc4c97f9f",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/deadnix/"
+    ],
+    "forbiddenPaths": [
+      "feature implementation code inside repos/specs"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/deadnix",
+    "targetRepoId": "deadnix"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.deadnix",
+  "status": "ready"
+}

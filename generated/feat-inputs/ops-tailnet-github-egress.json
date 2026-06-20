@@ -1,0 +1,98 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-tailnet-github-egress",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-agent-events",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-agent-events"
+      ]
+    },
+    {
+      "fromPackageId": "ops-tailnet-github-egress",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-tailnet-github-egress",
+    "package": "ops-tailnet-github-egress",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git",
+      "ssh",
+      "ip",
+      "tailscale"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.ops-tailnet-github-egress"
+    ],
+    "requiredCommands": [
+      "ops-tailnet-github-egress policy --json",
+      "ops-tailnet-github-egress check --json",
+      "ops-tailnet-github-egress route-check --domain github.com --json",
+      "ops-tailnet-github-egress github-ssh-check-local --json",
+      "ops-tailnet-github-egress push-local --repo-dir <local-repo> --remote git@github.com:<owner>/<repo>.git --refspec <src:dst>",
+      "ops-tailnet-github-egress push-local --long-transfer --repo-dir <local-repo> --remote git@github.com:<owner>/<repo>.git --refspec <src:dst>",
+      "git-push-tailnet --dry-run --json <src:dst>",
+      "ops-tailnet-github-egress github-ssh-check --json",
+      "ops-tailnet-github-egress push-existing --repo-dir <remote-dir> --refspec <src:dst>"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-tailnet-github-egress",
+      "packages.<system>.git-push-tailnet"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "jq",
+        "nix"
+      ],
+      "requiredForFinal": [
+        "python3",
+        "git",
+        "ssh",
+        "ip",
+        "tailscale"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git",
+        "ssh",
+        "ip",
+        "tailscale"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-tailnet-github-egress"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-tailnet-github-egress",
+  "projectionDigest": "ad0478b7a0c0c0cf6e9a41c47f9380c84e124dd7dee725345837c695a553850e",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-tailnet-github-egress/"
+    ],
+    "forbiddenPaths": [
+      "local gh credential storage",
+      "raw secret material",
+      "AGENTS.md long-form run log"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-tailnet-github-egress",
+  "status": "ready"
+}

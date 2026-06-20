@@ -1,0 +1,70 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "repo-structure",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.repo-structure",
+    "package": "repo-structure",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "repo-structure",
+    "requiredChecks": [
+      "checks.<system>.repo-structure"
+    ],
+    "requiredCommands": [
+      "nix flake check"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.repo-structure"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "repo-structure"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "repo-structure",
+  "projectionDigest": "59a7ce66529c6c69db3c4ef5edc716186a846b86d1153f32cdd618d01a89f53b",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/repo-structure/"
+    ],
+    "forbiddenPaths": [
+      "feature implementation code inside repos/specs"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/repo-structure",
+    "targetRepoId": "repo-structure"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.repo-structure",
+  "status": "ready"
+}

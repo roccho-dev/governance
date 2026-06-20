@@ -1,0 +1,140 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "jsonl-board-policy-workspace",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "jsonl-board-policy-workspace",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "protocol-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "protocol-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.jsonl-board-policy-workspace",
+    "package": "jsonl-board-policy-workspace",
+    "preflightRequiredTools": [
+      "git",
+      "nodejs_22",
+      "npm"
+    ],
+    "repoId": "policy",
+    "requiredChecks": [
+      "jsonl-board-policy-workspace.npm-test",
+      "jsonl-board-policy-workspace.workspace-tests",
+      "jsonl-board-policy-workspace.strict-field-example",
+      "jsonl-board-policy-workspace.dual-mmd-pool-proof",
+      "jsonl-board-policy-workspace.harness-evolution-proof",
+      "jsonl-board-policy-workspace.monster-envelope-test",
+      "jsonl-board-policy-workspace.mmd-regeneration-all-protocols-test",
+      "jsonl-board-policy-workspace.projection-guidance-golden-test",
+      "jsonl-board-policy-workspace.mission-control-projection-test",
+      "jsonl-board-policy-workspace.adr-relation-input-test",
+      "jsonl-board-policy-workspace.public-behavior-contract-test",
+      "jsonl-board-policy-workspace.reject-guidance-matrix-test",
+      "jsonl-board-policy-workspace.instrumented-core-cost-test",
+      "jsonl-board-policy-workspace.openfga-serverless-test",
+      "jsonl-board-policy-workspace.openfga-serverless-proof",
+      "jsonl-board-policy-workspace.openfga-real-cli-board-proof",
+      "jsonl-board-policy-workspace.policy-validate",
+      "jsonl-board-policy-workspace.pack-all",
+      "jsonl-board-policy-workspace.packed-consumer-smoke",
+      "jsonl-board-policy-workspace.git-diff-check",
+      "jsonl-board-policy-workspace.merge-review-pass",
+      "jsonl-board-policy-workspace.post-merge-review-preflight"
+    ],
+    "requiredCommands": [
+      "nix shell nixpkgs#nodejs_22 -c npm test",
+      "nix shell nixpkgs#nodejs_22 -c npm run test:workspaces",
+      "nix shell nixpkgs#nodejs_22 -c npm run example:strict-field",
+      "nix shell nixpkgs#nodejs_22 -c npm run proof:dual-mmd-pool",
+      "nix shell nixpkgs#nodejs_22 -c npm run proof:harness-evolution",
+      "nix shell nixpkgs#nodejs_22 -c npm run test:monster",
+      "nix shell nixpkgs#nodejs_22 -c node --test test/mmd-regeneration-all-protocols.test.mjs",
+      "nix shell nixpkgs#nodejs_22 -c node --test test/projection-guidance-golden.test.mjs",
+      "nix shell nixpkgs#nodejs_22 -c node --test test/mission-control-projection.test.mjs",
+      "nix shell nixpkgs#nodejs_22 -c node --test test/public-behavior-contract.test.mjs",
+      "nix shell nixpkgs#nodejs_22 -c node --test test/reject-guidance-matrix.test.mjs",
+      "nix shell nixpkgs#nodejs_22 -c node --test test/instrumented-core-cost.test.mjs",
+      "nix shell nixpkgs#nodejs_22 -c npm run test:openfga:serverless",
+      "nix shell nixpkgs#nodejs_22 -c npm run proof:openfga:serverless",
+      "nix shell nixpkgs#nodejs_22 -c npm run proof:openfga:real-cli-board",
+      "nix shell nixpkgs#nodejs_22 -c npm run policy:validate",
+      "nix shell nixpkgs#nodejs_22 -c npm run pack:all",
+      "nix shell nixpkgs#nodejs_22 -c npm run test:packed-consumer",
+      "git diff --check master..HEAD"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.jsonl-board-policy-workspace"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "fga"
+      ],
+      "requiredForFinal": [
+        "git",
+        "nodejs_22",
+        "npm"
+      ],
+      "requiredForPreflight": [
+        "git",
+        "nodejs_22",
+        "npm"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "jsonl-board-policy-workspace"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "jsonl-board-policy-workspace",
+  "projectionDigest": "4504347092eff47ec46e191e5a0927efe620fcd686f87a08ba96c6378622c0a7",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      ".gitignore",
+      "package.json",
+      "package-lock.json",
+      "README.md",
+      "MERGE_SOURCE.md",
+      "LOCALIZATION_REPORT.md",
+      "TEST_RESULTS.txt",
+      "docs/",
+      "example/",
+      "examples/",
+      "packages/",
+      "protocols/",
+      "src/",
+      "test/"
+    ],
+    "forbiddenPaths": [
+      ".agents/",
+      "node_modules/",
+      "npm pack tarballs",
+      "ChatGPT Project generated bundles",
+      "handoff zip artifacts",
+      "policy-tantivy-cython/",
+      "ownerless root helper script directory",
+      "ownerless root tool directory",
+      "vendored binary outside a package-owned location",
+      "unregistered repo-wide generated data"
+    ],
+    "repoSourceUri": "path:../policy-master",
+    "targetRepoId": "policy"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.jsonl-board-policy-workspace",
+  "status": "ready"
+}

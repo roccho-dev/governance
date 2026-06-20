@@ -1,0 +1,84 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "devtools-language-python",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "devtools-language-python",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-language-tooling-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-language-tooling-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.devtools-language-python",
+    "package": "devtools-language-python",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "devtools",
+    "requiredChecks": [
+      "devtools-language-python.package-contract",
+      "devtools-language-python.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "devtools-language-python --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.devtools-language-python",
+      "checks.python-smoke"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "devtools-language-python"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "devtools-language-python",
+  "projectionDigest": "e3fe0d048b64cfa9fcc635a0b655c330db056475a13796b04eac17a03d638ece",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/devtools-language-python/",
+      "repo:devtools:packages:devtools-language-python/",
+      "parts/languages/python.nix"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/devtools",
+    "targetRepoId": "devtools"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.devtools-language-python",
+  "status": "ready"
+}

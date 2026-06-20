@@ -1,0 +1,91 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "agent-status-core-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "agent-status-core-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "protocol-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "protocol-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.agent-status-core-contract",
+    "package": "agent-status-core-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "agent-status-core-contract",
+    "requiredChecks": [
+      "checks.<system>.agent-status-core-contract.schema",
+      "checks.<system>.agent-status-core-contract.compat",
+      "checks.<system>.agent-status-core-contract.negative-fixtures"
+    ],
+    "requiredCommands": [
+      "agent-status-core validate --input fixtures/agent-status-core.status.v1.completed.json",
+      "agent-status-core normalize --input fixtures/ops-agent-events.status.v1.completed.json --out <core-status.json>",
+      "agent-status-core validate-negative --fixtures fixtures/negative/"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.agent-status-core-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "agent-status-core-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "agent-status-core-contract",
+  "projectionDigest": "b5eeccf251e6e2833e550a30daff7b989293d1727ebe6e92bdbc7efff20e1b87",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/agent-status-core-contract/",
+      "src/agent-status-core-contract/",
+      "fixtures/agent-status-core-contract/",
+      "tests/agent-status-core-contract/"
+    ],
+    "forbiddenPaths": [
+      "ops-agent-events reducer implementation",
+      "agent-status-view projection implementation",
+      "board-view composition implementation",
+      "webmcp query implementation",
+      "source adapter parser implementation",
+      "protocol-contract vocabulary definitions"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/agent-status-core-contract",
+    "targetRepoId": "agent-status-core-contract"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.agent-status-core-contract",
+  "status": "ready"
+}

@@ -1,0 +1,82 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "readme",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "readme",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specctl",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specctl"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.readme",
+    "package": "readme",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [],
+    "requiredCommands": [
+      "python3 packages/readme/generate-package-summary.py --input packages/readme/samples/package.json --output <generated-output-dir>/package-summary.md",
+      "python3 packages/readme/generate-package-summary.py --input packages/readme/samples/package.json --check <generated-output-dir>/package-summary.md"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.readme"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "readme"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "readme",
+  "projectionDigest": "9387fc124178461e0979784859345fa6b063bb1853a5bf9dfd39175717cb9da2",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/readme/default.nix",
+      "packages/readme/generate-package-summary.py",
+      "packages/readme/samples/"
+    ],
+    "forbiddenPaths": [
+      "hand-written package README as source of truth",
+      "generated Markdown used as package contract authority",
+      "checked-in generated Markdown under packages/"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.readme",
+  "status": "ready"
+}

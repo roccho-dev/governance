@@ -1,0 +1,101 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "miritery-drt-harness",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-evidence-pack",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-evidence-pack"
+      ]
+    },
+    {
+      "fromPackageId": "miritery-drt-harness",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-oracle-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-oracle-contract"
+      ]
+    },
+    {
+      "fromPackageId": "miritery-drt-harness",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-safety-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-safety-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "miritery-drt-harness",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-scenario-fixtures",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-scenario-fixtures"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.miritery-drt-harness",
+    "package": "miritery-drt-harness",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "mission-vgd-kit",
+    "requiredChecks": [
+      "miritery-drt-harness.package-build",
+      "miritery-drt-harness.module-eval"
+    ],
+    "requiredCommands": [
+      "miritery-drt-harness run-public-golden",
+      "miritery-drt-harness run-with-local-oracle"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.miritery-drt-harness",
+      "nixosModules.miritery-drt-harness"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "miritery-drt-harness"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "miritery-drt-harness",
+  "projectionDigest": "aecc39b88e1309c2798514fc1575fd8d9e92b280241ab2ccb9a3ad8fe68dfd5e",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/miritery/drt-harness/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/miritery/lean-oracle/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/mission-vgd-kit",
+    "targetRepoId": "mission-vgd-kit"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.miritery-drt-harness",
+  "status": "ready"
+}

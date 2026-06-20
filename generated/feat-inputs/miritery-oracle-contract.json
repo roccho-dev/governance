@@ -1,0 +1,71 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "miritery-oracle-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-mission-ir",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-mission-ir"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.miritery-oracle-contract",
+    "package": "miritery-oracle-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "mission-vgd-kit",
+    "requiredChecks": [
+      "miritery-oracle-contract.package-build",
+      "miritery-oracle-contract.module-eval"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.miritery-oracle-contract",
+      "nixosModules.miritery-oracle-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "miritery-oracle-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "miritery-oracle-contract",
+  "projectionDigest": "8025400c8dbb99a12aa78d088318b5f1a029cd3bec195e0c4ad7c860bfe901d0",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/miritery/oracle-contract/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/miritery/lean-oracle/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/mission-vgd-kit",
+    "targetRepoId": "mission-vgd-kit"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.miritery-oracle-contract",
+  "status": "ready"
+}

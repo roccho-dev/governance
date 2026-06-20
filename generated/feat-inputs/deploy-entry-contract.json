@@ -1,0 +1,87 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "deploy-entry-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "backup-receipt-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "backup-receipt-contract"
+      ]
+    },
+    {
+      "fromPackageId": "deploy-entry-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "deploy-entry-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "release-state-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "release-state-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.deploy-entry-contract",
+    "package": "deploy-entry-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "deploy-entry-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.deploy-entry-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "deploy-entry-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "deploy-entry-contract",
+  "projectionDigest": "8a78d67ec0c622202c008c575ba73f242b6131ff5fac196c6e4d26fb53023054",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/deploy-entry-contract/"
+    ],
+    "forbiddenPaths": [
+      "repo-specific deploy implementation",
+      "live host state"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.deploy-entry-contract",
+  "status": "ready"
+}

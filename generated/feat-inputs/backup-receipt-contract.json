@@ -1,0 +1,69 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "backup-receipt-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.backup-receipt-contract",
+    "package": "backup-receipt-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "backup-receipt-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.backup-receipt-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "backup-receipt-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "backup-receipt-contract",
+  "projectionDigest": "e110f6acdd2369eff8a523daa753c3923b758ef2c5950062473d456bd4d08e56",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/backup-receipt-contract/"
+    ],
+    "forbiddenPaths": [
+      "remote backup implementation",
+      "credential material"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.backup-receipt-contract",
+  "status": "ready"
+}

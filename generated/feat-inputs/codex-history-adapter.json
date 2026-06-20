@@ -1,0 +1,94 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "codex-history-adapter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "interaction-history-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "interaction-history-core"
+      ]
+    },
+    {
+      "fromPackageId": "codex-history-adapter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.codex-history-adapter",
+    "package": "codex-history-adapter",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "interaction-history-core",
+    "requiredChecks": [
+      "checks.<system>.codex-history-adapter"
+    ],
+    "requiredCommands": [
+      "codex-history-adapter discover --input <codex-history-source> --out <discovery.json>",
+      "codex-history-adapter adapt --input <codex-history-source> --out <records.jsonl>",
+      "codex-history-adapter test",
+      "interaction-history-core inventory --records <records.jsonl> --out-dir <inventory>",
+      "interaction-history-core classify --records <records.jsonl> --out <STATUS.json>",
+      "interaction-history-core context-pack --records <records.jsonl> --out <context-pack.zip>",
+      "interaction-history-core sdui-input --records <records.jsonl> --out <sdui-input.json>"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.codex-history-adapter"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "codex-history-adapter"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "codex-history-adapter",
+  "projectionDigest": "0cdf40c55e1a3bcbe92a5c47592a9e6be75b4882fc227b8f1bc343c0eca38026",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/codex-history-adapter/",
+      "repos/interaction-history-core/packages/codex-history-adapter/",
+      "repos/interaction-history-core/src/codex_history_adapter/",
+      "repos/interaction-history-core/tests/codex_history_adapter/"
+    ],
+    "forbiddenPaths": [
+      "packages/interaction-history-core/core reducer rewrites",
+      "packages/chatgpt-history-foundation/",
+      "packages/ops-cdp-core/",
+      "packages/ops-thread-fsm/",
+      "packages/agent-status-view/",
+      "viewer UI files",
+      "CDP transport implementation"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/interaction-history-core",
+    "targetRepoId": "interaction-history-core"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.codex-history-adapter",
+  "status": "ready"
+}

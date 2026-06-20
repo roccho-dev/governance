@@ -1,0 +1,91 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "presentation-surface-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "core-boundary-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "core-boundary-lint"
+      ]
+    },
+    {
+      "fromPackageId": "presentation-surface-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "presentation-surface-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "port-adapter-library-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "port-adapter-library-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.presentation-surface-governance",
+    "package": "presentation-surface-governance",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "presentation-surface-governance.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.presentation-surface-governance"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "presentation-surface-governance"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "presentation-surface-governance",
+  "projectionDigest": "276053d4dc6ca8d04d0bb73a2b08dcf3782a4c53c88203c394a6e414d7856b0d",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/presentation-surface-governance/"
+    ],
+    "forbiddenPaths": [
+      "runtime renderer implementation",
+      "browser host implementation",
+      "HTML/Mermaid/SVG generator code",
+      "WebMCP host code",
+      "domain reducer logic",
+      "generated artifact as authority"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.presentation-surface-governance",
+  "status": "ready"
+}

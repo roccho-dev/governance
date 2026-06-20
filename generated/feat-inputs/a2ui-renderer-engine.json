@@ -1,0 +1,79 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "a2ui-renderer-engine",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "agent-status-view",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "agent-status-view"
+      ]
+    },
+    {
+      "fromPackageId": "a2ui-renderer-engine",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.a2ui-renderer-engine",
+    "package": "a2ui-renderer-engine",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "board-view",
+    "requiredChecks": [
+      "a2ui-renderer-engine.activation-criteria"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.a2ui-renderer-engine"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "a2ui-renderer-engine"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "a2ui-renderer-engine",
+  "projectionDigest": "6f2707e6752b669084f16fae438cbde93e57fe9f1c6020f0d14a083ed15cd8c3",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/a2ui-renderer-engine/"
+    ],
+    "forbiddenPaths": [
+      "status semantics",
+      "canonical state",
+      "current DOM as core contract"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/board-view",
+    "targetRepoId": "board-view"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.a2ui-renderer-engine",
+  "status": "planned-blocked"
+}

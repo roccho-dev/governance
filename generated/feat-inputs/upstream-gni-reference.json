@@ -1,0 +1,62 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.upstream-gni-reference",
+    "package": "upstream-gni-reference",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "checkPackageContract",
+      "check-no-implementation-material-in-specs"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "reference contract attrset",
+      "boundary statement",
+      "composition evidence hook"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "upstream-gni-reference"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "upstream-gni-reference",
+  "projectionDigest": "9a52c7b5cc6357a9bcafdba9f5ba607f131dd7686b568d9db8e7ed93e45a6cf2",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/upstream-gni-reference/"
+    ],
+    "forbiddenPaths": [
+      "implementation code inside specs",
+      "vendored upstream source"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.upstream-gni-reference",
+  "status": "ready"
+}

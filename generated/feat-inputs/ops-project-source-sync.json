@@ -1,0 +1,86 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-project-source-sync",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "ops-project-source-sync",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-worker-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-worker-runtime-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-project-source-sync",
+    "package": "ops-project-source-sync",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "ops-project-source-sync.package-contract",
+      "ops-project-source-sync.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "ops-project-source-sync --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-project-source-sync",
+      "packages.<system>.chromium-cdp-upload-project-source-*",
+      "packages.<system>.chromium-cdp-project-sources-*",
+      "packages.<system>.chromium-cdp-source-snapshot-text"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-project-source-sync"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-project-source-sync",
+  "projectionDigest": "6096b0908823c596b81f37039d71e17b4a6b17ad80ecd062913dc2fd8d9067af",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-project-source-sync/",
+      "repos/ops/packages/ops-project-source-sync/",
+      "parts/cdp/project-sources*.mjs + parts/cdp/chromium-cdp-project-source-reread.mjs"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-project-source-sync",
+  "status": "ready"
+}

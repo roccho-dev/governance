@@ -1,0 +1,89 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "contract-lint",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ast-contract-lint",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ast-contract-lint"
+      ]
+    },
+    {
+      "fromPackageId": "contract-lint",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "contract-lint",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.contract-lint",
+    "package": "contract-lint",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "contract-lint",
+    "requiredChecks": [
+      "checks.<system>.contract-lint"
+    ],
+    "requiredCommands": [
+      "specctl check-packages-contract <spec-root>",
+      "specctl static-contract-lint <spec-root>"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.contract-lint"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "contract-lint"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "contract-lint",
+  "projectionDigest": "45675615caa7510689a6ee032a2e55d771794ff222d67f32404699082c179e8e",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/contract-lint/"
+    ],
+    "forbiddenPaths": [
+      "feature implementation code inside repos/specs"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/contract-lint",
+    "targetRepoId": "contract-lint"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.contract-lint",
+  "status": "ready"
+}

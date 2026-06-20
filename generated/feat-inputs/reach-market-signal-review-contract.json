@@ -1,0 +1,116 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "reach-market-signal-review-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-signal-review-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-signal-review-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-log-adapter-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-log-adapter-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-signal-review-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-runtime-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-signal-review-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-surface-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-surface-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-signal-review-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-repo-admission-policy",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-repo-admission-policy"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.reach-market-signal-review-contract",
+    "package": "reach-market-signal-review-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "reach-market-signal-review-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.reach-market-signal-review-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "reach-market-signal-review-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "reach-market-signal-review-contract",
+  "projectionDigest": "85e1dd7ca117539ff41241e55afe1e0b2c9ef8a700a7f4e7c58eaef2c2dacfc9",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/reach-market-signal-review-contract/"
+    ],
+    "forbiddenPaths": [
+      "analytics implementation",
+      "query implementation",
+      "Parquet or DuckDB implementation",
+      "business roadmap"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.reach-market-signal-review-contract",
+  "status": "ready"
+}

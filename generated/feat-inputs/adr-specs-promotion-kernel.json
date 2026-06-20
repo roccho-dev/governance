@@ -1,0 +1,110 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "adr-specs-promotion-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "adr-jsonl-intent-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "adr-jsonl-intent-input"
+      ]
+    },
+    {
+      "fromPackageId": "adr-specs-promotion-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-unified-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-unified-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "adr-specs-promotion-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "adr-specs-promotion-kernel",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "prove-feat",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "prove-feat"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.adr-specs-promotion-kernel",
+    "package": "adr-specs-promotion-kernel",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.ops-adr-specs-promotion"
+    ],
+    "requiredCommands": [
+      "ops-adr-specs-promotion audit --workspace <full-worktree> --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-adr-specs-promotion"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "adr-specs-promotion-kernel"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "adr-specs-promotion-kernel",
+  "projectionDigest": "7dd405644384a401ee1e3e671195b131564b1bc47fe791435b8634d1add90ceb",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/adr-specs-promotion-kernel/",
+      "records/specs/spec.v1.jsonl",
+      "records/specs/spec-issue-scope.v1.jsonl",
+      "records/specs/spec-promotion.v1.jsonl",
+      "issues/260604-adr-specs-promotion-kernel.jsonl",
+      "../ops-main/packages/ops-adr-specs-promotion/",
+      "../ops-main/flake.nix",
+      "../adrs-main/records/raw/adr.v1.jsonl",
+      "../adrs-main/records/promoted/purpose-lineage.v1.jsonl",
+      "../adrs-main/records/promoted/destructive-case.v1.jsonl",
+      "../adrs-main/records/relations/adr-promotion.v1.jsonl"
+    ],
+    "forbiddenPaths": [
+      "specs executable bridge implementation",
+      "policy second validator semantics",
+      "raw ADR as issue authority",
+      "issue closed as spec accepted",
+      "generated view as spec authority",
+      "Nix deletion before projection parity"
+    ],
+    "repoSourceUri": "devenv-pkg://repo/ops/target.bundle",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.adr-specs-promotion-kernel",
+  "status": "ready"
+}

@@ -1,0 +1,84 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-hq-cli",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "ops-hq-cli",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-worker-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-worker-runtime-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-hq-cli",
+    "package": "ops-hq-cli",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "ops-hq-cli.package-contract",
+      "ops-hq-cli.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [
+      "ops-hq-cli --help"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-hq-cli",
+      "checks.hq-zig-part-layout"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-hq-cli"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-hq-cli",
+  "projectionDigest": "4c726474ee1d02f9b6c5b51a38e116e91fe651a80215a10b11819d1144a2c038",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-hq-cli/",
+      "repos/ops/packages/ops-hq-cli/",
+      "parts/hq.zig"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-hq-cli",
+  "status": "ready"
+}

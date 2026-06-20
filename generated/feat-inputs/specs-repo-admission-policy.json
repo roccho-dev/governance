@@ -1,0 +1,97 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "specs-repo-admission-policy",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "specs-repo-admission-policy",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "prove-feat",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "prove-feat"
+      ]
+    },
+    {
+      "fromPackageId": "specs-repo-admission-policy",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-manifest",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-manifest"
+      ]
+    },
+    {
+      "fromPackageId": "specs-repo-admission-policy",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-private-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-private-input"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.specs-repo-admission-policy",
+    "package": "specs-repo-admission-policy",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "specs-repo-admission-policy.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.specs-repo-admission-policy"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "specs-repo-admission-policy"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "specs-repo-admission-policy",
+  "projectionDigest": "f25fa9eb29f69c87c0e5c5a821a66b38b21ca28df71e17afbced5a1dca42b4ca",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/specs-repo-admission-policy/"
+    ],
+    "forbiddenPaths": [
+      "feature implementation code inside repos/specs",
+      "issue status ledger inside this package",
+      "permanent adoption or intake map"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.specs-repo-admission-policy",
+  "status": "ready"
+}

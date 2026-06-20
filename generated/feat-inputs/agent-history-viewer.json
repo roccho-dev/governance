@@ -1,0 +1,72 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "agent-history-viewer",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.agent-history-viewer",
+    "package": "agent-history-viewer",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "agent-history",
+    "requiredChecks": [
+      "agent-history-viewer.package-contract",
+      "agent-history-viewer.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.agent-history-viewer"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "agent-history-viewer"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "agent-history-viewer",
+  "projectionDigest": "f45b898588b0433b0be33ad03a4c9c36f872fb04b29be4f6411f8dab24a66900",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/agent-history-viewer/",
+      "repos/agent-history/packages/agent-history-viewer/",
+      "parts/history/view"
+    ],
+    "forbiddenPaths": [
+      "parts/* as primary implementation target",
+      "repos/specs implementation code for non-spec packages"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/agent-history",
+    "targetRepoId": "agent-history"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.agent-history-viewer",
+  "status": "planned-blocked"
+}

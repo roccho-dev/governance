@@ -1,0 +1,119 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "merge-intent-linter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "merge-intent-linter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "merge-verification-matrix",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "merge-verification-matrix"
+      ]
+    },
+    {
+      "fromPackageId": "merge-intent-linter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-handoff-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-handoff-core"
+      ]
+    },
+    {
+      "fromPackageId": "merge-intent-linter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-project-source-sync",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-project-source-sync"
+      ]
+    },
+    {
+      "fromPackageId": "merge-intent-linter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "merge-intent-linter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "purpose-hierarchy",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "purpose-hierarchy"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.merge-intent-linter",
+    "package": "merge-intent-linter",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "merge-intent-linter.package-contract",
+      "issue-ledger",
+      "specctl surface"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.merge-intent-linter"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "merge-intent-linter"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "merge-intent-linter",
+  "projectionDigest": "8f8261edab6e2519c6c79f8b465dceee688fbc14cdb1b20b1fe6202107a4b5b2",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/merge-intent-linter/"
+    ],
+    "forbiddenPaths": [
+      "Project Source upload implementation",
+      "approval implementation",
+      "canonical merge implementation",
+      "global dashboard as source of truth",
+      "LLM-only purpose scoring"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.merge-intent-linter",
+  "status": "ready"
+}

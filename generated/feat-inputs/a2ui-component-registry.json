@@ -1,0 +1,79 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "a2ui-component-registry",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "agent-status-view",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "agent-status-view"
+      ]
+    },
+    {
+      "fromPackageId": "a2ui-component-registry",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.a2ui-component-registry",
+    "package": "a2ui-component-registry",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "board-view",
+    "requiredChecks": [
+      "a2ui-component-registry.activation-criteria"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.a2ui-component-registry"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "a2ui-component-registry"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "a2ui-component-registry",
+  "projectionDigest": "d058db2bfdb18840541f99665d306dccbe7210d99723bf13581a57a49529acf9",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/a2ui-component-registry/"
+    ],
+    "forbiddenPaths": [
+      "status semantics",
+      "canonical state",
+      "webmcp host code"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/board-view",
+    "targetRepoId": "board-view"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.a2ui-component-registry",
+  "status": "planned-blocked"
+}

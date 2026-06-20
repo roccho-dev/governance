@@ -1,0 +1,107 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "chatgpt-capability-profile",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-cdp-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-cdp-core"
+      ]
+    },
+    {
+      "fromPackageId": "chatgpt-capability-profile",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-handoff-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-handoff-core"
+      ]
+    },
+    {
+      "fromPackageId": "chatgpt-capability-profile",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-project-source-sync",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-project-source-sync"
+      ]
+    },
+    {
+      "fromPackageId": "chatgpt-capability-profile",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-src-runtime-pack",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-src-runtime-pack"
+      ]
+    },
+    {
+      "fromPackageId": "chatgpt-capability-profile",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.chatgpt-capability-profile",
+    "package": "chatgpt-capability-profile",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "chatgpt-capability-profile.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.chatgpt-capability-profile"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "chatgpt-capability-profile"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "chatgpt-capability-profile",
+  "projectionDigest": "5c7212221eb980595dff68fbd904c4f7a94db8ae288f20e3b968c46f53c1ce52",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/chatgpt-capability-profile/"
+    ],
+    "forbiddenPaths": [
+      "policy HOWTO for dependency fetching",
+      "Project Source upload implementation inside this package",
+      "runtime bundle generation inside this package",
+      "approval, merge, push, or localizer implementation inside this package"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.chatgpt-capability-profile",
+  "status": "ready"
+}

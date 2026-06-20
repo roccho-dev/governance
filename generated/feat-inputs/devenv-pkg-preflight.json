@@ -1,0 +1,72 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "devenv-pkg-preflight",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specctl",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specctl"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.devenv-pkg-preflight",
+    "package": "devenv-pkg-preflight",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "devenv-pkg-preflight.package-build"
+    ],
+    "requiredCommands": [
+      "preflight <devenv-pkg-dir>"
+    ],
+    "requiredOutputs": [
+      "packages.devenv-pkg-preflight"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq",
+        "ast-grep",
+        "zip",
+        "unzip",
+        "git"
+      ],
+      "requiredForFinal": [
+        "bash",
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "devenv-pkg-preflight"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "devenv-pkg-preflight",
+  "projectionDigest": "439b1ef61f05d5f47e0ff8a3c4fe8d3da09af3408d1d7f8ee94c843826a35d51",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/devenv-pkg-preflight/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.devenv-pkg-preflight",
+  "status": "ready"
+}

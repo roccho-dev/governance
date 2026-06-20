@@ -1,0 +1,116 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "policy-governed-compaction-promotion-engine",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "adr-jsonl-intent-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "adr-jsonl-intent-input"
+      ]
+    },
+    {
+      "fromPackageId": "policy-governed-compaction-promotion-engine",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "case-contracts",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    },
+    {
+      "fromPackageId": "policy-governed-compaction-promotion-engine",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "issue-ledger-unified-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "issue-ledger-unified-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "policy-governed-compaction-promotion-engine",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "static-contract-lint",
+      "resolution": "externalOrNotYetModeled",
+      "toPackageIds": []
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.policy-governed-compaction-promotion-engine",
+    "package": "policy-governed-compaction-promotion-engine",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "policy-governed-compaction-promotion-engine.adr-relation-completeness",
+      "policy-governed-compaction-promotion-engine.policy-schema-valid",
+      "policy-governed-compaction-promotion-engine.residual-resolution-coverage",
+      "policy-governed-compaction-promotion-engine.issue-record-v1-only",
+      "policy-governed-compaction-promotion-engine.poc-deny-veto-unmatched-proof",
+      "policy-governed-compaction-promotion-engine.compaction-non-expansion-proof"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.policy-governed-compaction-promotion-engine"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "policy-governed-compaction-promotion-engine"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "policy-governed-compaction-promotion-engine",
+  "projectionDigest": "aa9353adb23ca485372efa7b8cf5a034cb2e7420399d3dfd1f2b35451419261b",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/policy-governed-compaction-promotion-engine/",
+      "packages/policy-governed-compaction-promotion-engine/contracts/",
+      "packages/policy-governed-compaction-promotion-engine/examples/",
+      "packages/policy-governed-compaction-promotion-engine/evidence/",
+      "issues/260603-policy-governed-compaction-promotion-engine.jsonl",
+      "../adrs-main/records/raw/adr.v1.jsonl",
+      "../adrs-main/records/promoted/purpose-lineage.v1.jsonl",
+      "../adrs-main/records/promoted/destructive-case.v1.jsonl",
+      "../adrs-main/records/promoted/destructive-case-resolution.v1.jsonl",
+      "../adrs-main/records/promoted/spec-definition.v1.jsonl",
+      "../adrs-main/records/promoted/artifact-manifest.v1.jsonl",
+      "../adrs-main/records/promoted/proof-evidence.v1.jsonl",
+      "../adrs-main/records/relations/adr-promotion.v1.jsonl",
+      "../adrs-main/example/poc/usecase/policy-governed-compaction-promotion-proof/",
+      "../policy-master/examples/policy-governed-compaction-promotion-review/"
+    ],
+    "forbiddenPaths": [
+      "production runtime mutation in this proposal",
+      "retired specs-owned executable implementation",
+      "source-of-truth raw ADR duplication in specs",
+      "auto-generated ADR/spec/issue from a current fact",
+      "policy permit interpreted as approval or shipment",
+      "ledger as primary UI/read path",
+      "non-issue.record.v1 rows under issues/*.jsonl"
+    ],
+    "repoSourceUri": "path:.",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.policy-governed-compaction-promotion-engine",
+  "status": "planned-blocked"
+}

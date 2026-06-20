@@ -1,0 +1,59 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.account-analysis-reuse",
+    "package": "account-analysis-reuse",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "account-analysis",
+    "requiredChecks": [
+      "checks.<system>.account-analysis-reuse"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.account-analysis-reuse"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "account-analysis-reuse"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "account-analysis-reuse",
+  "projectionDigest": "0f83af4634252834add1bab4bf59bbbeac31824650ef3f3731be886ecfcf1d90",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/account-analysis-reuse/"
+    ],
+    "forbiddenPaths": [
+      "secret scraping credentials",
+      "unbounded browser automation"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/account-analysis",
+    "targetRepoId": "account-analysis"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.account-analysis-reuse",
+  "status": "ready"
+}

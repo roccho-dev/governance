@@ -1,0 +1,116 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "package-lib-level-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "package-lib-level-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "functional-core-governance-gate",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "functional-core-governance-gate"
+      ]
+    },
+    {
+      "fromPackageId": "package-lib-level-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "package-lib-level-governance",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "port-adapter-library-governance",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "port-adapter-library-governance"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.package-lib-level-governance",
+    "package": "package-lib-level-governance",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.package-lib-level-governance",
+      "package-lib-level-governance.admission"
+    ],
+    "requiredCommands": [
+      "package-lib-level-governance audit --root <repo-root> --baseline governance-records-main/records/specs/package-lib-level-baseline.v1.jsonl --mode admission --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.package-lib-level-governance"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "package-lib-level-governance"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "package-lib-level-governance",
+  "projectionDigest": "66f0df81d92f7d60da2007b247c6cc949c32440124786cfb071d8d9f64827b6f",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "../ops-main/packages/package-lib-level-governance/",
+      "../ops-main/flake.nix",
+      "../governance-records-main/records/specs/package-contract.v1.jsonl",
+      "../governance-records-main/records/specs/dependency-edge.v1.jsonl",
+      "../governance-records-main/records/specs/repo-placement.v1.jsonl",
+      "../governance-records-main/records/specs/projection-digest.v1.jsonl",
+      "../governance-records-main/generated/feat-inputs.v1.jsonl",
+      "../governance-records-main/generated/feat-inputs/package-lib-level-governance.json",
+      "../governance-records-main/records/specs/package-lib-level-baseline.v1.jsonl",
+      "../governance-records-main/records/specs/package-lib-level-policy.v1.json",
+      "../governance-records-main/records/provenance/source-canonical.v1.json",
+      "../ops-main/specsless-inputs/package-catalog.json",
+      "../ops-main/specsless-inputs/placement-table.json",
+      "../ci/run-package-lib-level-governance.sh",
+      "../artifacts/package-lib-level-governance/",
+      "../artifacts/proposals/proposal-package-lib-level-governance-260609-rebased-ssot/"
+    ],
+    "forbiddenPaths": [
+      "runtime adapter promoted as lib authority",
+      "adapter examples promoted as canonical behavior",
+      "new package without package-lib-level baseline/admission row",
+      "silent package-level exception"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.package-lib-level-governance",
+  "status": "ready"
+}

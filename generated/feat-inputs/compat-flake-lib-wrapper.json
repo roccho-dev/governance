@@ -1,0 +1,80 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "compat-flake-lib-wrapper",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "compat-flake-lib-wrapper",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-repo-contract-checks",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-repo-contract-checks"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.compat-flake-lib-wrapper",
+    "package": "compat-flake-lib-wrapper",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "compat-flake-lib-wrapper.package-contract",
+      "compat-flake-lib-wrapper.part-wrapper-not-primary"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.compat-flake-lib-wrapper"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "compat-flake-lib-wrapper"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "compat-flake-lib-wrapper",
+  "projectionDigest": "ab6b332ca85343b7f0e0abb428d17f9c5f8d4c1ef058cb3d7e8dea5206bad0b7",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/compat-flake-lib-wrapper/",
+      "repos/specs/packages/compat-flake-lib-wrapper/",
+      "parts/flake-lib/default.nix"
+    ],
+    "forbiddenPaths": [
+      "feature implementation code inside repos/specs"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.compat-flake-lib-wrapper",
+  "status": "ready"
+}

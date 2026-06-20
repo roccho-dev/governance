@@ -1,0 +1,87 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "patch-applier",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "apply-policy-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "apply-policy-contract"
+      ]
+    },
+    {
+      "fromPackageId": "patch-applier",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "patch-applier",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "patch-proposal-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "patch-proposal-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.patch-applier",
+    "package": "patch-applier",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "patch-applier.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.patch-applier"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "patch-applier"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "patch-applier",
+  "projectionDigest": "6ac0274e781f50defa70c9794ee57fe4a4a4f656917e24e6a9a95b1a1999dd8a",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/patch-applier/"
+    ],
+    "forbiddenPaths": [
+      "canonical checkout state",
+      "push implementation"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.patch-applier",
+  "status": "ready"
+}

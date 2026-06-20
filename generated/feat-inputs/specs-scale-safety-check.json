@@ -1,0 +1,96 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "specs-scale-safety-check",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "check-packages-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "check-packages-contract"
+      ]
+    },
+    {
+      "fromPackageId": "specs-scale-safety-check",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "specs-scale-safety-check",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-repo-admission-policy",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-repo-admission-policy"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.specs-scale-safety-check",
+    "package": "specs-scale-safety-check",
+    "preflightRequiredTools": [
+      "bash",
+      "python3"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "checks.<system>.specs-scale-safety-check"
+    ],
+    "requiredCommands": [
+      "specs-scale-safety-check <spec-root>",
+      "specctl scale-safety-check <spec-root>"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.specs-scale-safety-check"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForEvidence": [
+        "nix",
+        "jq",
+        "git"
+      ],
+      "requiredForFinal": [
+        "bash",
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "specs-scale-safety-check"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "specs-scale-safety-check",
+  "projectionDigest": "8da42a7011136745a1c34b1baf608e66ad591174695383748261e296cc5ef36a",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/specs-scale-safety-check/",
+      "flake.nix",
+      "specs.nix",
+      "issues/260601.jsonl",
+      "issues/specs-scale-safety-check-20260601/"
+    ],
+    "forbiddenPaths": [
+      "dashboard as source of truth",
+      "global package registry rewrite",
+      "repo-wide refactor",
+      "full legacy backfill requirement",
+      "numeric threshold gate without a separately reviewed scope",
+      "generated report as canonical package truth"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.specs-scale-safety-check",
+  "status": "ready"
+}

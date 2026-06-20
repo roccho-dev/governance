@@ -1,0 +1,73 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.chatgpt-history-foundation",
+    "package": "chatgpt-history-foundation",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "chatgpt-history-foundation",
+    "requiredChecks": [
+      "checks.<system>.chatgpt-history-foundation"
+    ],
+    "requiredCommands": [
+      "chatgpt-history-foundation discover --input <export.zip> --out <discovery.json>",
+      "chatgpt-history-foundation adapt --input <export.zip> --out <records.jsonl>",
+      "chatgpt-history-foundation inventory --records <records.jsonl> --out-dir <inventory>",
+      "chatgpt-history-foundation classify --records <records.jsonl> --out <STATUS.json>",
+      "chatgpt-history-foundation context-pack --records <records.jsonl> --out <context-pack.zip>",
+      "chatgpt-history-foundation sdui-input --records <records.jsonl> --out <sdui-input.json>",
+      "chatgpt-history-foundation pipeline --input <export.zip> --out-dir <out>",
+      "chatgpt-history-foundation test"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.chatgpt-history-foundation"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "chatgpt-history-foundation"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "chatgpt-history-foundation",
+  "projectionDigest": "38531d237dfa8b7651ce5bc77339b027ace39a548ede07bb04b866187745cece",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/chatgpt-history-foundation/",
+      "packages/chatgpt-history-foundation/runtime/",
+      "packages/chatgpt-history-foundation/contracts/"
+    ],
+    "forbiddenPaths": [
+      "packages/sdui-renderer/",
+      "packages/axis-viewer/",
+      "packages/rlm/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/chatgpt-history-foundation",
+    "targetRepoId": "chatgpt-history-foundation"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.chatgpt-history-foundation",
+  "status": "ready"
+}

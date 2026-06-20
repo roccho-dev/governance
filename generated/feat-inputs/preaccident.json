@@ -1,0 +1,80 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "preaccident",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.preaccident",
+    "package": "preaccident",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "buildlaw",
+    "requiredChecks": [
+      "checks.<system>.preaccident",
+      "checks.<system>.preaccident-boundary"
+    ],
+    "requiredCommands": [
+      "preaccident --help",
+      "preaccident validate-world --world tests/preaccident/fixtures/world.model.json",
+      "preaccident generate --world tests/preaccident/fixtures/world.model.json --out result/preaccident",
+      "preaccident oracle --cases result/preaccident/cases.jsonl --out result/preaccident/oracle_results.jsonl"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.preaccident"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "preaccident"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "preaccident",
+  "projectionDigest": "09b6c6a3f21bc3f617df276e3d47f9752ba7ad8e8c1bb77678dffbfd4f86a2cd",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/preaccident/",
+      "docs/buildlaw/",
+      "schemas/preaccident/",
+      "tests/preaccident/",
+      "result/preaccident/"
+    ],
+    "forbiddenPaths": [
+      "repos/specs implementation code for preaccident",
+      "A2UI, board, or preboard implementation as preaccident-owned code",
+      "policy, active law, gate execution, incident, ledger, or generic simulator implementation as preaccident-owned code"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/buildlaw",
+    "targetRepoId": "buildlaw"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.preaccident",
+  "status": "ready"
+}

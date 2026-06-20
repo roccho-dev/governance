@@ -1,0 +1,89 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "qsem-cryo-io-budget",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "qsem-dot-device-twin",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "qsem-dot-device-twin"
+      ]
+    },
+    {
+      "fromPackageId": "qsem-cryo-io-budget",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "qsem-measurement-twin",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "qsem-measurement-twin"
+      ]
+    },
+    {
+      "fromPackageId": "qsem-cryo-io-budget",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "qsem-schema",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "qsem-schema"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.qsem-cryo-io-budget",
+    "package": "qsem-cryo-io-budget",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "qsem-control-twin",
+    "requiredChecks": [
+      "checks.<system>.qsem-module-import-check",
+      "checks.<system>.qsem-contract-check"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.qsem-cryo-io-budget"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "qsem-cryo-io-budget"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "qsem-cryo-io-budget",
+  "projectionDigest": "5107208693c071957e7e521f8ba1de98fc294abd8fa7c247109f71770fa84546",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "src/qsem-cryo-io-budget/"
+    ],
+    "forbiddenPaths": [
+      "node_modules/",
+      "package.json",
+      "package-lock.json"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/qsem-control-twin",
+    "targetRepoId": "qsem-control-twin"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.qsem-cryo-io-budget",
+  "status": "ready"
+}

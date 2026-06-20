@@ -1,0 +1,93 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "chatgpt-history-adapter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "interaction-history-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "interaction-history-core"
+      ]
+    },
+    {
+      "fromPackageId": "chatgpt-history-adapter",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.chatgpt-history-adapter",
+    "package": "chatgpt-history-adapter",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "interaction-history-core",
+    "requiredChecks": [
+      "checks.<system>.chatgpt-history-adapter"
+    ],
+    "requiredCommands": [
+      "chatgpt-history-adapter discover --input <chatgpt-history-source> --out <discovery.json>",
+      "chatgpt-history-adapter adapt --input <chatgpt-history-source> --out <records.jsonl>",
+      "interaction-history-core inventory --records <records.jsonl> --out-dir <inventory>",
+      "interaction-history-core classify --records <records.jsonl> --out <STATUS.json>",
+      "interaction-history-core context-pack --records <records.jsonl> --out <context-pack.zip>",
+      "interaction-history-core sdui-input --records <records.jsonl> --out <sdui-input.json>",
+      "chatgpt-history-adapter test"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.chatgpt-history-adapter"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "chatgpt-history-adapter"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "chatgpt-history-adapter",
+  "projectionDigest": "29b65cf14e5347615f02119aa5c6b757674f0f14fa4897b565de7c5b921a3bb2",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/chatgpt-history-adapter/",
+      "repos/interaction-history-core/packages/chatgpt-history-adapter/",
+      "repos/interaction-history-core/src/chatgpt_history_adapter/",
+      "repos/interaction-history-core/tests/chatgpt_history_adapter/"
+    ],
+    "forbiddenPaths": [
+      "packages/interaction-history-core/core reducer rewrites",
+      "packages/codex-history-adapter/",
+      "packages/ops-cdp-core/",
+      "packages/ops-thread-fsm/",
+      "viewer UI files",
+      "CDP transport implementation"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/interaction-history-core",
+    "targetRepoId": "interaction-history-core"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.chatgpt-history-adapter",
+  "status": "ready"
+}

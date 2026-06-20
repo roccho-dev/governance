@@ -1,0 +1,92 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "agent-status-view",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "agent-status-read-model",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "agent-status-read-model"
+      ]
+    },
+    {
+      "fromPackageId": "agent-status-view",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.agent-status-view",
+    "package": "agent-status-view",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "board-view",
+    "requiredChecks": [
+      "checks.<system>.agent-status-view.contract",
+      "checks.<system>.agent-status-view.adapter-boundary"
+    ],
+    "requiredCommands": [
+      "agent-status-view contract tests",
+      "agent-status-view adapter-boundary tests"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.agent-status-view"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "agent-status-view"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "agent-status-view",
+  "projectionDigest": "07a51282b671488b4ab241a11d1e5a9079d76a414bf6114f95e1628a4e8a32bd",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "src/agent-status-view/",
+      "docs/agent-status-view.md",
+      "fixtures/agent-status-view/",
+      "package-owned agent-status-view commands",
+      "tests/agent-status-view/"
+    ],
+    "forbiddenPaths": [
+      "ops-agent-events reducer implementation",
+      "protocol-contract vocabulary definitions",
+      "agent-status-core-contract schema definitions",
+      "agent-status-read-model projection internals",
+      "webmcp permanent component registry",
+      "render-worktrees-agents renderer implementation",
+      "server-side append backend",
+      "ChatGPT Project generated bundles"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/board-view",
+    "targetRepoId": "board-view"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.agent-status-view",
+  "status": "ready"
+}

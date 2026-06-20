@@ -1,0 +1,80 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "miritery-scenario-fixtures",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-mission-ir",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-mission-ir"
+      ]
+    },
+    {
+      "fromPackageId": "miritery-scenario-fixtures",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "miritery-oracle-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "miritery-oracle-contract"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.miritery-scenario-fixtures",
+    "package": "miritery-scenario-fixtures",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "mission-vgd-kit",
+    "requiredChecks": [
+      "miritery-scenario-fixtures.package-build",
+      "miritery-scenario-fixtures.module-eval"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.miritery-scenario-fixtures",
+      "nixosModules.miritery-scenario-fixtures"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "miritery-scenario-fixtures"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "miritery-scenario-fixtures",
+  "projectionDigest": "eb52968bc9e9791a8f896b5334d5078967a960a653cc6bd8bfc26ba626da7e1d",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/miritery/scenario-fixtures/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/miritery/lean-oracle/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/mission-vgd-kit",
+    "targetRepoId": "mission-vgd-kit"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.miritery-scenario-fixtures",
+  "status": "ready"
+}

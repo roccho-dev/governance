@@ -1,0 +1,157 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "adr-jsonl-intent-input",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "adr-jsonl-intent-input"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "chatgpt-capability-profile",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "chatgpt-capability-profile"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "facilitator-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "facilitator-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "interaction-history-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "interaction-history-core"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "jsonl-board-policy-workspace",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "jsonl-board-policy-workspace"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-agent-events",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-agent-events"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-handoff-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-handoff-core"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-project-source-sync",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-project-source-sync"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-thread-fsm",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-thread-fsm"
+      ]
+    },
+    {
+      "fromPackageId": "ops-mission-control",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-mission-control",
+    "package": "ops-mission-control",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "ops-mission-control.package-contract",
+      "ops-mission-control.worker-result-claim-boundary",
+      "ops-mission-control.thread-lane-authority",
+      "ops-mission-control.mainline-resume-rule"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.ops-mission-control"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-mission-control"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-mission-control",
+  "projectionDigest": "2a1b66f97bac00acbd6bfa220edb4779408c2c5a283836b53a40a601dc6928e6",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-mission-control/",
+      "repos/ops/packages/ops-mission-control/"
+    ],
+    "forbiddenPaths": [
+      "primary chat UI",
+      "private internal LLM loop",
+      "canonical merge/push implementation",
+      "policy rewrite engine",
+      "duplicate canonical Board or JSONL store"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-mission-control",
+  "status": "planned-blocked"
+}

@@ -1,0 +1,80 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "qsem-measurement-twin",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "qsem-dot-device-twin",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "qsem-dot-device-twin"
+      ]
+    },
+    {
+      "fromPackageId": "qsem-measurement-twin",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "qsem-schema",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "qsem-schema"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.qsem-measurement-twin",
+    "package": "qsem-measurement-twin",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "qsem-control-twin",
+    "requiredChecks": [
+      "checks.<system>.qsem-module-import-check",
+      "checks.<system>.qsem-contract-check"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.qsem-measurement-twin"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "qsem-measurement-twin"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "qsem-measurement-twin",
+  "projectionDigest": "58edaa8925d64b65d9bb4aa4ba21cf4bc88788d83d6006f5759bd1229f4fc3f4",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "src/qsem-measurement-twin/"
+    ],
+    "forbiddenPaths": [
+      "node_modules/",
+      "package.json",
+      "package-lock.json"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/qsem-control-twin",
+    "targetRepoId": "qsem-control-twin"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.qsem-measurement-twin",
+  "status": "ready"
+}

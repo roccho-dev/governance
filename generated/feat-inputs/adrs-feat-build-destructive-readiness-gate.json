@@ -1,0 +1,113 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "adrs-feat-build-destructive-readiness-gate",
+      "kind": "governance.dependencyEdge.v1",
+      "recordedAt": "2026-06-06T04:45:00+09:00",
+      "requires": "adr-resettable-jsonl-ledger-control-plane",
+      "resolution": "packageId",
+      "schemaVersion": "v1",
+      "toPackageIds": [
+        "adr-resettable-jsonl-ledger-control-plane"
+      ]
+    },
+    {
+      "fromPackageId": "adrs-feat-build-destructive-readiness-gate",
+      "kind": "governance.dependencyEdge.v1",
+      "recordedAt": "2026-06-06T04:45:00+09:00",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "schemaVersion": "v1",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "adrs-feat-build-destructive-readiness-gate",
+      "kind": "governance.dependencyEdge.v1",
+      "recordedAt": "2026-06-06T04:45:00+09:00",
+      "requires": "specsless-canonical-cutover",
+      "resolution": "packageId",
+      "schemaVersion": "v1",
+      "toPackageIds": [
+        "specsless-canonical-cutover"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.adrs-feat-build-destructive-readiness-gate",
+    "package": "adrs-feat-build-destructive-readiness-gate",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "adrs",
+    "requiredChecks": [
+      "adrs-feat-build-destructive-readiness-gate.path-rename",
+      "adrs-feat-build-destructive-readiness-gate.usecase-catalog",
+      "adrs-feat-build-destructive-readiness-gate.negative-fixtures",
+      "adrs-feat-build-destructive-readiness-gate.package-analysis-rules"
+    ],
+    "requiredCommands": [
+      "python3 adrs-main/tools/check-feat-readiness.py --root . --json",
+      "python3 adrs-main/tools/check-feat-readiness.py --self-test --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.adrs-feat-build-destructive-readiness-gate"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "jq",
+        "duckdb"
+      ],
+      "requiredForFinal": [
+        "python3",
+        "nix"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "adrs-feat-build-destructive-readiness-gate"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "adrs-feat-build-destructive-readiness-gate",
+  "projectionDigest": "0d8f326e25217147249955e376d80462b7fd85282e29b5fdea6135e1935fdb0e",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "adrs-main/docs/feat-build-destructive-readiness.md",
+      "adrs-main/records/control/feat-readiness-usecase.v1.jsonl",
+      "adrs-main/records/control/feat-readiness-policy.v1.jsonl",
+      "adrs-main/records/promoted/destructive-case.v1.jsonl",
+      "adrs-main/records/relations/adr-promotion.v1.jsonl",
+      "adrs-main/tools/check-feat-readiness.py",
+      "governance-records-main/records/feat/",
+      "governance-records-main/generated/feat-inputs/adrs-feat-build-destructive-readiness-gate.json",
+      "ci/run-adrs-feat-build-destructive-readiness.sh",
+      "artifacts/adrs-feat-build-destructive-readiness-20260606/"
+    ],
+    "forbiddenPaths": [
+      "adr-main as current repo path",
+      "raw adrs discussion as direct approval authority",
+      "build pass without adrs destructive-case pass coverage",
+      "destructive-case pass without build evidence",
+      "policy permit as promotion approval",
+      "preflight proof as final Nix build",
+      "hidden unmatched/fatal/skipped destructive case",
+      "build function output as definition authority"
+    ],
+    "repoSourceUri": "path:../adrs-main",
+    "targetRepoId": "adrs"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.adrs-feat-build-destructive-readiness-gate",
+  "status": "planned-blocked"
+}

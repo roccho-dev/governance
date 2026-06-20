@@ -1,0 +1,98 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "reach-market-deploy-guard-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-deploy-guard-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-env-binding-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-env-binding-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-deploy-guard-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "reach-market-runtime-contract",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "reach-market-runtime-contract"
+      ]
+    },
+    {
+      "fromPackageId": "reach-market-deploy-guard-contract",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "specs-repo-admission-policy",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "specs-repo-admission-policy"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.reach-market-deploy-guard-contract",
+    "package": "reach-market-deploy-guard-contract",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "repo-boundary-guard",
+    "requiredChecks": [
+      "reach-market-deploy-guard-contract.package-contract"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.reach-market-deploy-guard-contract"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "reach-market-deploy-guard-contract"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "reach-market-deploy-guard-contract",
+  "projectionDigest": "a6612d47cfd60cc091f48265dcaba8393b62936895d90a1e3ea99fac22f700e6",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/reach-market-deploy-guard-contract/"
+    ],
+    "forbiddenPaths": [
+      "Cloudflare deployment implementation",
+      "wrangler configuration",
+      "OpenTofu implementation",
+      "runtime endpoint implementation"
+    ],
+    "repoSourceUri": "path:../repo-boundary-guard-main",
+    "targetRepoId": "repo-boundary-guard"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.reach-market-deploy-guard-contract",
+  "status": "ready"
+}

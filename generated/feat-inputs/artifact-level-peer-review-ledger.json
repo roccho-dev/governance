@@ -1,0 +1,107 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "artifact-level-peer-review-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "cmo-usage-generated-distribution-system",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "cmo-usage-generated-distribution-system"
+      ]
+    },
+    {
+      "fromPackageId": "artifact-level-peer-review-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "governance-template-marketplace-ledger",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "governance-template-marketplace-ledger"
+      ]
+    },
+    {
+      "fromPackageId": "artifact-level-peer-review-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "shareable-governance-room",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "shareable-governance-room"
+      ]
+    },
+    {
+      "fromPackageId": "artifact-level-peer-review-ledger",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "public-promotion-revenue-gates",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "public-promotion-revenue-gates"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.artifact-level-peer-review-ledger",
+    "package": "artifact-level-peer-review-ledger",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "artifact-level-peer-review-ledger.package-contract",
+      "artifact-level-peer-review-ledger.projection-not-authority",
+      "artifact-level-peer-review-ledger.claim-strength-boundary"
+    ],
+    "requiredCommands": [
+      "bash ci/run-cmo-usage-generated-distribution-proposal.sh"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.artifact-level-peer-review-ledger"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "artifact-level-peer-review-ledger"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "artifact-level-peer-review-ledger",
+  "projectionDigest": "42ca06004d661222f5d9ad616aeef88a043319ad37ce704e284890177e88fe24",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/artifact-level-peer-review-ledger/",
+      "issues/260608-cmo-usage-generated-distribution.jsonl",
+      "../artifacts/cmo-usage-generated-distribution-260608/",
+      "../PROPOSAL_CMO_USAGE_GENERATED_DISTRIBUTION_20260608.md",
+      "../PROPOSAL_MANIFEST_CMO_USAGE_GENERATED_DISTRIBUTION_20260608.json"
+    ],
+    "forbiddenPaths": [
+      "testimonial generator",
+      "paid-review payout implementation",
+      "private reviewer disclosure",
+      "manual review count authority",
+      "certification by stars"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.artifact-level-peer-review-ledger",
+  "status": "planned-blocked"
+}

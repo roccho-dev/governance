@@ -1,0 +1,89 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "qsem-qubo-planner",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "qsem-control-kernel",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "qsem-control-kernel"
+      ]
+    },
+    {
+      "fromPackageId": "qsem-qubo-planner",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "qsem-cryo-io-budget",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "qsem-cryo-io-budget"
+      ]
+    },
+    {
+      "fromPackageId": "qsem-qubo-planner",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "qsem-schema",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "qsem-schema"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.qsem-qubo-planner",
+    "package": "qsem-qubo-planner",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "qsem-control-twin",
+    "requiredChecks": [
+      "checks.<system>.qsem-module-import-check",
+      "checks.<system>.qsem-contract-check"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.qsem-qubo-planner"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "qsem-qubo-planner"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "qsem-qubo-planner",
+  "projectionDigest": "edac9d2124ed74db123b600a9be2fed4dcf17bf47d0e4d951f20227e70ba9c5c",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "src/qsem-qubo-planner/"
+    ],
+    "forbiddenPaths": [
+      "node_modules/",
+      "package.json",
+      "package-lock.json"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/qsem-control-twin",
+    "targetRepoId": "qsem-control-twin"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.qsem-qubo-planner",
+  "status": "ready"
+}

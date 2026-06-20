@@ -1,0 +1,116 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "cmo-usage-generated-distribution-system",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    },
+    {
+      "fromPackageId": "cmo-usage-generated-distribution-system",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "public-promotion-revenue-gates",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "public-promotion-revenue-gates"
+      ]
+    },
+    {
+      "fromPackageId": "cmo-usage-generated-distribution-system",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "single-meaning-surface",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "single-meaning-surface"
+      ]
+    },
+    {
+      "fromPackageId": "cmo-usage-generated-distribution-system",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "interaction-contract-surface-projection-boundary",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "interaction-contract-surface-projection-boundary"
+      ]
+    },
+    {
+      "fromPackageId": "cmo-usage-generated-distribution-system",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "log-to-reality-promotion-pipeline",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "log-to-reality-promotion-pipeline"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.cmo-usage-generated-distribution-system",
+    "package": "cmo-usage-generated-distribution-system",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "governance-records",
+    "requiredChecks": [
+      "cmo-usage-generated-distribution-system.package-contract",
+      "cmo-usage-generated-distribution-system.projection-not-authority",
+      "cmo-usage-generated-distribution-system.claim-strength-boundary"
+    ],
+    "requiredCommands": [
+      "bash ci/run-cmo-usage-generated-distribution-proposal.sh"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.cmo-usage-generated-distribution-system"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "cmo-usage-generated-distribution-system"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "cmo-usage-generated-distribution-system",
+  "projectionDigest": "90a2ebf5edefe01993fbd947c49d76262ea1499114fbdf3c3568a3a70e11a3fa",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/cmo-usage-generated-distribution-system/",
+      "issues/260608-cmo-usage-generated-distribution.jsonl",
+      "../artifacts/cmo-usage-generated-distribution-260608/",
+      "../PROPOSAL_CMO_USAGE_GENERATED_DISTRIBUTION_20260608.md",
+      "../PROPOSAL_MANIFEST_CMO_USAGE_GENERATED_DISTRIBUTION_20260608.json"
+    ],
+    "forbiddenPaths": [
+      "adapters that auto-post externally",
+      "billing provider connector implementation",
+      "customer raw data exposure",
+      "unbounded growth automation without approval",
+      "ARR or security certification claims without evidence pointers"
+    ],
+    "repoSourceUri": "path:../governance-records-main",
+    "targetRepoId": "governance-records"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.cmo-usage-generated-distribution-system",
+  "status": "planned-blocked"
+}

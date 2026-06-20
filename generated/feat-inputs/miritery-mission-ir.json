@@ -1,0 +1,61 @@
+{
+  "dependencyLock": [],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.miritery-mission-ir",
+    "package": "miritery-mission-ir",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "mission-vgd-kit",
+    "requiredChecks": [
+      "miritery-mission-ir.package-build",
+      "miritery-mission-ir.module-eval"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.<system>.miritery-mission-ir",
+      "nixosModules.miritery-mission-ir"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "miritery-mission-ir"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "miritery-mission-ir",
+  "projectionDigest": "99790261472e7e0fd6148a5160ce0babc6a4e4ff5e794d30c42c708e25a1aa0b",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/miritery/mission-ir/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/miritery/lean-oracle/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/mission-vgd-kit",
+    "targetRepoId": "mission-vgd-kit"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.miritery-mission-ir",
+  "status": "ready"
+}

@@ -1,0 +1,76 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "package-contracts",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "spec-ir",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "spec-ir"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.package-contracts",
+    "package": "package-contracts",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "zip",
+      "unzip",
+      "git"
+    ],
+    "repoId": "package-contracts",
+    "requiredChecks": [
+      "package-contracts.package-build",
+      "package-contracts.module-eval",
+      "package-contracts.extension-registry",
+      "package-contracts.core-boundary",
+      "package-contracts.local-exception-budget",
+      "package-contracts.static-contract-lint"
+    ],
+    "requiredCommands": [],
+    "requiredOutputs": [
+      "packages.package-contracts",
+      "nixosModules.package-contracts"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "zip",
+        "unzip",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "package-contracts"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "package-contracts",
+  "projectionDigest": "eea26ea42ed9342e1e9b73b30b3c8b2efea700367577b33a03596f4414d48189",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/package-contracts/",
+      "extensions/"
+    ],
+    "forbiddenPaths": [
+      "flake.nix",
+      "packages/*/"
+    ],
+    "repoSourceUri": "local:///home/nixos/repos/package-contracts",
+    "targetRepoId": "package-contracts"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.package-contracts",
+  "status": "ready"
+}

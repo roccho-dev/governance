@@ -1,0 +1,105 @@
+{
+  "dependencyLock": [
+    {
+      "fromPackageId": "ops-runbook-checks",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "canonical-branch-guard",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "canonical-branch-guard"
+      ]
+    },
+    {
+      "fromPackageId": "ops-runbook-checks",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-cdp-core",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-cdp-core"
+      ]
+    },
+    {
+      "fromPackageId": "ops-runbook-checks",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-refs-vault",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-refs-vault"
+      ]
+    },
+    {
+      "fromPackageId": "ops-runbook-checks",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "ops-tailnet-github-egress",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "ops-tailnet-github-egress"
+      ]
+    },
+    {
+      "fromPackageId": "ops-runbook-checks",
+      "kind": "governance.dependencyEdge.v1",
+      "requires": "package-contracts",
+      "resolution": "packageId",
+      "toPackageIds": [
+        "package-contracts"
+      ]
+    }
+  ],
+  "environmentBuildDefinition": {
+    "kind": "governance.environmentBuildDefinition.v1",
+    "officialOutput": "packages.<system>.ops-runbook-checks",
+    "package": "ops-runbook-checks",
+    "preflightRequiredTools": [
+      "bash",
+      "python3",
+      "git"
+    ],
+    "repoId": "ops",
+    "requiredChecks": [
+      "checks.<system>.ops-runbook-checks"
+    ],
+    "requiredCommands": [
+      "ops-runbook-checks --root /home/nixos/repos --json"
+    ],
+    "requiredOutputs": [
+      "packages.<system>.ops-runbook-checks"
+    ],
+    "runtimeRequirements": {
+      "kind": "spec.runtimeRequirements.v1",
+      "missingRequiredStatus": "blocked",
+      "optionalForSmoke": [
+        "nix",
+        "jq"
+      ],
+      "requiredForFinal": [
+        "python3"
+      ],
+      "requiredForPreflight": [
+        "bash",
+        "python3",
+        "git"
+      ]
+    },
+    "sourceOfTruth": "package-contract.v1.jsonl",
+    "targetPackage": "ops-runbook-checks"
+  },
+  "kind": "feat.input.v1",
+  "packageId": "ops-runbook-checks",
+  "projectionDigest": "a82d3da2c323c00a638e76209f33a489e088224a88e958af2d7f9978eddde039",
+  "rawAdrDirectAuthority": false,
+  "repoOperation": {
+    "allowedPaths": [
+      "packages/ops-runbook-checks/"
+    ],
+    "forbiddenPaths": [
+      "AGENTS.md generated rewrite",
+      "raw evidence promotion without check"
+    ],
+    "repoSourceUri": "path:../ops-main",
+    "targetRepoId": "ops"
+  },
+  "sourceAuthority": "governance-records-main/records/specs/package-contract.v1.jsonl",
+  "specId": "pkg.ops-runbook-checks",
+  "status": "ready"
+}
