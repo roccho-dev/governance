@@ -1,10 +1,9 @@
-# Frozen Migration Source
+# Removed Local Governance Records
 
-`records/` and `generated/` are retained in this proposal as frozen migration
-source/evidence only. They are not active authority and must not receive new
-writes during the governance-records cutover.
+`records/` and `generated/` are removed from the active governance tree in this proposal.
 
-Active governance package/check surfaces read the ADRS projection through the
-`adrsRecords` flake input. Physical deletion or archival of these directories is
-a later phase after classification, zero inbound references, retention, rollback,
-and merged-SHA proof all pass.
+They were previously retained as frozen migration source, but the final `gov*` boundary is stricter: `governance` must not carry local accepted-definition records or local generated cache as active tree content.
+
+Historical access remains through Git history, the pre-removal commit, and ADR-derived projection bundles. Any future consumer must read digest-pinned ADR-derived governance bundles, not `governance/records` or `governance/generated`.
+
+This file is evidence of the deletion boundary only. It is not approval for policy retirement, consumer cutover, repository deletion, or runtime implementation.

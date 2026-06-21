@@ -1,44 +1,70 @@
 # governance
 
-This repository provides non-authoritative reference implementations,
-deterministic projectors, checks, and evidence materializers derived from
-accepted authority sources.
+`governance` is the concrete `gov*` repository for non-authoritative, deterministic governance projection.
 
-It does not own accepted policy conditions, record-location authority, or
-repo-local domain facts.
+It is not a decision authority, accepted-definition record store, policy source, runtime executor, or merge/cutover approval surface.
 
-## Authority Boundary
+## Authority boundary
 
-- ADRs own accepted purposes, conditions, non-goals, and destructive cases.
-- The SSOT registry owns exact record locations, replacements, and lifecycle.
-- policy owns schemas, rules, and admission contracts.
-- Each owning repository owns its package/build/runtime domain facts.
-- governance tools may compute checks and projections, but their code and
-  generated output are not normative authority.
-- old `records/**` and `generated/**` content, while retained during migration,
-  is frozen non-authority migration evidence and must not receive new writes.
+- `adrs` owns accepted decisions, purposes, responsibilities, rules, non-goals, waivers, and destructive cases.
+- `governance` may compile, project, lint, and materialize evidence from accepted ADR bundles.
+- `governance` must not own accepted-definition records or mint independent authority.
+- `governance` must not mutate repositories, perform runtime promotion, approve merges, approve policy retirement, or restore `spec`/`specs` as authority.
+- `ops` and owning feature repositories perform effectful execution and produce receipts.
+- `spec` and `specs` are deprecated legacy evidence only, not authority inputs.
 
-Do not infer authority from this README, a path name, generated output, cache,
-dashboard, or compatibility input name. Resolve it through the accepted ADR,
-SSOT registry, and policy records.
+Do not infer authority from this README, a path name, generated output, cache, dashboard, or compatibility input name. Resolve authority through accepted ADR records and their digest-pinned projected bundle.
 
-## Layout
+## Pure projection contract
 
-- `records/` - frozen migration source during cutover; not active authority
-- `generated/` - frozen projection evidence during cutover; not active authority
-- `tools/` - reference implementation/projector/check scripts
-- `modules/` - Nix environment building blocks
-- `issues/` - issue ledger records
+Input:
+
+- accepted ADR bundle
+- schema version
+- compiler/projector version
+- target repository identity
+
+Output:
+
+- `governance.bundle.json`
+- repo-scoped rule bundles such as `repos/<repo-id>.rules.json`
+- package/catalog projections
+- GitHub ruleset plans
+- negative fixtures
+- provenance and digest metadata
+
+Required properties:
+
+- deterministic
+- explicit inputs only
+- same input produces the same output digest
+- fail closed on missing, stale, or unknown input
+- trace ADR rule id to projection rule id to ops check id to receipt rule id
+- side effects: none
+
+## Active tree layout
+
+- `tools/` — reference pure projectors, compilers, checks, and linters
+- `modules/` — Nix building blocks only when they support projection/check surfaces
+- `issues/` — legacy issue-ledger evidence, not decision authority
+- `MIGRATION_SOURCE.md` — deletion boundary note for removed local records/generated content
+
+The active tree must not contain local `records/` or `generated/` directories. Historical data remains available through Git history and accepted ADR-derived projection bundles.
+
+## Removed local authority/cache trees
+
+`records/` and `generated/` were removed from the active governance tree.
+
+They are not active authority and not active cache. Future consumers must read digest-pinned ADR-derived governance bundles, not `governance/records` or `governance/generated`.
+
+Reintroducing local `records/` or `generated/` requires a new accepted ADR and must fail CI by default.
 
 ## bootstrap consumable input
 
-`packages.<system>.bootstrap-input` exposes `bootstrap-input.json`
-(`governance.bootstrapInput.v1`) from the ADRS governance-records projection.
-The bootstrap pinned-flake-input consumer reads `requiredSsot`, `specsOptional`,
-and `outOfScope` from it. The `ssotLocations` URL slots are `null` (NOT YET
-ACCEPTED): the consumer must not fabricate URLs from null.
+`packages.<system>.bootstrap-input` exposes `bootstrap-input.json` (`governance.bootstrapInput.v1`) from the ADR-derived governance projection input, not from local `records/` or local `generated/`.
+
+The bootstrap pinned-flake-input consumer reads `requiredSsot`, `specsOptional`, and `outOfScope` from that digest-pinned projection. `ssotLocations` URL slots remain `null` until accepted by ADR-derived authority; consumers must not fabricate URLs from null.
 
 ## Provenance
 
-This repository is the history-preserving merge of governance-records@eaefe95 +
-governance-nix@683f0b3. Both source lineages remain present in git history.
+This repository is the history-preserving merge of governance-records@eaefe95 and governance-nix@683f0b3. Both source lineages remain present in Git history. Their former local record/projection trees are historical evidence only after this proposal.
