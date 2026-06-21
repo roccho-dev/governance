@@ -1,5 +1,5 @@
 {
-  description = "governance: record projections and records-gate policy checks";
+  description = "governance: non-authority pure projection and continuity checks";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -20,12 +20,9 @@
     in
     {
       # Consumable machine-input output for the bootstrap pinned-flake-input
-      # consumer. A downstream flake pins this `governance` input and reads
-      # `${governance.packages.<system>.bootstrap-input}/bootstrap-input.json`
-      # (kind governance.bootstrapInput.v1). Governance owns this output surface,
-      # but the record data is supplied by adrs.git's governance-records-main
-      # projection. URL slots in `ssotLocations` are null (NOT YET ACCEPTED) —
-      # see ssotLocationContract; the consumer must not fabricate URLs from null.
+      # consumer. Governance exposes the package surface, but source data comes
+      # from the ADR-derived governance-records projection, not local records/ or
+      # generated/ directories in this repository.
       packages = forEachSystem (pkgs: {
         bootstrap-input =
           pkgs.runCommand "bootstrap-input" { } ''
@@ -36,15 +33,9 @@
 
       checks = forEachSystem (pkgs: {
         # feat-input-projection: reference gate function implementing the
-        # Gate 6 continuity condition defined by the adrs.git ADR proposal
-        # (governance-authority-cutover-acceptance). adrs.git is the authority
-        # for the condition; this check is governance.git's non-authority
-        # reference implementation. It guards the existing new-feat creation
-        # surface: it stages the `governance-records-main/` checkout layout
-        # required by tools/make-feat-input.py, re-projects committed feat
-        # inputs, checks projection-digest alignment, and smokes accepted/planned
-        # package creation paths. PR CI must run tools/check-feat-input-pr-continuity.sh
-        # to enforce accepted package non-decrease against the merge base.
+        # continuity condition defined by ADR-derived records. adrs.git is the
+        # authority for the condition; this check is governance.git's
+        # non-authority reference implementation.
         feat-input-projection =
           pkgs.runCommand "feat-input-projection"
             { nativeBuildInputs = [ pkgs.python3 ]; }
@@ -68,7 +59,7 @@
 
         # feat-input-base-selftest: prove the accepted-set non-decrease path is
         # executable and fails closed when a base accepted package is missing at
-        # HEAD. This is a self-test for the canonical gate function; real PR CI
+        # HEAD. This is a self-test for the reference gate function; real PR CI
         # must still supply the merge-base contract through
         # tools/check-feat-input-pr-continuity.sh.
         feat-input-base-selftest =
@@ -114,7 +105,7 @@
 
         # bootstrap-input-from-adrs-projection: prove the bootstrap machine input
         # surface remains available after governance's local records/generated
-        # authority is removed. The source data is adrs.git projection output;
+        # authority is removed. The source data is the ADR-derived projection;
         # governance only exposes the package surface used by bootstrap.
         bootstrap-input-from-adrs-projection =
           pkgs.runCommand "bootstrap-input-from-adrs-projection"
@@ -134,21 +125,19 @@
               touch "$out"
             '';
 
-        # governance-records-frozen-migration-source: governance may retain the
-        # former records/generated trees as frozen migration evidence during the
-        # phase-gated cutover. Active package/check surfaces read adrsRecords;
-        # physical deletion is a later phase, not this proposal's completion
-        # claim.
-        governance-records-frozen-migration-source =
-          pkgs.runCommand "governance-records-frozen-migration-source"
-            { nativeBuildInputs = [ pkgs.diffutils ]; }
-            ''
-              set -euo pipefail
-              test -f ${self}/MIGRATION_SOURCE.md
-              diff -qr ${self}/records ${adrsRecords}/records/projections/governance-records-main/records
-              diff -qr ${self}/generated ${adrsRecords}/records/projections/governance-records-main/generated
-              touch "$out"
-            '';
+        # no-local-governance-records: active-tree purity guard. Governance must
+        # not carry local accepted records or local generated cache after this
+        # physical-removal proposal.
+        no-local-governance-records =
+          pkgs.runCommand "no-local-governance-records" { } ''
+            set -euo pipefail
+            if [ -e ${self}/records ] || [ -e ${self}/generated ]; then
+              echo "governance must not carry local records/ or generated/ in the active tree" >&2
+              exit 1
+            fi
+            test -f ${self}/MIGRATION_SOURCE.md
+            touch "$out"
+          '';
       });
     };
 }
