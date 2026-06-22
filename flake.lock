@@ -1,5 +1,23 @@
 {
   "nodes": {
+    "adrsRecords": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781903806,
+        "narHash": "sha256-JoPxDk9daOKVagghqc7sMpVlxDUIAGCBWtYksfIqEgU=",
+        "ref": "refs/heads/proposal/record-jsonl-reproof-rehome-260619",
+        "rev": "deb5e1ca5edfed1624143db96e483aaa675ed7de",
+        "revCount": 28,
+        "type": "git",
+        "url": "ssh://100.124.250.91/home/nixos/repos/adrs.git"
+      },
+      "original": {
+        "ref": "refs/heads/proposal/record-jsonl-reproof-rehome-260619",
+        "rev": "deb5e1ca5edfed1624143db96e483aaa675ed7de",
+        "type": "git",
+        "url": "ssh://100.124.250.91/home/nixos/repos/adrs.git"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1780749050,
@@ -18,6 +36,7 @@
     },
     "root": {
       "inputs": {
+        "adrsRecords": "adrsRecords",
         "nixpkgs": "nixpkgs"
       }
     }
