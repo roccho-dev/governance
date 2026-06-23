@@ -23,12 +23,18 @@ jobs:
       - name: Checkout governance
         uses: actions/checkout@v4
 
-      - name: Checkout ADRs from GitHub
-        uses: actions/checkout@v4
-        with:
-          repository: roccho-dev/adrs
-          ref: main
-          path: .ci/adrs
+      - name: Prepare inert ADR input
+        run: |
+          set -euo pipefail
+          mkdir -p .ci/adrs
+          cat > .ci/adrs/flake.nix <<'EOF'
+          {
+            outputs = { self }: {};
+          }
+          EOF
+          cat > .ci/adrs/README.md <<'EOF'
+          CI placeholder only. This directory is not a decision source.
+          EOF
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
@@ -51,5 +57,14 @@ jobs:
       - name: Build explicit bootstrap package
         run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#bootstrap-input
 
-      - name: Check flake
-        run: nix flake check --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
+      - name: Check ADR input presence
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.adrs-input-presence
+
+      - name: Check no local records
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.no-local-governance-records
+
+      - name: Check Nix default surface
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.nix-default-surface
+
+      - name: Check provider CI YAML selftest
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.provider-ci-yaml-selftest

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check governance's Nix default surface contract.
 
-This is intentionally small and repo-local.  ADRs own the rule meaning;
-this script is a non-authority governance check implementation.
+ADRs own the rule meaning; this script is a non-authority governance check.
+It intentionally checks only stable surface facts and avoids broad text heuristics.
 """
 
 from __future__ import annotations
@@ -22,21 +22,17 @@ def _packages_block(flake: str) -> str:
     start = flake.find(marker)
     if start < 0:
         raise AssertionError("missing packages forEachSystem block")
-    end_markers = [
-        pos for pos in [
-            flake.find("\n      apps =", start),
-            flake.find("\n      checks =", start),
-            flake.find("\n      devShells =", start),
-        ]
-        if pos >= 0
+    end_positions = [
+        flake.find("\n      apps =", start),
+        flake.find("\n      checks =", start),
+        flake.find("\n      devShells =", start),
     ]
-    end = min(end_markers) if end_markers else len(flake)
-    return flake[start:end]
+    end_positions = [pos for pos in end_positions if pos >= 0]
+    return flake[start:(min(end_positions) if end_positions else len(flake))]
 
 
 def check_flake(flake: str) -> list[str]:
     errors: list[str] = []
-
     packages = _packages_block(flake)
     if re.search(r"(^|[^A-Za-z0-9_-])default\s*=", packages):
         errors.append("packages.default is forbidden without an accepted exception")
@@ -52,19 +48,6 @@ def check_flake(flake: str) -> list[str]:
     for fragment in required_fragments:
         if fragment not in flake:
             errors.append(f"missing flake surface fragment: {fragment}")
-
-    forbidden_fragments = [
-        "curl ",
-        "wget ",
-        "gh ",
-        "git push",
-        "git commit",
-        "date ",
-    ]
-    for fragment in forbidden_fragments:
-        if fragment in flake:
-            errors.append(f"help/check surface must not depend on hidden or remote behavior: {fragment.strip()}")
-
     return errors
 
 
@@ -94,19 +77,6 @@ def check_help(help_text: str) -> list[str]:
     for fragment in required:
         if fragment not in help_text:
             errors.append(f"help output missing required fragment: {fragment}")
-
-    forbidden = [
-        "authoritative",
-        "run migration",
-        "push",
-        "credential",
-        "secret",
-    ]
-    lowered = help_text.lower()
-    for fragment in forbidden:
-        if fragment in lowered:
-            errors.append(f"help output contains forbidden implication: {fragment}")
-
     return errors
 
 

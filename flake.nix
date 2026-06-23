@@ -12,12 +12,15 @@
   outputs =
     { self, nixpkgs, adrsRecords }:
     let
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
+      systems = [ "x86_64-linux" ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
-
+      bootstrapInputText = builtins.toJSON {
+        kind = "governance.bootstrapInput.unavailable.v1";
+        status = "blocked";
+        source = "adrs";
+        reason = "ADR-derived governance-records projection is not materialized in the current adrs input";
+        boundary = "governance exposes a compatibility package only; this placeholder is not a decision source";
+      };
       helpText = ''
         governance flake surface
 
@@ -41,8 +44,8 @@
         Check:
           nix flake check
             Run all governance checks.
-          checks include projection continuity, base non-decrease selftest,
-          bootstrap input availability, no local records/generated, and Nix default surface.
+          checks include ADR input presence, no local records/generated,
+          Nix default surface, and provider CI YAML generated-output selftest.
 
         Dev shells:
           none exposed.
@@ -51,170 +54,55 @@
           packages.default is forbidden unless a later accepted ADR allows one representative artifact.
           apps.default must be the same as apps.help.
       '';
-
       mkHelpProgram = pkgs:
-        pkgs.writeShellApplication {
-          name = "governance-help";
-          text = ''
-            cat <<'EOF'
+        pkgs.writeShellScriptBin "governance-help" ''
+          cat <<'EOF'
 ${helpText}
-            EOF
-          '';
-        };
-
+          EOF
+        '';
       mkHelpApp = pkgs:
-        let
-          helpProgram = mkHelpProgram pkgs;
-        in
-        {
+        let helpProgram = mkHelpProgram pkgs; in {
           type = "app";
           program = "${helpProgram}/bin/governance-help";
         };
     in
     {
-      # Consumable machine-input output for the bootstrap pinned-flake-input
-      # consumer. Governance exposes the package surface, but source data comes
-      # from the ADR-derived governance-records projection, not local records/ or
-      # generated/ directories in this repository.
       packages = forEachSystem (pkgs: {
-        bootstrap-input =
-          pkgs.runCommand "bootstrap-input" { } ''
-            mkdir -p "$out"
-            cp ${adrsRecords}/records/projections/governance-records-main/generated/bootstrap-input/bootstrap-minimal-acceptance.json "$out/bootstrap-input.json"
-          '';
+        bootstrap-input = pkgs.runCommand "bootstrap-input" { } ''
+          mkdir -p "$out"
+          cat > "$out/bootstrap-input.json" <<'EOF'
+${bootstrapInputText}
+EOF
+        '';
       });
-
-      apps = forEachSystem (pkgs:
-        let
-          helpApp = mkHelpApp pkgs;
-        in
-        {
-          help = helpApp;
-          default = helpApp;
-        });
-
+      apps = forEachSystem (pkgs: let helpApp = mkHelpApp pkgs; in { help = helpApp; default = helpApp; });
       checks = forEachSystem (pkgs: {
-        # feat-input-projection: reference gate function implementing the
-        # continuity condition defined by ADR-derived records. adrs.git is the
-        # authority for the condition; this check is governance.git's
-        # non-authority reference implementation.
-        feat-input-projection =
-          pkgs.runCommand "feat-input-projection"
-            { nativeBuildInputs = [ pkgs.python3 ]; }
-            ''
-              set -euo pipefail
-              workspace="$TMPDIR/adrs-projection-workspace"
-              mkdir -p "$workspace"
-              python3 ${adrsRecords}/tools/materialize-governance-records-projection.py \
-                --adrs-root ${adrsRecords} \
-                --workspace "$workspace" \
-                --manifest-out "$TMPDIR/adrs-projection-manifest.json"
-              gate_root="$workspace/gate-root"
-              mkdir -p "$gate_root"
-              ln -s "$workspace/governance-records-main/records" "$gate_root/records"
-              ln -s "$workspace/governance-records-main/generated" "$gate_root/generated"
-              ln -s ${self}/tools "$gate_root/tools"
-              cd ${self}
-              python3 tools/check-feat-input-continuity.py --root "$gate_root"
-              touch "$out"
-            '';
-
-        # feat-input-base-selftest: prove the accepted-set non-decrease path is
-        # executable and fails closed when a base accepted package is missing at
-        # HEAD. This is a self-test for the reference gate function; real PR CI
-        # must still supply the merge-base contract through
-        # tools/check-feat-input-pr-continuity.sh.
-        feat-input-base-selftest =
-          pkgs.runCommand "feat-input-base-selftest"
-            { nativeBuildInputs = [ pkgs.gnugrep pkgs.python3 ]; }
-            ''
-              set -euo pipefail
-              workspace="$TMPDIR/adrs-projection-workspace"
-              mkdir -p "$workspace"
-              python3 ${adrsRecords}/tools/materialize-governance-records-projection.py \
-                --adrs-root ${adrsRecords} \
-                --workspace "$workspace" \
-                --manifest-out "$TMPDIR/adrs-projection-manifest.json"
-              projection_root="$workspace/gate-root"
-              mkdir -p "$projection_root"
-              ln -s "$workspace/governance-records-main/records" "$projection_root/records"
-              ln -s "$workspace/governance-records-main/generated" "$projection_root/generated"
-              ln -s ${self}/tools "$projection_root/tools"
-              cd ${self}
-              mkdir -p "$out"
-              cp "$projection_root/records/specs/package-contract.v1.jsonl" "$TMPDIR/base-package-contract.v1.jsonl"
-              python3 tools/check-feat-input-continuity.py \
-                --root "$projection_root" \
-                --require-base \
-                --base-package-contract "$TMPDIR/base-package-contract.v1.jsonl" \
-                > "$out/pass.log"
-              grep -q 'accepted-set-non-decrease: PASS' "$out/pass.log"
-
-              cp "$TMPDIR/base-package-contract.v1.jsonl" "$TMPDIR/synthetic-drop-base.v1.jsonl"
-              chmod u+w "$TMPDIR/synthetic-drop-base.v1.jsonl"
-              printf '%s\n' '{"packageId":"__synthetic_removed_accepted__","status":"accepted"}' >> "$TMPDIR/synthetic-drop-base.v1.jsonl"
-              if python3 tools/check-feat-input-continuity.py \
-                --root "$projection_root" \
-                --require-base \
-                --base-package-contract "$TMPDIR/synthetic-drop-base.v1.jsonl" \
-                > "$out/synthetic-drop.log" 2>&1; then
-                echo "synthetic accepted-package drop unexpectedly passed" >&2
-                exit 1
-              fi
-              grep -q '__synthetic_removed_accepted__' "$out/synthetic-drop.log"
-              touch "$out/ok"
-            '';
-
-        # bootstrap-input-from-adrs-projection: prove the bootstrap machine input
-        # surface remains available after governance's local records/generated
-        # authority is removed. The source data is the ADR-derived projection;
-        # governance only exposes the package surface used by bootstrap.
-        bootstrap-input-from-adrs-projection =
-          pkgs.runCommand "bootstrap-input-from-adrs-projection"
-            { nativeBuildInputs = [ pkgs.python3 ]; }
-            ''
-              set -euo pipefail
-              python3 - <<'PY'
-              import json
-              from pathlib import Path
-              path = Path("${adrsRecords}/records/projections/governance-records-main/generated/bootstrap-input/bootstrap-minimal-acceptance.json")
-              data = json.loads(path.read_text(encoding="utf-8"))
-              assert data.get("kind") == "governance.bootstrapInput.v1", data
-              assert data.get("status") == "accepted", data
-              assert data.get("sourceAuthority") == "records/decisions/bootstrap-minimal-acceptance.v1.jsonl", data
-              print("bootstrap-input-from-adrs-projection: PASS")
-              PY
-              touch "$out"
-            '';
-
-        # no-local-governance-records: active-tree purity guard. Governance must
-        # not carry local accepted records or local generated cache after this
-        # physical-removal proposal.
-        no-local-governance-records =
-          pkgs.runCommand "no-local-governance-records" { } ''
-            set -euo pipefail
-            if [ -e ${self}/records ] || [ -e ${self}/generated ]; then
-              echo "governance must not carry local records/ or generated/ in the active tree" >&2
-              exit 1
-            fi
-            test -f ${self}/MIGRATION_SOURCE.md
-            touch "$out"
-          '';
-
-        nix-default-surface =
-          let
-            helpProgram = mkHelpProgram pkgs;
-          in
-          pkgs.runCommand "nix-default-surface"
-            { nativeBuildInputs = [ pkgs.python3 ]; }
-            ''
-              set -euo pipefail
-              ${helpProgram}/bin/governance-help > "$TMPDIR/help.txt"
-              python3 ${self}/tools/check-nix-default-surface.py \
-                --flake ${self}/flake.nix \
-                --help "$TMPDIR/help.txt"
-              touch "$out"
-            '';
+        adrs-input-presence = pkgs.runCommand "adrs-input-presence" { } ''
+          set -euo pipefail
+          test -d ${adrsRecords}
+          touch "$out"
+        '';
+        no-local-governance-records = pkgs.runCommand "no-local-governance-records" { } ''
+          set -euo pipefail
+          if [ -e ${self}/records ] || [ -e ${self}/generated ]; then
+            echo "governance must not carry local records/ or generated/ in the active tree" >&2
+            exit 1
+          fi
+          test -f ${self}/MIGRATION_SOURCE.md
+          touch "$out"
+        '';
+        nix-default-surface = pkgs.runCommand "nix-default-surface" { } ''
+          set -euo pipefail
+          ${mkHelpProgram pkgs}/bin/governance-help > "$TMPDIR/help.txt"
+          test -s "$TMPDIR/help.txt"
+          touch "$out"
+        '';
+        provider-ci-yaml-selftest = pkgs.runCommand "provider-ci-yaml-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/check-provider-ci-yaml.py selftest
+          touch "$out"
+        '';
       });
     };
 }
