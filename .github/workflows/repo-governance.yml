@@ -11,6 +11,7 @@ on:
       - 'packages/repo-governance-cli/**'
       - 'e2e/repo-governance/**'
       - 'example/repo-governance/**'
+      - 'example/feat-consumer/**'
       - 'proposals/repo-governance-**'
       - 'github/ruleset-plan.json'
   push:
@@ -25,6 +26,7 @@ on:
       - 'packages/repo-governance-cli/**'
       - 'e2e/repo-governance/**'
       - 'example/repo-governance/**'
+      - 'example/feat-consumer/**'
       - 'proposals/repo-governance-**'
       - 'github/ruleset-plan.json'
   workflow_dispatch:
@@ -104,12 +106,12 @@ jobs:
       - name: Build repo-governance self check
         run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.repo-governance-self
 
-      - name: Check feat consumer example
+      - name: Check feat consumer snapshot
         run: >-
-          nix build --show-trace --no-write-lock-file
-          ./example/feat-consumer#checks.x86_64-linux.repo-governance
-          --override-input governance .
-          --override-input governance/adrsRecords "$ADRS_INPUT"
+          nix run --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#repo-governance --
+          --adr-bundle governance/repo-governance-bundle.json
+          --repo-snapshot example/feat-consumer/governance/repo-governance.json
+          --output summary
 
       - name: Verify proof does not mutate the checkout
         run: git diff --exit-code
