@@ -3,8 +3,13 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    adrsRecords = {
+      url = "path:../../.ci/adrs";
+      flake = false;
+    };
     governance.url = "github:roccho-dev/governance";
     governance.inputs.nixpkgs.follows = "nixpkgs";
+    governance.inputs.adrsRecords.follows = "adrsRecords";
   };
 
   outputs = { nixpkgs, governance, ... }:
