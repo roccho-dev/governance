@@ -18,6 +18,8 @@
       ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
 
+      mkRepoGovernance = pkgs: import ./nix/repo-governance.nix { inherit pkgs self; };
+
       helpText = ''
         governance flake surface
 
@@ -29,6 +31,8 @@
         Build:
           nix build .#bootstrap-input
             Build the explicit bootstrap compatibility package.
+          nix build .#repo-governance
+            Build the repo-governance checker package.
           nix build .
             Intentionally unsupported: governance has no packages.default.
 
@@ -37,12 +41,15 @@
             Show this help.
           nix run .#help
             Show this help.
+          nix run .#repo-governance -- --help
+            Show repo-governance CLI help.
 
         Check:
           nix flake check
             Run all governance checks.
           checks include projection continuity, base non-decrease selftest,
-          bootstrap input availability, no local records/generated, and Nix default surface.
+          bootstrap input availability, no local records/generated, Nix default surface,
+          repo-governance proof, repo-governance self-check, and feat consumer example.
 
         Dev shells:
           none exposed.
@@ -72,6 +79,43 @@ ${helpText}
         };
     in
     {
+      lib = {
+        supportedSystems = systems;
+
+        mkRepoGovernanceCheck =
+          { pkgs
+          , system ? pkgs.system
+          , name ? "repo-governance"
+          , repoSnapshot
+          , adrBundle ? "${self}/governance/repo-governance-bundle.json"
+          }:
+          pkgs.runCommand name
+            { nativeBuildInputs = [ self.packages.${system}.repo-governance ]; }
+            ''
+              set -euo pipefail
+              mkdir -p "$out"
+              repo-governance \
+                --adr-bundle ${adrBundle} \
+                --repo-snapshot ${repoSnapshot} \
+                --out-dir "$out/projection" \
+                --output json \
+                > "$out/result.json"
+            '';
+
+        mkRepoGovernanceChecks =
+          { nixpkgs
+          , systems ? self.lib.supportedSystems
+          , name ? "repo-governance"
+          , repoSnapshot
+          , adrBundle ? "${self}/governance/repo-governance-bundle.json"
+          }:
+          nixpkgs.lib.genAttrs systems (system:
+            self.lib.mkRepoGovernanceCheck {
+              pkgs = nixpkgs.legacyPackages.${system};
+              inherit system name repoSnapshot adrBundle;
+            });
+      };
+
       # Consumable machine-input output for the bootstrap pinned-flake-input
       # consumer. Governance exposes the package surface, but source data comes
       # from the ADR-derived governance-records projection, not local records/ or
@@ -82,6 +126,8 @@ ${helpText}
             mkdir -p "$out"
             cp ${adrsRecords}/records/projections/governance-records-main/generated/bootstrap-input/bootstrap-minimal-acceptance.json "$out/bootstrap-input.json"
           '';
+
+        repo-governance = mkRepoGovernance pkgs;
       });
 
       apps = forEachSystem (pkgs:
@@ -91,9 +137,38 @@ ${helpText}
         {
           help = helpApp;
           default = helpApp;
+          repo-governance = {
+            type = "app";
+            program = "${mkRepoGovernance pkgs}/bin/repo-governance";
+          };
         });
 
       checks = forEachSystem (pkgs: {
+        repo-governance-proof =
+          pkgs.runCommand "repo-governance-proof"
+            { nativeBuildInputs = [ pkgs.python3 ]; }
+            ''
+              set -euo pipefail
+              export PYTHONPATH=${self}/packages/repo-governance/src:${self}/packages/repo-governance-cli/src
+              python3 ${self}/e2e/repo-governance/run.py --receipt "$out"
+            '';
+
+        repo-governance-self =
+          self.lib.mkRepoGovernanceCheck {
+            inherit pkgs;
+            system = pkgs.system;
+            name = "repo-governance-self";
+            repoSnapshot = "${self}/governance/repo-governance.json";
+          };
+
+        repo-governance-feat-consumer-example =
+          self.lib.mkRepoGovernanceCheck {
+            inherit pkgs;
+            system = pkgs.system;
+            name = "repo-governance-feat-consumer-example";
+            repoSnapshot = "${self}/example/feat-consumer/governance/repo-governance.json";
+          };
+
         # feat-input-projection: reference gate function implementing the
         # continuity condition defined by ADR-derived records. adrs.git is the
         # authority for the condition; this check is governance.git's
