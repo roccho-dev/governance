@@ -18,17 +18,23 @@ jobs:
     name: nix flake contract
     runs-on: ubuntu-latest
     env:
-      ADRS_INPUT: github:roccho-dev/adrs/main
+      ADRS_INPUT: path:./.ci/adrs
     steps:
-      - name: Checkout
+      - name: Checkout governance
         uses: actions/checkout@v4
+
+      - name: Checkout ADRs from GitHub
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: main
+          path: .ci/adrs
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             extra-experimental-features = nix-command flakes
-            access-tokens = github.com=${{ secrets.GOVERNANCE_GITHUB_TOKEN || github.token }}
 
       - name: Verify Nix
         run: nix --version
