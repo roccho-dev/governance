@@ -57,11 +57,14 @@ jobs:
       - name: Build explicit bootstrap package
         run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#bootstrap-input
 
-      - name: Build explicit governance checks
-        run: |
-          set -euo pipefail
-          nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" \
-            .#checks.x86_64-linux.adrs-input-presence \
-            .#checks.x86_64-linux.no-local-governance-records \
-            .#checks.x86_64-linux.nix-default-surface \
-            .#checks.x86_64-linux.provider-ci-yaml-selftest
+      - name: Check ADR input presence
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.adrs-input-presence
+
+      - name: Check no local records
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.no-local-governance-records
+
+      - name: Check Nix default surface
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.nix-default-surface
+
+      - name: Check provider CI YAML selftest
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.provider-ci-yaml-selftest
