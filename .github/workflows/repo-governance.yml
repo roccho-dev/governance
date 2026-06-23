@@ -1,0 +1,73 @@
+name: repo-governance
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/repo-governance.yml'
+      - 'packages/repo-governance/**'
+      - 'packages/repo-governance-cli/**'
+      - 'e2e/repo-governance/**'
+      - 'example/repo-governance/**'
+      - 'proposals/repo-governance-**'
+      - 'github/ruleset-plan.json'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/repo-governance.yml'
+      - 'packages/repo-governance/**'
+      - 'packages/repo-governance-cli/**'
+      - 'e2e/repo-governance/**'
+      - 'example/repo-governance/**'
+      - 'proposals/repo-governance-**'
+      - 'github/ruleset-plan.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-governance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  proof:
+    name: proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONHASHSEED: '0'
+      PYTHONPATH: packages/repo-governance/src:packages/repo-governance-cli/src
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Compile packages
+        run: >-
+          python -m compileall -q
+          packages/repo-governance/src
+          packages/repo-governance-cli/src
+          e2e/repo-governance/run.py
+
+      - name: Run executable proof
+        run: |
+          python e2e/repo-governance/run.py \
+            --receipt "$RUNNER_TEMP/repo-governance-proof-receipt.json"
+          cat "$RUNNER_TEMP/repo-governance-proof-receipt.json"
+
+      - name: Verify proof does not mutate the checkout
+        run: git diff --exit-code
