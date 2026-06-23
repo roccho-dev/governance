@@ -46,15 +46,24 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
+      ADRS_INPUT: path:./.ci/adrs
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
       PYTHONDONTWRITEBYTECODE: '1'
       PYTHONHASHSEED: '0'
       PYTHONPATH: packages/repo-governance/src:packages/repo-governance-cli/src
     steps:
-      - name: Checkout
+      - name: Checkout governance
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          persist-credentials: false
+
+      - name: Checkout ADRs from GitHub
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: roccho-dev/adrs
+          ref: main
+          path: .ci/adrs
           persist-credentials: false
 
       - name: Set up Python
@@ -81,30 +90,31 @@ jobs:
           extra_nix_config: |
             extra-experimental-features = nix-command flakes
 
-      - name: Show repo-governance flake surface
-        run: nix flake show --show-trace --no-write-lock-file .#repo-governance
+      - name: Show flake surface
+        run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .
 
       - name: Build repo-governance package
-        run: nix build --show-trace --no-write-lock-file .#repo-governance
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#repo-governance
 
       - name: Run repo-governance app
         run: >-
-          nix run --show-trace --no-write-lock-file .#repo-governance --
+          nix run --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#repo-governance --
           --adr-bundle governance/repo-governance-bundle.json
           --repo-snapshot governance/repo-governance.json
           --output summary
 
       - name: Build repo-governance proof check
-        run: nix build --show-trace --no-write-lock-file .#checks.x86_64-linux.repo-governance-proof
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.repo-governance-proof
 
       - name: Build repo-governance self check
-        run: nix build --show-trace --no-write-lock-file .#checks.x86_64-linux.repo-governance-self
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.repo-governance-self
 
       - name: Check feat consumer example
         run: >-
           nix build --show-trace --no-write-lock-file
           ./example/feat-consumer#checks.x86_64-linux.repo-governance
           --override-input governance .
+          --override-input governance/adrsRecords "$ADRS_INPUT"
 
       - name: Verify proof does not mutate the checkout
         run: git diff --exit-code
