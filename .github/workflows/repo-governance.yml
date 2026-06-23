@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - '.github/workflows/repo-governance.yml'
+      - 'flake.nix'
+      - 'nix/**'
+      - 'governance/repo-governance*.json'
       - 'packages/repo-governance/**'
       - 'packages/repo-governance-cli/**'
       - 'e2e/repo-governance/**'
@@ -15,6 +18,9 @@ on:
       - main
     paths:
       - '.github/workflows/repo-governance.yml'
+      - 'flake.nix'
+      - 'nix/**'
+      - 'governance/repo-governance*.json'
       - 'packages/repo-governance/**'
       - 'packages/repo-governance-cli/**'
       - 'e2e/repo-governance/**'
@@ -38,7 +44,7 @@ jobs:
   proof:
     name: proof
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
@@ -68,6 +74,37 @@ jobs:
           python e2e/repo-governance/run.py \
             --receipt "$RUNNER_TEMP/repo-governance-proof-receipt.json"
           cat "$RUNNER_TEMP/repo-governance-proof-receipt.json"
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+
+      - name: Show repo-governance flake surface
+        run: nix flake show --show-trace --no-write-lock-file .#repo-governance
+
+      - name: Build repo-governance package
+        run: nix build --show-trace --no-write-lock-file .#repo-governance
+
+      - name: Run repo-governance app
+        run: >-
+          nix run --show-trace --no-write-lock-file .#repo-governance --
+          --adr-bundle governance/repo-governance-bundle.json
+          --repo-snapshot governance/repo-governance.json
+          --output summary
+
+      - name: Build repo-governance proof check
+        run: nix build --show-trace --no-write-lock-file .#checks.x86_64-linux.repo-governance-proof
+
+      - name: Build repo-governance self check
+        run: nix build --show-trace --no-write-lock-file .#checks.x86_64-linux.repo-governance-self
+
+      - name: Check feat consumer example
+        run: >-
+          nix build --show-trace --no-write-lock-file
+          ./example/feat-consumer#checks.x86_64-linux.repo-governance
+          --override-input governance .
 
       - name: Verify proof does not mutate the checkout
         run: git diff --exit-code
