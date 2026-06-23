@@ -61,14 +61,11 @@
       '';
 
       mkHelpProgram = pkgs:
-        pkgs.writeShellApplication {
-          name = "governance-help";
-          text = ''
-            cat <<'EOF'
+        pkgs.writeShellScriptBin "governance-help" ''
+          cat <<'EOF'
 ${helpText}
-            EOF
-          '';
-        };
+          EOF
+        '';
 
       mkHelpApp = pkgs:
         let
