@@ -1,0 +1,35 @@
+{
+  "kind": "governance.repoSnapshot.v1",
+  "repoId": "roccho-dev/example-feat",
+  "evaluationDate": "2026-06-24",
+  "goal": "Demonstrate that a feature repo can consume the governance repo-governance package with one helper call.",
+  "noGoals": ["No local governance rule implementation.", "No independent governance authority."],
+  "generated": {"authority": false},
+  "readme": {"authority": false, "contractSource": "repo-governance", "generatedBlock": true},
+  "hiddenInputs": [],
+  "packages": [
+    {
+      "packageId": "example-core",
+      "classification": "lib",
+      "shape": "core+port",
+      "goal": "Represent a feature package with pure core and port contracts.",
+      "noGoals": ["No IO, network, clock, environment, or remote mutation effects."],
+      "dependencies": [],
+      "capabilities": [],
+      "definesRules": false
+    },
+    {
+      "packageId": "example-cli",
+      "classification": "adapter-package",
+      "shape": "adapter",
+      "adapterKind": "cli",
+      "goal": "Expose the example feature through a process adapter.",
+      "noGoals": ["No rule semantics or business judgement."],
+      "dependencies": ["example-core"],
+      "capabilities": ["exit-code", "filesystem-read", "stderr", "stdout"],
+      "definesRules": false
+    }
+  ],
+  "surfaces": [],
+  "waivers": []
+}
