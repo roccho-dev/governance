@@ -1,0 +1,54 @@
+{
+  "kind": "governance.repoSnapshot.v1",
+  "repoId": "roccho-dev/governance",
+  "evaluationDate": "2026-06-24",
+  "goal": "Project and enforce accepted cross-repo governance decisions without owning authority.",
+  "noGoals": ["No runtime business operations.", "No independent decision authority."],
+  "generated": {"authority": false},
+  "readme": {"authority": false, "contractSource": "repo-governance", "generatedBlock": true},
+  "hiddenInputs": [],
+  "packages": [
+    {
+      "packageId": "repo-governance",
+      "classification": "lib",
+      "shape": "core+port",
+      "goal": "Return deterministic repo contracts, violations, explanations, docs, and plans from explicit inputs.",
+      "noGoals": ["No file, console, network, clock, environment, or remote mutation effects."],
+      "dependencies": [],
+      "capabilities": [],
+      "definesRules": false
+    },
+    {
+      "packageId": "repo-governance-cli",
+      "classification": "adapter-package",
+      "shape": "adapter",
+      "adapterKind": "cli",
+      "goal": "Expose repo-governance through explicit file input, console output, output files, and process status.",
+      "noGoals": ["No rule semantics or business judgement."],
+      "dependencies": ["repo-governance"],
+      "capabilities": ["exit-code", "filesystem-read", "filesystem-write", "stderr", "stdout"],
+      "definesRules": false
+    }
+  ],
+  "surfaces": [
+    {
+      "surfaceId": "e2e/repo-governance",
+      "classification": "e2e",
+      "shape": "adapter",
+      "adapterKind": "fixture-runner",
+      "goal": "Prove accepted behavior and destructive cases.",
+      "noGoals": ["No reusable runtime package and no authority."],
+      "authority": false
+    },
+    {
+      "surfaceId": "example/repo-governance",
+      "classification": "example",
+      "shape": "adapter",
+      "adapterKind": "example",
+      "goal": "Explain the smallest valid input and output flow.",
+      "noGoals": ["No gate and no authority."],
+      "authority": false
+    }
+  ],
+  "waivers": []
+}
