@@ -17,6 +17,59 @@
         "aarch64-linux"
       ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+
+      helpText = ''
+        governance flake surface
+
+        Authority boundary:
+          adrs decides accepted rules and exceptions.
+          governance projects, checks, explains, plans, and renders from accepted inputs.
+          generated README/docs/help/man text is not authority.
+
+        Build:
+          nix build .#bootstrap-input
+            Build the explicit bootstrap compatibility package.
+          nix build .
+            Intentionally unsupported: governance has no packages.default.
+
+        Run:
+          nix run .
+            Show this help.
+          nix run .#help
+            Show this help.
+
+        Check:
+          nix flake check
+            Run all governance checks.
+          checks include projection continuity, base non-decrease selftest,
+          bootstrap input availability, no local records/generated, and Nix default surface.
+
+        Dev shells:
+          none exposed.
+
+        Default policy:
+          packages.default is forbidden unless a later accepted ADR allows one representative artifact.
+          apps.default must be the same as apps.help.
+      '';
+
+      mkHelpProgram = pkgs:
+        pkgs.writeShellApplication {
+          name = "governance-help";
+          text = ''
+            cat <<'EOF'
+${helpText}
+            EOF
+          '';
+        };
+
+      mkHelpApp = pkgs:
+        let
+          helpProgram = mkHelpProgram pkgs;
+        in
+        {
+          type = "app";
+          program = "${helpProgram}/bin/governance-help";
+        };
     in
     {
       # Consumable machine-input output for the bootstrap pinned-flake-input
@@ -30,6 +83,15 @@
             cp ${adrsRecords}/records/projections/governance-records-main/generated/bootstrap-input/bootstrap-minimal-acceptance.json "$out/bootstrap-input.json"
           '';
       });
+
+      apps = forEachSystem (pkgs:
+        let
+          helpApp = mkHelpApp pkgs;
+        in
+        {
+          help = helpApp;
+          default = helpApp;
+        });
 
       checks = forEachSystem (pkgs: {
         # feat-input-projection: reference gate function implementing the
@@ -138,6 +200,21 @@
             test -f ${self}/MIGRATION_SOURCE.md
             touch "$out"
           '';
+
+        nix-default-surface =
+          let
+            helpProgram = mkHelpProgram pkgs;
+          in
+          pkgs.runCommand "nix-default-surface"
+            { nativeBuildInputs = [ pkgs.python3 ]; }
+            ''
+              set -euo pipefail
+              ${helpProgram}/bin/governance-help > "$TMPDIR/help.txt"
+              python3 ${self}/tools/check-nix-default-surface.py \
+                --flake ${self}/flake.nix \
+                --help "$TMPDIR/help.txt"
+              touch "$out"
+            '';
       });
     };
 }
