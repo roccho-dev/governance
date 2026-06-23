@@ -16,27 +16,34 @@ concurrency:
 jobs:
   nix:
     name: nix flake contract
-    runs-on: [self-hosted, linux, nix]
+    runs-on: ubuntu-latest
     env:
-      NIX_CONFIG: extra-experimental-features = nix-command flakes
+      ADRS_INPUT: github:roccho-dev/adrs/main
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GOVERNANCE_GITHUB_TOKEN || github.token }}
 
       - name: Verify Nix
         run: nix --version
 
       - name: Show flake surface
-        run: nix flake show --show-trace
+        run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
 
       - name: Run default help
-        run: nix run . --show-trace
+        run: nix run --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .
 
       - name: Run named help
-        run: nix run .#help --show-trace
+        run: nix run --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#help
 
       - name: Build explicit bootstrap package
-        run: nix build .#bootstrap-input --show-trace
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#bootstrap-input
 
       - name: Check flake
-        run: nix flake check --show-trace
+        run: nix flake check --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
