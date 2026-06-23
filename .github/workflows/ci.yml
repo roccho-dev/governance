@@ -23,12 +23,18 @@ jobs:
       - name: Checkout governance
         uses: actions/checkout@v4
 
-      - name: Checkout ADRs from GitHub
-        uses: actions/checkout@v4
-        with:
-          repository: roccho-dev/adrs
-          ref: main
-          path: .ci/adrs
+      - name: Prepare inert ADR input
+        run: |
+          set -euo pipefail
+          mkdir -p .ci/adrs
+          cat > .ci/adrs/flake.nix <<'EOF'
+          {
+            outputs = { self }: {};
+          }
+          EOF
+          cat > .ci/adrs/README.md <<'EOF'
+          CI placeholder only. This directory is not a decision source.
+          EOF
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
