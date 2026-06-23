@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     adrsRecords = {
-      url = "git+ssh://100.124.250.91/home/nixos/repos/adrs.git?ref=refs/heads/proposal/record-jsonl-reproof-rehome-260619&rev=deb5e1ca5edfed1624143db96e483aaa675ed7de";
+      url = "github:roccho-dev/adrs/main";
       flake = false;
     };
   };
