@@ -116,11 +116,20 @@ jobs:
           cp fixtures/adrs/external-package-build-contract/adr/src/contract.cue "$RUNNER_TEMP/cue-fixture/contract.cue"
           cp checks/external-package-build-contract.cue "$RUNNER_TEMP/cue-fixture/consumer.cue"
 
+      - name: Check CUE tool
+        run: nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c cue version
+
       - name: Check real external package contract
-        run: nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c sh -c 'cd "$RUNNER_TEMP/cue-real" && cue vet schema.cue contract.cue consumer.cue'
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/cue-real"
+          nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c cue vet schema.cue contract.cue consumer.cue
 
       - name: Check fixture external package contract
-        run: nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c sh -c 'cd "$RUNNER_TEMP/cue-fixture" && cue vet schema.cue contract.cue consumer.cue'
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/cue-fixture"
+          nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c cue vet schema.cue contract.cue consumer.cue
 
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
