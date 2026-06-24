@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: governance-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nix:
+    name: nix flake contract
+    runs-on: ubuntu-latest
+    env:
+      ADRS_INPUT: github:roccho-dev/adrs/main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GOVERNANCE_GITHUB_TOKEN || github.token }}
+
+      - name: Verify Nix
+        run: nix --version
+
+      - name: Show flake surface
+        run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
+
+      - name: Run default help
+        run: nix run --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .
+
+      - name: Run named help
+        run: nix run --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#help
+
+      - name: Build explicit bootstrap package
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#bootstrap-input
+
+      - name: Check flake
+        run: nix flake check --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
