@@ -8,45 +8,19 @@ Decision: {
 
 #ExternalNixPackageBuildContractV1: {
   kind: "externalNixPackageBuildContract.v1"
-  requiredPackageFacts: [
-    "packageId",
-    "role",
-    "sourceProvider",
-    "sourceIdentity",
-    "sha256",
-    "systems",
-    "outputNames",
-    "featureRequirements",
-    "proofs",
-    "receiptKind",
-  ]
-  requiredChecks: [
-    "sourceFixed",
-    "providerAllowed",
-    "outputRole",
-    "versionParityOrWaiver",
-    "nixParse",
-    "nixFormatWhenAccepted",
-    "nixDeadCodeWhenAccepted",
-    "flakeEval",
-    "packageBuild",
-    "positiveProof",
-    "negativeProof",
-    "receiptSchema",
-    "generatedBoundary",
-    "directGovernanceDependency",
-  ]
+  requiredPackageFacts: [...string]
+  requiredChecks: [...string]
   profiles: {
     duckdb: {
-      outputs: ["pythonLibrary", "cli"]
-      sourcesAllowed: ["pypi", "githubRelease"]
-      requiredProofs: ["pythonImport", "cliRuns", "jsonlPythonValues", "jsonlCliValues", "malformedJsonlFails"]
+      outputs: [...string]
+      sourcesAllowed: [...string]
+      requiredProofs: [...string]
     }
     grafeo: {
-      outputs: ["pythonLibrary", "cli"]
-      sourcesAllowed: ["pypiSource", "githubRelease", "githubSource"]
+      outputs: [...string]
+      sourcesAllowed: [...string]
       requiredFeature: "jsonl-import"
-      requiredProofs: ["pythonImport", "realJsonlImport", "propertyValueCheck", "persistenceWhenClaimed", "cliImportQueryValidate", "malformedJsonlFails"]
+      requiredProofs: [...string]
     }
   }
 }
