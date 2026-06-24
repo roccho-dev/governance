@@ -7,7 +7,7 @@ Decision: #Decision & {
   status: "Accepted"
   spec: {
     kind: "externalNixPackageBuildContract.v1"
-    requiredPackageFacts: ["packageId", "role", "sourceProvider", "sourceIdentity", "systems", "outputNames", "featureRequirements", "proofs", "receiptKind"]
+    requiredPackageFacts: ["packageId", "role", "sourceProvider", "sourceIdentity", "sha256", "systems", "outputNames", "featureRequirements", "proofs", "receiptKind"]
     requiredChecks: ["sourceFixed", "providerAllowed", "outputRole", "versionParityOrWaiver", "nixParse", "nixFormatWhenAccepted", "nixDeadCodeWhenAccepted", "flakeEval", "packageBuild", "positiveProof", "negativeProof", "receiptSchema", "generatedBoundary", "directGovernanceDependency"]
     profiles: {
       duckdb: {
