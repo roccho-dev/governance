@@ -1,7 +1,7 @@
 package adr
 
 Decision: #Decision & {
-  id: "fixture"
+  id: "01JYJ5Q0ABCDE123456789ABCD"
   uri: "infra://package/external-nix-build-contract"
   ts: "2026-06-24T04:40:00Z"
   status: "Accepted"

@@ -41,7 +41,7 @@ jobs:
           repositories: adrs
           permission-contents: read
 
-      - name: Checkout ADRs from GitHub
+      - name: Checkout ADRS from GitHub
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
@@ -50,14 +50,12 @@ jobs:
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
 
-      - name: Verify ADRs checkout
+      - name: Verify ADRS checkout
         run: |
           set -euo pipefail
           test -d .ci/adrs
           git -C .ci/adrs rev-parse HEAD
           test -f .ci/adrs/flake.nix || test -d .ci/adrs/records || test -d .ci/adrs/docs
-          python3 tools/check-external-package-contract.py .ci/adrs
-          python3 tools/check-external-package-contract.py fixtures/adrs/external-package-build-contract
 
   nix:
     name: nix flake contract
@@ -89,7 +87,7 @@ jobs:
           repositories: adrs
           permission-contents: read
 
-      - name: Checkout ADRs from GitHub
+      - name: Checkout ADRS from GitHub
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
@@ -106,6 +104,32 @@ jobs:
 
       - name: Verify Nix
         run: nix --version
+
+      - name: Prepare CUE contract inputs
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/cue-real" "$RUNNER_TEMP/cue-fixture"
+          cp .ci/adrs/adr/schema.cue "$RUNNER_TEMP/cue-real/schema.cue"
+          cp .ci/adrs/adr/src/01JYJ5Q0ABCDE123456789ABCD-external-nix-package-build-contract.cue "$RUNNER_TEMP/cue-real/contract.cue"
+          cp checks/external-package-build-contract.cue "$RUNNER_TEMP/cue-real/consumer.cue"
+          cp fixtures/adrs/external-package-build-contract/adr/schema.cue "$RUNNER_TEMP/cue-fixture/schema.cue"
+          cp fixtures/adrs/external-package-build-contract/adr/src/contract.cue "$RUNNER_TEMP/cue-fixture/contract.cue"
+          cp checks/external-package-build-contract.cue "$RUNNER_TEMP/cue-fixture/consumer.cue"
+
+      - name: Check CUE tool
+        run: nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c cue version
+
+      - name: Check real external package contract
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/cue-real"
+          nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c cue vet schema.cue contract.cue consumer.cue
+
+      - name: Check fixture external package contract
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/cue-fixture"
+          nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c cue vet schema.cue contract.cue consumer.cue
 
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
