@@ -45,7 +45,8 @@
           nix flake check
             Run all governance checks.
           checks include ADR input presence, no local records/generated,
-          Nix default surface, and provider CI YAML generated-output selftest.
+          Nix default surface, provider CI YAML generated-output selftest,
+          and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -80,6 +81,17 @@ EOF
         adrs-input-presence = pkgs.runCommand "adrs-input-presence" { } ''
           set -euo pipefail
           test -d ${adrsRecords}
+          touch "$out"
+        '';
+        adrs-shadow-monitor-selftest = pkgs.runCommand "adrs-shadow-monitor-selftest" { nativeBuildInputs = [ pkgs.python3 pkgs.git ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/adrs-shadow-monitor.py \
+            --adrs-path ${adrsRecords} \
+            --target-ref flake-adrs-input \
+            --report "$TMPDIR/adrs-shadow-monitor.json" \
+            --fail-on-alert
+          test -s "$TMPDIR/adrs-shadow-monitor.json"
           touch "$out"
         '';
         no-local-governance-records = pkgs.runCommand "no-local-governance-records" { } ''
