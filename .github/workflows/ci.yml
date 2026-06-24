@@ -105,7 +105,7 @@ jobs:
       - name: Verify Nix
         run: nix --version
 
-      - name: Check external package contract inputs
+      - name: Prepare CUE contract inputs
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/cue-real" "$RUNNER_TEMP/cue-fixture"
@@ -115,8 +115,12 @@ jobs:
           cp fixtures/adrs/external-package-build-contract/adr/schema.cue "$RUNNER_TEMP/cue-fixture/schema.cue"
           cp fixtures/adrs/external-package-build-contract/adr/src/contract.cue "$RUNNER_TEMP/cue-fixture/contract.cue"
           cp checks/external-package-build-contract.cue "$RUNNER_TEMP/cue-fixture/consumer.cue"
-          nix shell nixpkgs#cue -c sh -c 'cd "$RUNNER_TEMP/cue-real" && cue vet schema.cue contract.cue consumer.cue'
-          nix shell nixpkgs#cue -c sh -c 'cd "$RUNNER_TEMP/cue-fixture" && cue vet schema.cue contract.cue consumer.cue'
+
+      - name: Check real external package contract
+        run: nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c sh -c 'cd "$RUNNER_TEMP/cue-real" && cue vet schema.cue contract.cue consumer.cue'
+
+      - name: Check fixture external package contract
+        run: nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c sh -c 'cd "$RUNNER_TEMP/cue-fixture" && cue vet schema.cue contract.cue consumer.cue'
 
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
