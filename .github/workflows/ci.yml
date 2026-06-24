@@ -56,8 +56,6 @@ jobs:
           test -d .ci/adrs
           git -C .ci/adrs rev-parse HEAD
           test -f .ci/adrs/flake.nix || test -d .ci/adrs/records || test -d .ci/adrs/docs
-          python3 tools/check-external-package-contract.py .ci/adrs
-          python3 tools/check-external-package-contract.py fixtures/adrs/external-package-build-contract
 
   nix:
     name: nix flake contract
@@ -106,6 +104,12 @@ jobs:
 
       - name: Verify Nix
         run: nix --version
+
+      - name: Check external package contract inputs
+        run: |
+          set -euo pipefail
+          nix shell nixpkgs#cue -c cue vet checks/external-package-build-contract.cue .ci/adrs/adr/schema.cue .ci/adrs/adr/src/01JYJ5Q0ABCDE123456789ABCD-external-nix-package-build-contract.cue
+          nix shell nixpkgs#cue -c cue vet checks/external-package-build-contract.cue fixtures/adrs/external-package-build-contract/adr/schema.cue fixtures/adrs/external-package-build-contract/adr/src/contract.cue
 
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
