@@ -1,0 +1,21 @@
+{
+  "kind": "governance.githubRulesetPlan.v1",
+  "authority": false,
+  "sourceDecision": "roccho-dev/adrs#21",
+  "target": {
+    "repository": "roccho-dev/governance",
+    "branch": "main"
+  },
+  "requiredStatusChecks": [
+    "repo-governance / proof"
+  ],
+  "requirePullRequest": true,
+  "requiredApprovingReviewCount": 0,
+  "dismissStaleReviews": false,
+  "requireConversationResolution": true,
+  "allowForcePushes": false,
+  "allowDeletions": false,
+  "bypassActors": [],
+  "applyBoundary": "Non-authority plan only. Apply through an explicitly authorized GitHub control-plane adapter or repository administrator after the first successful workflow run confirms the exact check context.",
+  "rollback": "Remove the required check before removing or renaming the workflow/job; retain the last successful receipt and commit SHA."
+}

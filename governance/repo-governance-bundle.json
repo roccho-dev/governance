@@ -1,0 +1,17 @@
+{
+  "kind": "governance.adrBundle.v1",
+  "bundleId": "adrs-main-repo-governance-v1",
+  "status": "accepted",
+  "sourceRef": "roccho-dev/adrs#21",
+  "rules": [
+    {"ruleId": "repo-is-packages", "adrRef": "roccho-dev/adrs#21", "status": "accepted"},
+    {"ruleId": "core-port-is-lib", "adrRef": "roccho-dev/adrs#21", "status": "accepted"},
+    {"ruleId": "adapter-placement", "adrRef": "roccho-dev/adrs#21", "status": "accepted"},
+    {"ruleId": "dependency-direction", "adrRef": "roccho-dev/adrs#21", "status": "accepted"},
+    {"ruleId": "goal-no-goal", "adrRef": "roccho-dev/adrs#21", "status": "accepted"},
+    {"ruleId": "generated-non-authority", "adrRef": "roccho-dev/adrs#21", "status": "accepted"},
+    {"ruleId": "readme-contract", "adrRef": "roccho-dev/adrs#21", "status": "accepted"},
+    {"ruleId": "waiver-expiry", "adrRef": "roccho-dev/adrs#21", "status": "accepted"},
+    {"ruleId": "hidden-input-ban", "adrRef": "roccho-dev/adrs#21", "status": "accepted"}
+  ]
+}
