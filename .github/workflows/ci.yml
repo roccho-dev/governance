@@ -41,7 +41,7 @@ jobs:
           repositories: adrs
           permission-contents: read
 
-      - name: Checkout ADRs from GitHub
+      - name: Checkout ADRS from GitHub
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
@@ -50,7 +50,7 @@ jobs:
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
 
-      - name: Verify ADRs checkout
+      - name: Verify ADRS checkout
         run: |
           set -euo pipefail
           test -d .ci/adrs
@@ -87,7 +87,7 @@ jobs:
           repositories: adrs
           permission-contents: read
 
-      - name: Checkout ADRs from GitHub
+      - name: Checkout ADRS from GitHub
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
@@ -108,10 +108,15 @@ jobs:
       - name: Check external package contract inputs
         run: |
           set -euo pipefail
-          cp checks/external-package-build-contract.cue .ci/adrs/adr/src/governance-external-package-build-contract.cue
-          cp checks/external-package-build-contract.cue fixtures/adrs/external-package-build-contract/adr/src/governance-external-package-build-contract.cue
-          nix shell nixpkgs#cue -c cue vet .ci/adrs/adr/schema.cue .ci/adrs/adr/src/01JYJ5Q0ABCDE123456789ABCD-external-nix-package-build-contract.cue .ci/adrs/adr/src/governance-external-package-build-contract.cue
-          nix shell nixpkgs#cue -c cue vet fixtures/adrs/external-package-build-contract/adr/schema.cue fixtures/adrs/external-package-build-contract/adr/src/contract.cue fixtures/adrs/external-package-build-contract/adr/src/governance-external-package-build-contract.cue
+          mkdir -p "$RUNNER_TEMP/cue-real" "$RUNNER_TEMP/cue-fixture"
+          cp .ci/adrs/adr/schema.cue "$RUNNER_TEMP/cue-real/schema.cue"
+          cp .ci/adrs/adr/src/01JYJ5Q0ABCDE123456789ABCD-external-nix-package-build-contract.cue "$RUNNER_TEMP/cue-real/contract.cue"
+          cp checks/external-package-build-contract.cue "$RUNNER_TEMP/cue-real/consumer.cue"
+          cp fixtures/adrs/external-package-build-contract/adr/schema.cue "$RUNNER_TEMP/cue-fixture/schema.cue"
+          cp fixtures/adrs/external-package-build-contract/adr/src/contract.cue "$RUNNER_TEMP/cue-fixture/contract.cue"
+          cp checks/external-package-build-contract.cue "$RUNNER_TEMP/cue-fixture/consumer.cue"
+          nix shell nixpkgs#cue -c sh -c 'cd "$RUNNER_TEMP/cue-real" && cue vet schema.cue contract.cue consumer.cue'
+          nix shell nixpkgs#cue -c sh -c 'cd "$RUNNER_TEMP/cue-fixture" && cue vet schema.cue contract.cue consumer.cue'
 
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
