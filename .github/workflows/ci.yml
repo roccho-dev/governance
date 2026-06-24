@@ -108,8 +108,10 @@ jobs:
       - name: Check external package contract inputs
         run: |
           set -euo pipefail
-          nix shell nixpkgs#cue -c cue vet checks/external-package-build-contract.cue .ci/adrs/adr/schema.cue .ci/adrs/adr/src/01JYJ5Q0ABCDE123456789ABCD-external-nix-package-build-contract.cue
-          nix shell nixpkgs#cue -c cue vet checks/external-package-build-contract.cue fixtures/adrs/external-package-build-contract/adr/schema.cue fixtures/adrs/external-package-build-contract/adr/src/contract.cue
+          cp checks/external-package-build-contract.cue .ci/adrs/adr/src/governance-external-package-build-contract.cue
+          cp checks/external-package-build-contract.cue fixtures/adrs/external-package-build-contract/adr/src/governance-external-package-build-contract.cue
+          nix shell nixpkgs#cue -c cue vet .ci/adrs/adr/schema.cue .ci/adrs/adr/src/01JYJ5Q0ABCDE123456789ABCD-external-nix-package-build-contract.cue .ci/adrs/adr/src/governance-external-package-build-contract.cue
+          nix shell nixpkgs#cue -c cue vet fixtures/adrs/external-package-build-contract/adr/schema.cue fixtures/adrs/external-package-build-contract/adr/src/contract.cue fixtures/adrs/external-package-build-contract/adr/src/governance-external-package-build-contract.cue
 
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
