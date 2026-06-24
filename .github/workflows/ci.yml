@@ -146,6 +146,9 @@ jobs:
       - name: Check ADR input presence
         run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.adrs-input-presence
 
+      - name: Check ADRS shadow monitor selftest
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.adrs-shadow-monitor-selftest
+
       - name: Check no local records
         run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.no-local-governance-records
 
