@@ -53,6 +53,7 @@ jobs:
           test -d .ci/adrs
           git -C .ci/adrs rev-parse HEAD
           test -f .ci/adrs/flake.nix || test -d .ci/adrs/records || test -d .ci/adrs/docs
+          python3 tools/check-external-package-contract.py .ci/adrs
 
   nix:
     name: nix flake contract
