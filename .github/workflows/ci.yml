@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+
       - name: Validate ADRs reader configuration is present
         env:
           ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
@@ -53,6 +56,8 @@ jobs:
           test -d .ci/adrs
           git -C .ci/adrs rev-parse HEAD
           test -f .ci/adrs/flake.nix || test -d .ci/adrs/records || test -d .ci/adrs/docs
+          python3 tools/check-external-package-contract.py .ci/adrs
+          python3 tools/check-external-package-contract.py fixtures/adrs/external-package-build-contract
 
   nix:
     name: nix flake contract
