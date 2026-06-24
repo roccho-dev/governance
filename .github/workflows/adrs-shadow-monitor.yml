@@ -1,0 +1,105 @@
+name: ADRS Shadow Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      adrs_ref:
+        description: "ADRS branch, tag, commit SHA, or refs/pull/<number>/head to observe"
+        required: false
+        default: "main"
+      fail_on_alert:
+        description: "Fail the governance workflow when the monitor reports an alert"
+        type: boolean
+        required: false
+        default: true
+  schedule:
+    - cron: "17,47 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adrs-shadow-monitor-${{ github.event_name }}-${{ github.event_name == 'workflow_dispatch' && inputs.adrs_ref || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    name: observe ADRS input from governance
+    runs-on: ubuntu-latest
+    env:
+      ADRS_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.adrs_ref || 'main' }}
+      FAIL_ON_ALERT: ${{ github.event_name == 'workflow_dispatch' && inputs.fail_on_alert || true }}
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+
+      - name: Validate ADRs reader configuration is present
+        env:
+          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: |
+          set -euo pipefail
+          test -n "$ADRS_READER_CLIENT_ID" || { echo "missing Actions variable: ADRS_READER_CLIENT_ID" >&2; exit 1; }
+          test -n "$ADRS_READER_PRIVATE_KEY" || { echo "missing Actions secret: ADRS_READER_PRIVATE_KEY" >&2; exit 1; }
+
+      - name: Create ADRs reader token
+        id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - name: Checkout ADRS observed ref
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: ${{ env.ADRS_REF }}
+          path: .ci/adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Run ADRS shadow monitor
+        run: |
+          set -euo pipefail
+          args=(--adrs-path .ci/adrs --target-ref "$ADRS_REF" --report "$RUNNER_TEMP/adrs-shadow-monitor.json")
+          if [ "$FAIL_ON_ALERT" = "true" ]; then
+            args+=(--fail-on-alert)
+          fi
+          python3 tools/adrs-shadow-monitor.py "${args[@]}"
+
+      - name: Write monitor summary
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -f "$RUNNER_TEMP/adrs-shadow-monitor.json" ]; then
+            {
+              echo "# ADRS Shadow Monitor"
+              echo
+              echo "No monitor report was produced."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          p = os.path.join(os.environ["RUNNER_TEMP"], "adrs-shadow-monitor.json")
+          data = json.load(open(p, encoding="utf-8"))
+          print("# ADRS Shadow Monitor")
+          print()
+          print(f"status: `{data['status']}`")
+          print(f"target_ref: `{data['adrs']['target_ref']}`")
+          print(f"resolved_sha: `{data['adrs']['resolved_sha']}`")
+          print(f"alerts: `{len(data['alerts'])}`")
+          print()
+          print("This is non-authority governance monitoring evidence. It does not mutate ADRS or block ADRS PRs.")
+          PY
+
+      - name: Upload monitor report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adrs-shadow-monitor-report
+          path: ${{ runner.temp }}/adrs-shadow-monitor.json
+          if-no-files-found: ignore
