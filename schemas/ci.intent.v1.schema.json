@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ci.intent.v1",
+  "type": "object",
+  "required": [
+    "kind",
+    "path",
+    "provider",
+    "role",
+    "entrypoint",
+    "authority",
+    "dispatch",
+    "generation_mode"
+  ],
+  "properties": {
+    "kind": { "const": "ci.intent.v1" },
+    "path": { "type": "string", "pattern": "^\\.github/workflows/.+\\.ya?ml$" },
+    "provider": { "const": "github-actions" },
+    "role": {
+      "enum": [
+        "primary_nix_check",
+        "manual_dispatch_alias",
+        "artifact_exporter",
+        "bootstrap_exception"
+      ]
+    },
+    "entrypoint": { "type": "string", "minLength": 1 },
+    "authority": { "const": false },
+    "dispatch": { "type": "array", "items": { "type": "string" } },
+    "generation_mode": { "enum": ["checked_in", "generated", "managed"] },
+    "exception": { "type": "object" }
+  },
+  "additionalProperties": true
+}
