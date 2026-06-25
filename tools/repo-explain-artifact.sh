@@ -94,7 +94,7 @@ jq --arg sourceClosure "sha256:$source_sha" '
   }
 ' "$work/selected.json" > "$work/readme-data.json"
 
-jq -r --slurpfile data "$work/readme-data.json" '
+jq -s -r --slurpfile data "$work/readme-data.json" '
   ($data[0]) as $d
   | def get($field): $d | getpath($field | split("."));
     def marks($n): reduce range(0; $n) as $i (""; . + "#");
