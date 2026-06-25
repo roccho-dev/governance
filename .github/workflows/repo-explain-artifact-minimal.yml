@@ -13,16 +13,24 @@ jobs:
   artifact:
     runs-on: ubuntu-latest
     steps:
-      - name: Create artifact files
+      - uses: actions/checkout@v4
+      - name: Build artifact with projector
         run: |
+          set -euo pipefail
           mkdir -p artifact
-          echo '# governance' > artifact/README.md
-          echo '{"kind":"manifest","nonAuthority":true}' > artifact/manifest.json
-          echo '{"kind":"sources","nonAuthority":true}' > artifact/sources.jsonl
-          echo '{"kind":"receipt","nonAuthority":true}' > artifact/receipt.json
+          bash tools/repo-explain-artifact.sh build \
+            --input fixtures/repo-explain-artifact/accepted.jsonl \
+            --repo roccho-dev/governance \
+            --required-root purpose:company:high-value-sale \
+            --audience public \
+            --out artifact
+          echo projector > artifact/mode.txt
+          test -s artifact/README.md
+          test -s artifact/manifest.json
+          test -s artifact/sources.jsonl
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: repo-explain-minimal
+          name: repo-explain-projector
           path: artifact/
           if-no-files-found: error
