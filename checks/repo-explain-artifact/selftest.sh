@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Minimal artifact-creation selftest. Full negative coverage belongs in a later hardening PR.
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TOOL="$ROOT/tools/repo-explain-artifact.sh"
 FIX="$ROOT/fixtures/repo-explain-artifact"
