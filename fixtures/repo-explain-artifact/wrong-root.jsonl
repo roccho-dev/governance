@@ -1,0 +1,3 @@
+{"kind":"adrs.purpose.v1","id":"purpose:local","statement":"local only","parentId":null,"audience":"public"}
+{"kind":"adrs.repoResponsibility.v1","id":"repo-responsibility:roccho-dev/governance:v1","repo":"roccho-dev/governance","summary":"rootへ届かない責務","purposeId":"purpose:local","role":"projector","owns":["projection"],"mustNotOwn":["authority"],"inputs":["adrs"],"outputs":["artifact"],"effects":[],"audience":"public"}
+{"kind":"adrs.repoResponsibilityDecision.v1","id":"decision:adopt-governance-responsibility:v1","subjectId":"repo-responsibility:roccho-dev/governance:v1","scope":{"repo":"roccho-dev/governance"},"state":"accepted","lifecycle":"active","supersedes":[]}
