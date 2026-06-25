@@ -3,16 +3,16 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: repo-explain-artifact build --input PATH --repo OWNER/REPO --required-root PURPOSE_ID --audience public|internal --out DIR
+usage: repo-explain-artifact build --input PATH --repo OWNER/REPO --required-root PURPOSE_ID --audience public|internal --out DIR [--template PATH]
 
-Build a non-authority repository explanation artifact from ADR-derived JSONL rows.
+Build a non-authority Markdown repository explanation artifact from ADR-derived JSONL rows and a Markdown template JSONL.
 EOF
   exit 2
 }
 
 if [ "${1:-}" != "build" ]; then usage; fi
 shift
-input="" repo="" required_root="" audience="" out=""
+input="" repo="" required_root="" audience="" out="" template=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --input) input="$2"; shift 2 ;;
@@ -20,12 +20,17 @@ while [ "$#" -gt 0 ]; do
     --required-root) required_root="$2"; shift 2 ;;
     --audience) audience="$2"; shift 2 ;;
     --out) out="$2"; shift 2 ;;
+    --template) template="$2"; shift 2 ;;
     *) usage ;;
   esac
 done
 [ -n "$input" ] && [ -n "$repo" ] && [ -n "$required_root" ] && [ -n "$audience" ] && [ -n "$out" ] || usage
 case "$audience" in public|internal) ;; *) echo "invalid audience: $audience" >&2; exit 2 ;; esac
 [ -e "$input" ] || { echo "missing input: $input" >&2; exit 1; }
+if [ -z "$template" ]; then
+  template="$(cd "$(dirname "$0")/.." && pwd)/templates/repo-explain/readme.md.template.v1.jsonl"
+fi
+[ -f "$template" ] || { echo "missing markdown template: $template" >&2; exit 1; }
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -37,6 +42,7 @@ else
 fi
 
 jq -c . "$rows" > "$work/normalized.jsonl"
+jq -c . "$template" > "$work/template.jsonl"
 
 jq -s --arg repo "$repo" --arg root "$required_root" --arg audience "$audience" '
   def fail($m): error($m);
@@ -78,58 +84,32 @@ jq -s --arg repo "$repo" --arg root "$required_root" --arg audience "$audience" 
 mkdir -p "$out"
 jq -cS '.purposeChain[], .responsibility, .decision' "$work/selected.json" > "$out/sources.jsonl"
 source_sha="$(sha256sum "$out/sources.jsonl" | awk '{print $1}')"
-readme="$out/README.md"
-{
-  repo_title="$(jq -r '.repo' "$work/selected.json" | sed 's#.*/##')"
-  echo "# $repo_title"
-  echo
-  echo "> Generated non-authority repository explanation. Do not edit this artifact."
-  echo "> It states accepted intended responsibility; it does not prove implementation or runtime conformity."
-  echo
-  echo "## Purpose"
-  echo
-  echo "- Direct: $(jq -r '.purposeChain[0].statement' "$work/selected.json")"
-  echo "- Highest: $(jq -r '.purposeChain[-1].statement' "$work/selected.json")"
-  echo "- Lineage depth: $(jq -r '.purposeChain|length - 1' "$work/selected.json")"
-  echo
-  echo "## Responsibility"
-  echo
-  echo "- Role: \`$(jq -r '.responsibility.role' "$work/selected.json")\`"
-  echo "- Lifecycle: \`$(jq -r '.decision.lifecycle' "$work/selected.json")\`"
-  echo "- Audience: \`$(jq -r '.responsibility.audience' "$work/selected.json")\`"
-  echo "- Summary: $(jq -r '.responsibility.summary' "$work/selected.json")"
-  echo
-  echo "### Owns"
-  echo
-  jq -r '.responsibility.owns[] | "- " + .' "$work/selected.json"
-  echo
-  echo "### Must not own"
-  echo
-  jq -r '.responsibility.mustNotOwn[] | "- " + .' "$work/selected.json"
-  echo
-  echo "## Contract"
-  echo
-  echo "### Inputs"
-  echo
-  jq -r '.responsibility.inputs[] | "- " + .' "$work/selected.json"
-  echo
-  echo "### Outputs"
-  echo
-  jq -r '.responsibility.outputs[] | "- " + .' "$work/selected.json"
-  echo
-  echo "### Effects"
-  echo
-  if [ "$(jq '.responsibility.effects|length' "$work/selected.json")" = "0" ]; then echo "- None"; else jq -r '.responsibility.effects[] | "- " + .' "$work/selected.json"; fi
-  echo
-  echo "## Provenance"
-  echo
-  echo "- Repository: \`$(jq -r '.repo' "$work/selected.json")\`"
-  echo "- Responsibility: \`$(jq -r '.responsibility.id' "$work/selected.json")\`"
-  echo "- Decision: \`$(jq -r '.decision.id' "$work/selected.json")\`"
-  echo "- Source closure: \`sha256:$source_sha\`"
-  echo "- Projector: \`repo-explain-artifact.v1\`"
-} > "$readme"
-readme_sha="$(sha256sum "$readme" | awk '{print $1}')"
+
+jq --arg sourceClosure "sha256:$source_sha" '
+  {
+    repoTitle:(.repo | split("/")[-1]),
+    purpose:{direct:.purposeChain[0].statement, highest:.purposeChain[-1].statement, depth:(.purposeChain|length - 1)},
+    responsibility:{role:.responsibility.role, lifecycle:.decision.lifecycle, audience:.responsibility.audience, summary:.responsibility.summary, owns:.responsibility.owns, mustNotOwn:.responsibility.mustNotOwn, inputs:.responsibility.inputs, outputs:.responsibility.outputs, effects:.responsibility.effects},
+    provenance:{repository:.repo, responsibility:.responsibility.id, decision:.decision.id, sourceClosure:$sourceClosure, projector:"repo-explain-artifact.v1"}
+  }
+' "$work/selected.json" > "$work/readme-data.json"
+
+jq -r --slurpfile data "$work/readme-data.json" '
+  ($data[0]) as $d
+  | def get($field): $d | getpath($field | split("."));
+    def marks($n): reduce range(0; $n) as $i (""; . + "#");
+    def scalar($field): get($field) | tostring;
+    def render:
+      if .block == "title" then "# \(scalar(.field))\n\n"
+      elif .block == "quote" then ((.lines | map("> " + .) | join("\n")) + "\n\n")
+      elif .block == "heading" then "\(marks(.level)) \(.text)\n\n"
+      elif .block == "kv" then ((.entries | map("- \(.label): \(scalar(.field))") | join("\n")) + "\n\n")
+      elif .block == "list" then ((get(.field)) as $xs | (if ($xs|length)==0 then ["- \(.empty // "None")"] else ($xs | map("- " + .)) end | join("\n")) + "\n\n")
+      else error("unknown markdown template block: " + (.block // "null")) end;
+    sort_by(.order)[] | select(.kind=="governance.mdTemplate.block.v1") | render
+' "$work/template.jsonl" > "$out/README.md"
+readme_sha="$(sha256sum "$out/README.md" | awk '{print $1}')"
+template_sha="$(sha256sum "$work/template.jsonl" | awk '{print $1}')"
 
 jq -nS \
   --arg kind 'governance.repoExplainArtifact.manifest.v1' \
@@ -137,6 +117,7 @@ jq -nS \
   --arg audience "$audience" \
   --arg root "$required_root" \
   --arg sourceSha "sha256:$source_sha" \
+  --arg templateSha "sha256:$template_sha" \
   --arg readmeSha "$readme_sha" \
   --arg sourcesSha "$source_sha" \
   --arg responsibilityId "$(jq -r '.responsibility.id' "$work/selected.json")" \
@@ -144,7 +125,7 @@ jq -nS \
   --arg role "$(jq -r '.responsibility.role' "$work/selected.json")" \
   --arg lifecycle "$(jq -r '.decision.lifecycle' "$work/selected.json")" \
   --argjson depth "$(jq '.purposeChain|length - 1' "$work/selected.json")" \
-  '{kind:$kind,nonAuthority:true,projector:"repo-explain-artifact.v1",repo:$repo,audience:$audience,purposeRootId:$root,purposeDepth:$depth,responsibilityId:$responsibilityId,decisionId:$decisionId,role:$role,lifecycle:$lifecycle,sourceClosureSha256:$sourceSha,files:{"README.md":{sha256:$readmeSha},"sources.jsonl":{sha256:$sourcesSha}}}' \
+  '{kind:$kind,nonAuthority:true,projector:"repo-explain-artifact.v1",repo:$repo,audience:$audience,purposeRootId:$root,purposeDepth:$depth,responsibilityId:$responsibilityId,decisionId:$decisionId,role:$role,lifecycle:$lifecycle,sourceClosureSha256:$sourceSha,templateSha256:$templateSha,files:{"README.md":{sha256:$readmeSha},"sources.jsonl":{sha256:$sourcesSha}}}' \
   > "$out/manifest.json"
 
 echo "[OK] repo explanation artifact: $out"
