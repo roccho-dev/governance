@@ -135,6 +135,9 @@ jobs:
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
 
+      - name: Run flake check
+        run: nix flake check --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
+
       - name: Run default help
         run: nix run --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .
 
