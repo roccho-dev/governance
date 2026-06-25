@@ -1,0 +1,2 @@
+{"kind":"adrs.purpose.v1","id":"purpose:company:high-value-sale","statement":"高価値法人を構築し第三者へ移管または売却できる状態にする","parentId":null,"audience":"public"}
+{"kind":"adrs.repoResponsibility.v1","id":"repo-responsibility:roccho-dev/governance:v1","repo":"roccho-dev/governance","summary":"責務だけありdecisionがない","purposeId":"purpose:company:high-value-sale","role":"projector","owns":["projection"],"mustNotOwn":["authority"],"inputs":["adrs"],"outputs":["artifact"],"effects":[],"audience":"public"}
