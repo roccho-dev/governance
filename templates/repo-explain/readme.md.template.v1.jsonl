@@ -1,0 +1,19 @@
+{"kind":"governance.mdTemplate.block.v1","id":"title","order":10,"block":"title","field":"repoTitle"}
+{"kind":"governance.mdTemplate.block.v1","id":"notice","order":20,"block":"quote","lines":["Generated non-authority repository explanation. Do not edit this artifact.","It states accepted intended responsibility; it does not prove implementation or runtime conformity."]}
+{"kind":"governance.mdTemplate.block.v1","id":"purpose-heading","order":30,"block":"heading","level":2,"text":"Purpose"}
+{"kind":"governance.mdTemplate.block.v1","id":"purpose-kv","order":40,"block":"kv","entries":[{"label":"Direct","field":"purpose.direct"},{"label":"Highest","field":"purpose.highest"},{"label":"Lineage depth","field":"purpose.depth"}]}
+{"kind":"governance.mdTemplate.block.v1","id":"responsibility-heading","order":50,"block":"heading","level":2,"text":"Responsibility"}
+{"kind":"governance.mdTemplate.block.v1","id":"responsibility-kv","order":60,"block":"kv","entries":[{"label":"Role","field":"responsibility.role"},{"label":"Lifecycle","field":"responsibility.lifecycle"},{"label":"Audience","field":"responsibility.audience"},{"label":"Summary","field":"responsibility.summary"}]}
+{"kind":"governance.mdTemplate.block.v1","id":"owns-heading","order":70,"block":"heading","level":3,"text":"Owns"}
+{"kind":"governance.mdTemplate.block.v1","id":"owns-list","order":80,"block":"list","field":"responsibility.owns"}
+{"kind":"governance.mdTemplate.block.v1","id":"must-not-own-heading","order":90,"block":"heading","level":3,"text":"Must not own"}
+{"kind":"governance.mdTemplate.block.v1","id":"must-not-own-list","order":100,"block":"list","field":"responsibility.mustNotOwn"}
+{"kind":"governance.mdTemplate.block.v1","id":"contract-heading","order":110,"block":"heading","level":2,"text":"Contract"}
+{"kind":"governance.mdTemplate.block.v1","id":"inputs-heading","order":120,"block":"heading","level":3,"text":"Inputs"}
+{"kind":"governance.mdTemplate.block.v1","id":"inputs-list","order":130,"block":"list","field":"responsibility.inputs"}
+{"kind":"governance.mdTemplate.block.v1","id":"outputs-heading","order":140,"block":"heading","level":3,"text":"Outputs"}
+{"kind":"governance.mdTemplate.block.v1","id":"outputs-list","order":150,"block":"list","field":"responsibility.outputs"}
+{"kind":"governance.mdTemplate.block.v1","id":"effects-heading","order":160,"block":"heading","level":3,"text":"Effects"}
+{"kind":"governance.mdTemplate.block.v1","id":"effects-list","order":170,"block":"list","field":"responsibility.effects","empty":"None"}
+{"kind":"governance.mdTemplate.block.v1","id":"provenance-heading","order":180,"block":"heading","level":2,"text":"Provenance"}
+{"kind":"governance.mdTemplate.block.v1","id":"provenance-kv","order":190,"block":"kv","entries":[{"label":"Repository","field":"provenance.repository"},{"label":"Responsibility","field":"provenance.responsibility"},{"label":"Decision","field":"provenance.decision"},{"label":"Source closure","field":"provenance.sourceClosure"},{"label":"Projector","field":"provenance.projector"}]}
