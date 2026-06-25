@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import sys
@@ -10,7 +11,13 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from check_readme_artifact import check_readme
+README_CHECK_PATH = Path(__file__).with_name("check-readme-artifact.py")
+README_CHECK_SPEC = importlib.util.spec_from_file_location("check_readme_artifact", README_CHECK_PATH)
+if README_CHECK_SPEC is None or README_CHECK_SPEC.loader is None:
+    raise RuntimeError(f"cannot load README check helper: {README_CHECK_PATH}")
+README_CHECK_MODULE = importlib.util.module_from_spec(README_CHECK_SPEC)
+README_CHECK_SPEC.loader.exec_module(README_CHECK_MODULE)
+check_readme = README_CHECK_MODULE.check_readme
 
 VALID_SEVERITIES = {"report_only", "warning", "blocking"}
 VALID_README_MODES = {"checked_handwritten", "managed_block", "generated"}
