@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
@@ -45,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: main
+          ref: proposals
           path: .ci/adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -91,7 +92,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: main
+          ref: proposals
           path: .ci/adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
