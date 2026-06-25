@@ -1,0 +1,100 @@
+name: repo-explain-artifact
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-explain-artifact-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  artifact:
+    name: repo explain artifact
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+
+      - name: Validate ADRs reader configuration
+        env:
+          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: |
+          set -euo pipefail
+          test -n "$ADRS_READER_CLIENT_ID"
+          test -n "$ADRS_READER_PRIVATE_KEY"
+
+      - name: Create ADRs reader token
+        id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - name: Checkout accepted ADR input
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: main
+          path: .ci/adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Run projector selftest
+        run: bash checks/repo-explain-artifact/selftest.sh
+
+      - name: Build required README artifact
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          bash tools/repo-explain-artifact.sh build \
+            --input .ci/adrs/records/raw \
+            --repo roccho-dev/governance \
+            --required-root purpose:company:high-value-sale \
+            --audience public \
+            --out artifact
+          test -s artifact/README.md
+          test -s artifact/manifest.json
+          test -s artifact/sources.jsonl
+
+      - name: Write non-authority CI receipt
+        env:
+          TARGET_SHA: ${{ github.sha }}
+          TARGET_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          ADRS_SHA=$(git -C .ci/adrs rev-parse HEAD)
+          MANIFEST_SHA=$(sha256sum artifact/manifest.json | awk '{print $1}')
+          jq -nS \
+            --arg kind 'governance.repoExplainArtifact.receipt.v1' \
+            --arg targetRepo "$TARGET_REPO" \
+            --arg targetSha "$TARGET_SHA" \
+            --arg adrsSha "$ADRS_SHA" \
+            --arg runId "$RUN_ID" \
+            --arg runAttempt "$RUN_ATTEMPT" \
+            --arg manifestSha256 "$MANIFEST_SHA" \
+            '{kind:$kind,nonAuthority:true,targetRepo:$targetRepo,targetSha:$targetSha,adrsSha:$adrsSha,runId:$runId,runAttempt:$runAttempt,manifestSha256:$manifestSha256}' \
+            > artifact/receipt.json
+
+      - name: Upload required README artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-explain-${{ github.sha }}
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 30
