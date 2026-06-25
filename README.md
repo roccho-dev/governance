@@ -4,6 +4,12 @@
 
 It is not a decision authority, accepted-definition record store, policy source, runtime executor, or merge/cutover approval surface.
 
+## Purpose
+
+`governance` provides deterministic, non-authority checks, projections, and
+provider-adapter validation for repositories that choose to adopt governance
+conventions through their own accepted path.
+
 ## Authority boundary
 
 - `adrs` owns accepted decisions, purposes, responsibilities, rules, non-goals, waivers, and destructive cases.
@@ -14,6 +20,9 @@ It is not a decision authority, accepted-definition record store, policy source,
 - `spec` and `specs` are deprecated legacy evidence only, not authority inputs.
 
 Do not infer authority from this README, a path name, generated output, cache, dashboard, or compatibility input name. Resolve authority through accepted ADR records and their digest-pinned projected bundle.
+
+README.md is a checked artifact. It may be handwritten, partially managed, or
+generated according to readme_mode. README.md is not an independent authority.
 
 ## Pure projection contract
 
@@ -41,6 +50,37 @@ Required properties:
 - fail closed on missing, stale, or unknown input
 - trace ADR rule id to projection rule id to ops check id to receipt rule id
 - side effects: none
+
+## Inputs
+
+- accepted ADR bundles and their digest-pinned projected inputs
+- repo-local intent files such as `ci.intent.v1.jsonl`
+- repo-local convention manifests such as `repo-convention.intent.v1.json`
+- Nix inputs declared by `flake.nix`
+
+## Outputs / artifacts
+
+- deterministic check receipts from `nix flake check`
+- provider CI adapter findings
+- README artifact findings
+- repo convention findings
+- non-authority projection artifacts and compatibility packages
+
+## Checks
+
+The primary verification entrypoint is `nix flake check`.
+
+Current checks include ADR input presence, no local records/generated trees, Nix
+surface checks, ADRS shadow monitor selftests, provider CI YAML selftests, and
+repo convention checks. `.github/workflows/*.yml` are checked-in provider
+adapter artifacts. They are executable by GitHub, but they are not authority.
+All GitHub provider workflows must be declared by `ci.intent.v1.jsonl`.
+
+## Ownership / handoff
+
+`governance` owns the implementation of convention checks. It does not accept
+downstream repo policy by itself. Each downstream repo owns whether and how it
+adopts governance checks, including severity and exceptions.
 
 ## Active tree layout
 

@@ -66,8 +66,13 @@ ${helpText}
           type = "app";
           program = "${helpProgram}/bin/governance-help";
         };
+      repoConventionChecksFor = pkgs:
+        import ./nix/repo-convention-checks.nix { inherit pkgs; governanceSrc = self; };
     in
     {
+      lib = forEachSystem (pkgs: {
+        repoConventionChecks = repoConventionChecksFor pkgs;
+      });
       packages = forEachSystem (pkgs: {
         bootstrap-input = pkgs.runCommand "bootstrap-input" { } ''
           mkdir -p "$out"
@@ -115,6 +120,9 @@ EOF
           python3 tools/check-provider-ci-yaml.py selftest
           touch "$out"
         '';
+        repo-convention-selftest = (repoConventionChecksFor pkgs {
+          src = self;
+        }).repo-convention;
       });
     };
 }
