@@ -1,6 +1,7 @@
 name: repo-explain-artifact-minimal
 
 on:
+  pull_request:
   push:
     branches: [proposals]
   workflow_dispatch:
