@@ -42,6 +42,10 @@ All GitHub provider workflows must be declared by `ci.intent.v1.jsonl`.
 
 The primary verification entrypoint is `nix flake check`.
 
+Repos with no GitHub provider workflows have no provider CI entries to declare.
+They may keep an empty `ci.intent.v1.jsonl`; this is not an independent CI
+entry.
+
 `workflow_dispatch` is allowed when declared and when it dispatches
 non-authority provider behavior.
 
