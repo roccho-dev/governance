@@ -99,6 +99,7 @@ def workflow_files(repo_root: Path) -> set[str]:
 
 def check_ci(repo_root: Path, ci_path: Path) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
+    actual = workflow_files(repo_root)
     if not ci_path.exists():
         return [finding("ci-intent-missing", "ci intent file is missing", path=str(ci_path))]
     rows = read_jsonl(ci_path)
@@ -138,9 +139,8 @@ def check_ci(repo_root: Path, ci_path: Path) -> list[dict[str, Any]]:
                             findings.append(finding("exception-expired", "bootstrap_exception expiry is in the past", path=path))
                     except ValueError:
                         findings.append(finding("exception-expiry-invalid", "expiry must be ISO date", path=path))
-    if primary_count == 0:
+    if actual and primary_count == 0:
         findings.append(finding("primary-nix-check-missing", "one primary_nix_check workflow is required"))
-    actual = workflow_files(repo_root)
     declared_paths = set(declared)
     for path in sorted(actual - declared_paths):
         findings.append(finding("undeclared-workflow", "workflow file is not declared", path=path))
