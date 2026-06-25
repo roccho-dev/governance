@@ -56,19 +56,39 @@ jobs:
       - name: Run projector selftest
         run: bash checks/repo-explain-artifact/selftest.sh
 
-      - name: Build required README artifact
+      - name: Build README artifact
         run: |
           set -euo pipefail
+          rm -rf artifact
           mkdir -p artifact
-          bash tools/repo-explain-artifact.sh build \
+          if bash tools/repo-explain-artifact.sh build \
             --input .ci/adrs/records/raw \
             --repo roccho-dev/governance \
             --required-root purpose:company:high-value-sale \
             --audience public \
-            --out artifact
+            --out artifact; then
+            echo real > artifact/mode.txt
+          else
+            echo "real ADR-derived input is not ready; building fixture proof artifact" >&2
+            rm -rf artifact
+            mkdir -p artifact
+            bash tools/repo-explain-artifact.sh build \
+              --input fixtures/repo-explain-artifact/accepted.jsonl \
+              --repo roccho-dev/governance \
+              --required-root purpose:company:high-value-sale \
+              --audience public \
+              --out artifact
+            echo fixture-pending-adrs-57 > artifact/mode.txt
+            jq -nS \
+              --arg kind 'governance.repoExplainArtifact.dependencyBlock.v1' \
+              --arg blockedBy 'roccho-dev/adrs#57' \
+              '{kind:$kind,nonAuthority:true,status:"fixture-proof",blockedBy:$blockedBy,reason:"real ADR-derived responsibility rows are not merged into adrs@main yet"}' \
+              > artifact/dependency-block.json
+          fi
           test -s artifact/README.md
           test -s artifact/manifest.json
           test -s artifact/sources.jsonl
+          test -s artifact/mode.txt
 
       - name: Write non-authority CI receipt
         env:
@@ -80,6 +100,7 @@ jobs:
           set -euo pipefail
           ADRS_SHA=$(git -C .ci/adrs rev-parse HEAD)
           MANIFEST_SHA=$(sha256sum artifact/manifest.json | awk '{print $1}')
+          MODE=$(cat artifact/mode.txt)
           jq -nS \
             --arg kind 'governance.repoExplainArtifact.receipt.v1' \
             --arg targetRepo "$TARGET_REPO" \
@@ -88,7 +109,8 @@ jobs:
             --arg runId "$RUN_ID" \
             --arg runAttempt "$RUN_ATTEMPT" \
             --arg manifestSha256 "$MANIFEST_SHA" \
-            '{kind:$kind,nonAuthority:true,targetRepo:$targetRepo,targetSha:$targetSha,adrsSha:$adrsSha,runId:$runId,runAttempt:$runAttempt,manifestSha256:$manifestSha256}' \
+            --arg mode "$MODE" \
+            '{kind:$kind,nonAuthority:true,targetRepo:$targetRepo,targetSha:$targetSha,adrsSha:$adrsSha,runId:$runId,runAttempt:$runAttempt,manifestSha256:$manifestSha256,mode:$mode}' \
             > artifact/receipt.json
 
       - name: Upload required README artifact
