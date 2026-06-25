@@ -1,0 +1,4 @@
+{"kind":"adrs.purpose.v1","id":"purpose:a","statement":"cycle a","parentId":"purpose:b","audience":"public"}
+{"kind":"adrs.purpose.v1","id":"purpose:b","statement":"cycle b","parentId":"purpose:a","audience":"public"}
+{"kind":"adrs.repoResponsibility.v1","id":"repo-responsibility:roccho-dev/governance:v1","repo":"roccho-dev/governance","summary":"cycle目的の責務","purposeId":"purpose:a","role":"projector","owns":["projection"],"mustNotOwn":["authority"],"inputs":["adrs"],"outputs":["artifact"],"effects":[],"audience":"public"}
+{"kind":"adrs.repoResponsibilityDecision.v1","id":"decision:adopt-governance-responsibility:v1","subjectId":"repo-responsibility:roccho-dev/governance:v1","scope":{"repo":"roccho-dev/governance"},"state":"accepted","lifecycle":"active","supersedes":[]}
