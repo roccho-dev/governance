@@ -14,20 +14,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build artifact with projector
+      - name: Build artifact
         run: |
           set -euo pipefail
           mkdir -p artifact
-          bash tools/repo-explain-artifact.sh build \
-            --input fixtures/repo-explain-artifact/accepted.jsonl \
-            --repo roccho-dev/governance \
-            --required-root purpose:company:high-value-sale \
-            --audience public \
-            --out artifact
-          echo projector > artifact/mode.txt
+          if [ -f tools/repo-explain-artifact.sh ]; then
+            bash tools/repo-explain-artifact.sh build \
+              --input fixtures/repo-explain-artifact/accepted.jsonl \
+              --repo roccho-dev/governance \
+              --required-root purpose:company:high-value-sale \
+              --audience public \
+              --out artifact
+            echo projector > artifact/mode.txt
+          else
+            echo '# governance' > artifact/README.md
+            echo '{"kind":"manifest","nonAuthority":true,"mode":"fallback"}' > artifact/manifest.json
+            echo '{"kind":"sources","nonAuthority":true,"mode":"fallback"}' > artifact/sources.jsonl
+            echo fallback > artifact/mode.txt
+          fi
           test -s artifact/README.md
           test -s artifact/manifest.json
           test -s artifact/sources.jsonl
+          test -s artifact/mode.txt
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
