@@ -6,6 +6,7 @@ import argparse
 import importlib.util
 import json
 import re
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -149,6 +150,16 @@ def check_ci(repo_root: Path, ci_path: Path) -> list[dict[str, Any]]:
     return findings
 
 
+def check_readme_govlib_contract(repo_root: Path) -> list[dict[str, Any]]:
+    script = repo_root / "tools" / "check-readme-govlib-contract.py"
+    if not script.exists():
+        return [finding("readme-govlib-contract-missing", "README gov-lib contract check is missing", path=str(script))]
+    result = subprocess.run([sys.executable, str(script)], cwd=repo_root, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if result.returncode == 0:
+        return []
+    return [finding("readme-govlib-contract-failed", "README gov-lib contract check failed", stdout=result.stdout, stderr=result.stderr)]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, required=True)
@@ -162,6 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     ci_path = repo_root / manifest.get("ci_intent_path", "ci.intent.v1.jsonl")
     findings.extend(check_readme(readme_path, manifest.get("readme_mode", "")))
     findings.extend(check_ci(repo_root, ci_path))
+    findings.extend(check_readme_govlib_contract(repo_root))
     severity = manifest.get("severity", "blocking")
     status = "pass" if not findings else "fail" if severity == "blocking" else "warn"
     report = {
