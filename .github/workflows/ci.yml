@@ -147,6 +147,12 @@ jobs:
       - name: Build explicit bootstrap package
         run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#bootstrap-input
 
+      - name: Build README artifact package
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#readme-artifact
+
+      - name: Check README artifact package
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.readme-artifact
+
       - name: Check ADR input presence
         run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.adrs-input-presence
 

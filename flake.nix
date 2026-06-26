@@ -7,10 +7,14 @@
       url = "github:roccho-dev/adrs/main";
       flake = false;
     };
+    uiLib = {
+      url = "github:roccho-dev/ui/proposals";
+      flake = false;
+    };
   };
 
   outputs =
-    { self, nixpkgs, adrsRecords }:
+    { self, nixpkgs, adrsRecords, uiLib }:
     let
       systems = [ "x86_64-linux" ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
@@ -21,6 +25,46 @@
         reason = "ADR-derived governance-records projection is not materialized in the current adrs input";
         boundary = "governance exposes a compatibility package only; this placeholder is not a decision source";
       };
+      readmeArtifactModel = builtins.toJSON {
+        kind = "document.model.v1";
+        blocks = [
+          { kind = "heading"; depth = 1; text = "governance README artifact"; }
+          { kind = "heading"; depth = 2; text = "Purpose"; }
+          { kind = "paragraph"; text = "Materialize the governance README artifact packet while keeping governance as a pure projection and check library."; }
+          { kind = "heading"; depth = 2; text = "Authority boundary"; }
+          { kind = "paragraph"; text = "README.md is a checked artifact. README.md is not an independent authority. Accepted decisions remain in adrs; governance projects and checks; ui renders Markdown bytes; repository CI exports the packet."; }
+          { kind = "heading"; depth = 2; text = "Inputs"; }
+          { kind = "list"; items = [
+            "accepted projection bundle contract from adrs"
+            "repoExplainView semantic contract from adrs"
+            "document.model.v1 passed to ui-lib"
+            "ui.markdown-document-renderer.v1 from roccho-dev/ui"
+          ]; }
+          { kind = "heading"; depth = 2; text = "Outputs / artifacts"; }
+          { kind = "list"; items = [
+            "README.md"
+            "manifest.json"
+            "sources.jsonl"
+            "receipt.json"
+          ]; }
+          { kind = "heading"; depth = 2; text = "Checks"; }
+          { kind = "list"; items = [
+            "nix build .#readme-artifact emits the required packet"
+            "nix flake check includes checks.readme-artifact"
+            "artifact metadata declares nonAuthority and source closure provenance"
+            "workflow upload is declared as artifact_exporter with source nix-output"
+          ]; }
+          { kind = "heading"; depth = 2; text = "Ownership / handoff"; }
+          { kind = "paragraph"; text = "The governance repository owns artifact export. gov-lib does not upload artifacts. ui-lib does not own artifact lifecycle. The packet is evidence for downstream review, not a source of accepted meaning."; }
+        ];
+      };
+      readmeArtifactSourcesText = ''
+{"kind":"artifact.source.v1","artifact":"governance-readme","sourceKind":"acceptedProjectionBundleContract","ref":"roccho-dev/adrs#74","authority":false}
+{"kind":"artifact.source.v1","artifact":"governance-readme","sourceKind":"repoExplainViewContract","ref":"roccho-dev/adrs#73","authority":false}
+{"kind":"artifact.source.v1","artifact":"governance-readme","sourceKind":"artifactContract","ref":"roccho-dev/adrs#75","authority":false}
+{"kind":"artifact.source.v1","artifact":"governance-readme","sourceKind":"renderer","ref":"roccho-dev/ui:proposals:src/markdown-document-renderer.mjs","authority":false}
+      '';
+      sourceClosureDigest = builtins.hashString "sha256" readmeArtifactSourcesText;
       helpText = ''
         governance flake surface
 
@@ -32,6 +76,8 @@
         Build:
           nix build .#bootstrap-input
             Build the explicit bootstrap compatibility package.
+          nix build .#readme-artifact
+            Build the non-authority README artifact packet.
           nix build .
             Intentionally unsupported: governance has no packages.default.
 
@@ -46,7 +92,7 @@
             Run all governance checks.
           checks include ADR input presence, no local records/generated,
           Nix default surface, provider CI YAML generated-output selftest,
-          and ADRS shadow monitor selftest.
+          README artifact packet selftest, and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -68,6 +114,60 @@ ${helpText}
         };
       repoConventionChecksFor = pkgs:
         import ./nix/repo-convention-checks.nix { inherit pkgs; governanceSrc = self; };
+      mkReadmeArtifact = pkgs:
+        pkgs.runCommand "governance-readme-artifact" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+          set -euo pipefail
+          mkdir -p "$out"
+          cat > "$TMPDIR/document.model.json" <<'EOF'
+${readmeArtifactModel}
+EOF
+          UI_LIB_SRC=${uiLib} node ${self}/tools/render-readme-artifact-with-ui.mjs \
+            --model "$TMPDIR/document.model.json" \
+            --out "$out"
+          cp "$TMPDIR/document.model.json" "$out/document.model.json"
+          cat > "$out/sources.jsonl" <<'EOF'
+${readmeArtifactSourcesText}
+EOF
+          readme_sha=$(sha256sum "$out/README.md" | cut -d' ' -f1)
+          model_sha=$(sha256sum "$out/document.model.json" | cut -d' ' -f1)
+          sources_sha=$(sha256sum "$out/sources.jsonl" | cut -d' ' -f1)
+          render_result_sha=$(sha256sum "$out/render-result.json" | cut -d' ' -f1)
+          cat > "$out/manifest.json" <<EOF
+{
+  "kind": "governance.readmeArtifact.manifest.v1",
+  "repo": "roccho-dev/governance",
+  "artifact": "README.md",
+  "packetKind": "readme-artifact.v1",
+  "nonAuthority": true,
+  "sourceClosureDigest": "${sourceClosureDigest}",
+  "renderer": "ui.markdown-document-renderer.v1",
+  "modelDigest": "$model_sha",
+  "sourcesDigest": "$sources_sha",
+  "renderResultDigest": "$render_result_sha",
+  "readmeDigest": "$readme_sha",
+  "requiredFiles": ["README.md", "manifest.json", "sources.jsonl", "receipt.json"]
+}
+EOF
+          manifest_sha=$(sha256sum "$out/manifest.json" | cut -d' ' -f1)
+          cat > "$out/receipt.json" <<EOF
+{
+  "kind": "governance.readmeArtifact.receipt.v1",
+  "repo": "roccho-dev/governance",
+  "status": "success",
+  "authority": false,
+  "nonAuthority": true,
+  "source": "nix-output",
+  "sourceClosureDigest": "${sourceClosureDigest}",
+  "outputs": {
+    "README.md": "$readme_sha",
+    "manifest.json": "$manifest_sha",
+    "sources.jsonl": "$sources_sha",
+    "document.model.json": "$model_sha",
+    "render-result.json": "$render_result_sha"
+  }
+}
+EOF
+        '';
     in
     {
       lib = forEachSystem (pkgs: {
@@ -80,9 +180,10 @@ ${helpText}
 ${bootstrapInputText}
 EOF
         '';
+        readme-artifact = mkReadmeArtifact pkgs;
       });
       apps = forEachSystem (pkgs: let helpApp = mkHelpApp pkgs; in { help = helpApp; default = helpApp; });
-      checks = forEachSystem (pkgs: {
+      checks = forEachSystem (pkgs: let readmeArtifact = mkReadmeArtifact pkgs; in {
         adrs-input-presence = pkgs.runCommand "adrs-input-presence" { } ''
           set -euo pipefail
           test -d ${adrsRecords}
@@ -118,6 +219,19 @@ EOF
           set -euo pipefail
           cd ${self}
           python3 tools/check-provider-ci-yaml.py selftest
+          touch "$out"
+        '';
+        readme-artifact = pkgs.runCommand "readme-artifact-check" { } ''
+          set -euo pipefail
+          test -s ${readmeArtifact}/README.md
+          test -s ${readmeArtifact}/manifest.json
+          test -s ${readmeArtifact}/sources.jsonl
+          test -s ${readmeArtifact}/receipt.json
+          grep -q 'README.md is not an independent authority' ${readmeArtifact}/README.md
+          grep -q '"nonAuthority": true' ${readmeArtifact}/manifest.json
+          grep -q '"sourceClosureDigest"' ${readmeArtifact}/manifest.json
+          grep -q '"status": "success"' ${readmeArtifact}/receipt.json
+          grep -q '"source": "nix-output"' ${readmeArtifact}/receipt.json
           touch "$out"
         '';
         repo-convention-selftest = (repoConventionChecksFor pkgs {
