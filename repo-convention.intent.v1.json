@@ -9,7 +9,7 @@
     "kind": "branch",
     "value": "proposals"
   },
-  "ci_intent_path": "ci.intent.readme.v1.jsonl",
+  "ci_intent_path": "ci.intent.v1.jsonl",
   "readme_path": "README.md",
   "exceptions": []
 }
