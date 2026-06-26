@@ -92,7 +92,8 @@
             Run all governance checks.
           checks include ADR input presence, no local records/generated,
           Nix default surface, provider CI YAML generated-output selftest,
-          README artifact packet selftest, and ADRS shadow monitor selftest.
+          README artifact packet selftest, org admission gate selftest,
+          and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -219,6 +220,12 @@ EOF
           set -euo pipefail
           cd ${self}
           python3 tools/check-provider-ci-yaml.py selftest
+          touch "$out"
+        '';
+        org-admission-gate-selftest = pkgs.runCommand "org-admission-gate-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/check-org-admission-gate.py selftest
           touch "$out"
         '';
         readme-artifact = pkgs.runCommand "readme-artifact-check" { } ''
