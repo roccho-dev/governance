@@ -4,6 +4,10 @@
 
 A repo should not appear in README projection without the upstream capability, manufacture, and materialization decisions that explain why it exists.
 
+## Scope Purpose
+
+This PR fixes the repo-existence explanation boundary. The local purpose is to connect repo responsibility to the upstream capability, manufacture decision, and materialization decision. The system purpose is to prevent repo-first explanations that hide why the repo exists. The transfer purpose is to let a buyer or maintainer trace a repo back to the capability it serves and the choice that made it a repo instead of another artifact or service.
+
 ## Direction
 
 Add a resolver that joins capability, manufacture decision, and materialization decision records.
