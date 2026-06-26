@@ -10,8 +10,6 @@ on:
 permissions:
   contents: read
 
-type: workflow
-
 jobs:
   export:
     name: build and upload README artifact packet
