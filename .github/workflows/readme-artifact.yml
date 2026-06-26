@@ -1,0 +1,80 @@
+name: README artifact exporter
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - proposals
+
+permissions:
+  contents: read
+
+type: workflow
+
+jobs:
+  export:
+    name: build and upload README artifact packet
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      ADRS_INPUT: path:./.ci/adrs
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+
+      - name: Validate ADRs reader configuration is present
+        env:
+          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: |
+          set -euo pipefail
+          test -n "$ADRS_READER_CLIENT_ID" || { echo "missing Actions variable: ADRS_READER_CLIENT_ID" >&2; exit 1; }
+          test -n "$ADRS_READER_PRIVATE_KEY" || { echo "missing Actions secret: ADRS_READER_PRIVATE_KEY" >&2; exit 1; }
+
+      - name: Create ADRs reader token
+        id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - name: Checkout ADRS from GitHub
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: proposals
+          path: .ci/adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+
+      - name: Build README artifact packet
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#readme-artifact
+
+      - name: Check README artifact packet
+        run: |
+          set -euo pipefail
+          test -s result/README.md
+          test -s result/manifest.json
+          test -s result/sources.jsonl
+          test -s result/receipt.json
+
+      - name: Upload README artifact packet
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-readme-artifact
+          path: |
+            result/README.md
+            result/manifest.json
+            result/sources.jsonl
+            result/receipt.json
+          if-no-files-found: error
