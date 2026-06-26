@@ -6,25 +6,32 @@ After the local organization-join fixture is stable, governance needs a narrow c
 
 ## Direction
 
-Add a governance proposal for checking that official organization views only include subjects with complete upstream records, downstream assertions, matching source closure, and required receipts.
+Add a governance production check for official organization views. The check ensures that included subjects have complete upstream records, downstream assertions, matching source closure, and required receipts.
 
 ## Decision
 
-A later implementation may turn the local diagnostic into a production check for organization-active targets. The check should report clear diagnostics for:
+The production check reports clear diagnostics for:
 
 - missing downstream assertion;
 - missing upstream grant;
 - source closure mismatch;
+- source closure head mismatch;
 - missing required receipt;
 - duplicate active assertion;
-- revoked upstream grant.
+- revoked upstream grant;
+- stale assertion;
+- asserted but unproven assertion;
+- unresolved latest user or operator intent challenge;
+- unaccepted official view digest for execution inputs.
 
 The check must use pinned or checked-in inputs. It must not call live GitHub state or create dynamic authority.
 
+The initial implementation is `tools/check-org-admission-gate.py`. It fails when an official view includes a subject whose admission record is missing, not `organization-active`, has a blocking diagnostic, has a digest or receipt mismatch, has a stale source closure head, has a blocking lifecycle, has duplicate active assertions, lacks accepted view digest evidence for execution, or treats an unresolved latest intent challenge as active.
+
 ## Boundary
 
-This proposal does not implement the check and does not require branch protection. It only defines the next production-check scope after the fixture is stable.
+This proposal does not require branch protection. It defines and implements the local deterministic production-check behavior after the fixture is stable.
 
 ## Merge Gate
 
-Merge only if the production-check scope stays limited to organization-active targets and does not broaden into DD, transfer, runtime, or raw-ledger cutover work.
+Merge only if the production-check scope stays limited to organization-active targets, uses checked-in inputs, and does not broaden into DD, transfer, runtime, or raw-ledger cutover work.
