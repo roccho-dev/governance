@@ -93,7 +93,7 @@
           checks include ADR input presence, no local records/generated,
           Nix default surface, provider CI YAML generated-output selftest,
           README artifact packet selftest, org admission gate selftest,
-          and ADRS shadow monitor selftest.
+          claim port join compiler selftest, and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -226,6 +226,12 @@ EOF
           set -euo pipefail
           cd ${self}
           python3 tools/check-org-admission-gate.py selftest
+          touch "$out"
+        '';
+        claim-port-join-compiler-selftest = pkgs.runCommand "claim-port-join-compiler-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/compile-claim-port-joins.py selftest
           touch "$out"
         '';
         readme-artifact = pkgs.runCommand "readme-artifact-check" { } ''
