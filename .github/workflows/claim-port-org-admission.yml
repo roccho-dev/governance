@@ -1,0 +1,42 @@
+name: claim-port org admission
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - proposals
+  push:
+    branches:
+      - proposals
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    name: claim port to org admission fixture
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+      - name: Compile fixture admissions and gate official view
+        run: |
+          set -euo pipefail
+          cat fixtures/org-admission-join/grants.jsonl fixtures/org-admission-join/old-grant.jsonl > "$RUNNER_TEMP/grants.jsonl"
+          python3 tools/compile-claim-port-joins.py \
+            --grants "$RUNNER_TEMP/grants.jsonl" \
+            --assertions fixtures/org-admission-join/assertions.jsonl \
+            --receipts fixtures/org-admission-join/receipts.jsonl \
+            --out "$RUNNER_TEMP/admissions.jsonl"
+          grep -q '"admissionResult":"organization-active"' "$RUNNER_TEMP/admissions.jsonl"
+          grep -q '"admissionResult":"stale-assertion"' "$RUNNER_TEMP/admissions.jsonl"
+          grep -q '"admissionResult":"orphan-assertion"' "$RUNNER_TEMP/admissions.jsonl"
+          python3 tools/check-org-admission-gate.py \
+            --admissions "$RUNNER_TEMP/admissions.jsonl" \
+            --official-view fixtures/org-admission-join/official-view.json
+          if python3 tools/check-org-admission-gate.py \
+            --admissions "$RUNNER_TEMP/admissions.jsonl" \
+            --official-view fixtures/org-admission-join/blocking-view.json; then
+            echo "blocking view unexpectedly passed" >&2
+            exit 1
+          fi
