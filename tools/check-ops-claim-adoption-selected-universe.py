@@ -17,28 +17,27 @@ def read_jsonl(path: Path) -> list[dict]:
     return rows
 
 
-def diagnostic(row: dict) -> str:
-    if not row["opsSelected"]:
-        return "ops-not-selected"
-    if not row["hasClaimAdmissionCheck"]:
-        return "missing-claim-admission-check"
-    if row["warningOnly"] and row["upstreamGrantProjection"] == "missing":
-        return "warning-only-allowed"
-    if row["warningOnly"]:
-        return "warning-only-blocked"
-    return "ops-adoption-ok"
+def result(row: dict) -> str:
+    if not row["selected"]:
+        return "not-selected"
+    if not row["check"]:
+        return "missing-check"
+    if row["mode"] == "warn" and row["projection"] == "missing":
+        return "temp-warn"
+    if row["mode"] == "warn":
+        return "strict-needed"
+    return "ok"
 
 
 def selftest() -> int:
     cases = read_jsonl(DEFAULT_CASES)
     seen = set()
     for row in cases:
-        actual = diagnostic(row)
-        expected = row["expectedDiagnosticClasses"]
-        if expected != [actual]:
-            raise SystemExit(json.dumps({"caseId": row["caseId"], "expected": expected, "actual": actual}, sort_keys=True))
+        actual = result(row)
+        if row["expected"] != actual:
+            raise SystemExit(json.dumps({"case": row["case"], "expected": row["expected"], "actual": actual}, sort_keys=True))
         seen.add(actual)
-    required = {"ops-adoption-ok", "missing-claim-admission-check", "warning-only-allowed", "warning-only-blocked", "ops-not-selected"}
+    required = {"ok", "missing-check", "temp-warn", "strict-needed", "not-selected"}
     missing = sorted(required - seen)
     if missing:
         raise SystemExit(json.dumps({"missing": missing}, sort_keys=True))
@@ -54,7 +53,7 @@ def main() -> int:
     if args.command == "selftest":
         return selftest()
     for row in read_jsonl(args.cases):
-        print(json.dumps({"kind": "governance.opsClaimAdoption.diagnostic.v1", "caseId": row["caseId"], "repo": "ops", "diagnosticClass": diagnostic(row), "authority": False}, sort_keys=True))
+        print(json.dumps({"kind": "governance.opsClaimAdoption.diagnostic.v1", "case": row["case"], "repo": "ops", "diagnosticClass": result(row), "authority": False}, sort_keys=True))
     return 0
 
 
