@@ -2,28 +2,32 @@
 
 ## Why
 
-The design is only credible if it proves both pass and fail behavior in CI.
+The claim-port compiler is useful only if its output can pass the existing official organization admission gate and reject blocking subjects.
 
 ## Decision
 
-Add fixture-backed proof for:
+Add checked fixtures under `fixtures/claim-port/org-admission/` and a GitHub workflow that proves this route:
 
-1. upstream grant + downstream assertion + receipt -> `organization-active`
-2. missing downstream assertion -> `unclaimed-grant`
-3. missing upstream grant -> `orphan-assertion`
-4. missing receipt -> `asserted-but-unproven`
-5. stale receipt or digest mismatch -> `stale-assertion`
-6. blocking subject in official view -> gate fail
+1. normalized grant/assertion/receipt ports
+2. `tools/compile-claim-port-joins.py`
+3. `governance.organizationAdmission.v1` JSONL
+4. `tools/check-org-admission-gate.py`
+5. pass for the admitted official view and fail for a blocking view
 
-## CI
+## Fixture cases
 
-`nix flake check` must run:
-
-1. port fixture validation
-2. join compiler
-3. existing organization admission gate
+| case | expected result |
+|---|---|
+| matching grant + assertion + receipt | `organization-active` |
+| assertion with no grant | `orphan-assertion` |
+| grant with no assertion | `unclaimed-grant` |
+| stale source closure | `stale-assertion` |
+| official view includes stale subject | gate fail |
 
 ## Boundary
 
-This PR does not roll out to real repos.
-It proves the model with checked-in fixtures only.
+Fixture-only. No live GitHub reads. No all-repo rollout. No production admission gate.
+
+## Merge gate
+
+The checked-in workflow `claim-port org admission` must compile the fixtures, run the existing organization admission gate, and prove the blocking view is rejected.
