@@ -93,7 +93,7 @@
           checks include ADR input presence, no local records/generated,
           Nix default surface, provider CI YAML generated-output selftest,
           README artifact packet selftest, org admission gate selftest,
-          and ADRS shadow monitor selftest.
+          purpose readback gate selftest, and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -226,6 +226,12 @@ EOF
           set -euo pipefail
           cd ${self}
           python3 tools/check-org-admission-gate.py selftest
+          touch "$out"
+        '';
+        purpose-readback-gate-selftest = pkgs.runCommand "purpose-readback-gate-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/check-purpose-readback.py selftest
           touch "$out"
         '';
         readme-artifact = pkgs.runCommand "readme-artifact-check" { } ''
