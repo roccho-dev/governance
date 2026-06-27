@@ -1,0 +1,23 @@
+name: intent reality gap
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - proposals
+  push:
+    branches:
+      - proposals
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    name: intent reality gap fixture
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+      - name: Check fixture
+        run: python3 tools/check-intent-reality-gap.py --fixtures fixtures/intent-reality-gap/cases.jsonl
