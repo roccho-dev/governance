@@ -36,6 +36,8 @@ The monitor does not execute downstream repo code and does not become policy aut
 
 `tools/check-claim-check-adoption-monitor.py selftest` reads `fixtures/claim-check-adoption-monitor/cases.jsonl` and proves pass, missing-check, warning-only escape, stale reference, missing CI intent, missing selected repo, and missing surface cases.
 
+Fixture count: 8 cases.
+
 ## Merge gate
 
 Merge only after a fixture proves that removing the claim check from a selected repo snapshot is reported as adoption drift.
