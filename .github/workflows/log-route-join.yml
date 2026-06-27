@@ -1,0 +1,23 @@
+name: log route join
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - proposals
+  push:
+    branches:
+      - proposals
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    name: log route fixture join
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+      - name: Check fixture
+        run: python3 tools/check-log-fixtures.py --fixtures fixtures/log-route-join/cases.jsonl
