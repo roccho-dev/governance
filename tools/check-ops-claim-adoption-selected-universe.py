@@ -18,9 +18,9 @@ def read_jsonl(path: Path) -> list[dict]:
 
 
 def result(row: dict) -> str:
-    if row["selected"] == "no":
+    if row["selected"] != "yes":
         return "not-selected"
-    if row["check"] == "no":
+    if row["check"] != "yes":
         return "missing-check"
     if row["mode"] == "warn" and row["projection"] == "missing":
         return "temp-warn"
