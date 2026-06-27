@@ -1,30 +1,34 @@
-# Intent reality gap gate
+# Intent reality projection gate
 
 ## Why
 
-ADRS now defines work as reconciliation between selected intent and deployed reality. Governance needs a deterministic gate so a work item can be rejected before it becomes an ungrounded PR, self-approved stop-ok, or green-check-only closure.
+ADRS now treats work as reconciliation between selected intent and deployed reality. To keep the loop small, governance must not require a new gap source ledger when the gap can be recomputed from purpose and reality.
 
 ## Direction
 
-Add a small checked-input fixture gate for the common object shape:
+Keep the checked-input fixture gate, but treat `gap` as a projection, not as SSOT.
 
-- `intent_reality_gap`
-- `reconciliation_action`
-- `reconciliation_closure`
+Primary inputs:
 
-This is the first governance step toward the state where defining a gap is enough to route, act, and close work with evidence.
+- `purpose` records: selected objective, intent refs, desired state, close condition
+- `reality` records: observed facts, receipts, detected events, actual state
+
+Derived outputs:
+
+- projected gap
+- routing diagnostics
+- closure report
 
 ## Decision
 
-Add `tools/check-intent-reality-gap.py` and fixture rows under `fixtures/intent-reality-gap/cases.jsonl`.
+`tools/check-intent-reality-gap.py` must project the gap from purpose and reality fixture rows. A persisted gap row may be used as a report, but not as the source of truth for the mismatch.
 
 The gate reports clear diagnostics for:
 
 - missing selected objective
 - missing intent refs
 - missing reality refs or missing-actual-state marker
-- missing owner or close condition
-- action without gap
+- action without a projected gap
 - action kind mismatch
 - closure without post-action receipt
 - PR/CI/merge-only closure
@@ -36,6 +40,8 @@ This PR is a local deterministic fixture gate only.
 
 It does not implement live runtime collection, provider adapters, agent repair queue, branch protection, production fail-closed admission, business value proof, semantic correctness proof, or SSOT adoption.
 
+It also does not add `gap.jsonl` or `incident.jsonl` as source ledgers. Incident remains a reality event or view. Gap remains a projection.
+
 ## Merge Gate
 
-Merge only if the fixture gate remains generic, checked-input only, and does not claim runtime closure or agent repair completion.
+Merge only if the fixture gate remains generic, checked-input only, projection-first, and does not claim runtime closure or agent repair completion.
