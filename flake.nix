@@ -78,6 +78,8 @@
             Build the explicit bootstrap compatibility package.
           nix build .#readme-artifact
             Build the non-authority README artifact packet.
+          nix build .#claim-admission-check
+            Build the stable non-authority claim admission checker CLI.
           nix build .
             Intentionally unsupported: governance has no packages.default.
 
@@ -86,6 +88,8 @@
             Show this help.
           nix run .#help
             Show this help.
+          nix run .#claim-admission-check -- selftest
+            Run the exported claim admission checker selftest.
 
         Check:
           nix flake check
@@ -93,8 +97,8 @@
           checks include ADR input presence, no local records/generated,
           Nix default surface, provider CI YAML generated-output selftest,
           README artifact packet selftest, org admission gate selftest,
-          claim port join compiler selftest, organization admission join fixture proof,
-          and ADRS shadow monitor selftest.
+          claim port join compiler selftest, claim admission checker export selftest,
+          organization admission join fixture proof, and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -114,6 +118,10 @@ ${helpText}
           type = "app";
           program = "${helpProgram}/bin/governance-help";
         };
+      mkClaimAdmissionCheckProgram = pkgs:
+        pkgs.writeShellScriptBin "claim-admission-check" ''
+          exec ${pkgs.python3}/bin/python3 ${self}/tools/claim-admission-check.py "$@"
+        '';
       repoConventionChecksFor = pkgs:
         import ./nix/repo-convention-checks.nix { inherit pkgs; governanceSrc = self; };
       mkReadmeArtifact = pkgs:
@@ -175,7 +183,7 @@ EOF
       lib = forEachSystem (pkgs: {
         repoConventionChecks = repoConventionChecksFor pkgs;
       });
-      packages = forEachSystem (pkgs: {
+      packages = forEachSystem (pkgs: let claimAdmissionCheckProgram = mkClaimAdmissionCheckProgram pkgs; in {
         bootstrap-input = pkgs.runCommand "bootstrap-input" { } ''
           mkdir -p "$out"
           cat > "$out/bootstrap-input.json" <<'EOF'
@@ -183,8 +191,19 @@ ${bootstrapInputText}
 EOF
         '';
         readme-artifact = mkReadmeArtifact pkgs;
+        claim-admission-check = claimAdmissionCheckProgram;
       });
-      apps = forEachSystem (pkgs: let helpApp = mkHelpApp pkgs; in { help = helpApp; default = helpApp; });
+      apps = forEachSystem (pkgs: let
+        helpApp = mkHelpApp pkgs;
+        claimAdmissionCheckProgram = mkClaimAdmissionCheckProgram pkgs;
+      in {
+        help = helpApp;
+        default = helpApp;
+        claim-admission-check = {
+          type = "app";
+          program = "${claimAdmissionCheckProgram}/bin/claim-admission-check";
+        };
+      });
       checks = forEachSystem (pkgs: let readmeArtifact = mkReadmeArtifact pkgs; in {
         adrs-input-presence = pkgs.runCommand "adrs-input-presence" { } ''
           set -euo pipefail
@@ -233,6 +252,13 @@ EOF
           set -euo pipefail
           cd ${self}
           python3 tools/compile-claim-port-joins.py selftest
+          touch "$out"
+        '';
+        claim-admission-check-export = pkgs.runCommand "claim-admission-check-export" { } ''
+          set -euo pipefail
+          ${mkClaimAdmissionCheckProgram pkgs}/bin/claim-admission-check selftest > "$TMPDIR/claim-admission-check.json"
+          grep -q '"kind": "governance.claimAdmissionCheck.selftest.v1"' "$TMPDIR/claim-admission-check.json"
+          grep -q '"status": "pass"' "$TMPDIR/claim-admission-check.json"
           touch "$out"
         '';
         org-admission-join-fixture-proof = pkgs.runCommand "org-admission-join-fixture-proof" { nativeBuildInputs = [ pkgs.python3 ]; } ''
