@@ -26,6 +26,7 @@ VALID_GOVERNANCE_MODES = {"flake_lib", "flake_false_path", "shadow_unconnected"}
 VALID_REPO_CLASSES = {"normal", "root_authority", "bootstrap"}
 VALID_ROLES = {"primary_nix_check", "manual_dispatch_alias", "artifact_exporter", "bootstrap_exception"}
 WORKFLOW_RE = re.compile(r"^\.github/workflows/.+\.ya?ml$")
+BRANCH_INTENT_PATH = "ci.branch-intent.v1.jsonl"
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -98,11 +99,105 @@ def workflow_files(repo_root: Path) -> set[str]:
     }
 
 
+def yaml_list_scalar(value: str) -> list[str] | None:
+    value = value.strip()
+    if not (value.startswith("[") and value.endswith("]")):
+        return None
+    inner = value[1:-1].strip()
+    if not inner:
+        return []
+    return [item.strip().strip("'\"") for item in inner.split(",") if item.strip()]
+
+
+def workflow_push_branches(workflow_text: str) -> list[str] | None:
+    lines = workflow_text.splitlines()
+    in_push = False
+    push_indent = -1
+    in_branches = False
+    branch_indent = -1
+    branches: list[str] = []
+    for raw in lines:
+        stripped_line = raw.split("#", 1)[0].rstrip()
+        if not stripped_line.strip():
+            continue
+        indent = len(stripped_line) - len(stripped_line.lstrip(" "))
+        text = stripped_line.strip()
+        if text == "push:" or text.startswith("push: "):
+            in_push = True
+            push_indent = indent
+            in_branches = False
+            inline = text[5:].strip()
+            if inline:
+                return []
+            continue
+        if not in_push:
+            continue
+        if indent <= push_indent and not text.startswith("-"):
+            break
+        if text.startswith("branches:"):
+            inline = text[len("branches:"):].strip()
+            parsed = yaml_list_scalar(inline)
+            if parsed is not None:
+                return parsed
+            in_branches = True
+            branch_indent = indent
+            continue
+        if in_branches:
+            if indent <= branch_indent and not text.startswith("-"):
+                break
+            if text.startswith("- "):
+                branches.append(text[2:].strip().strip("'\""))
+    if in_push:
+        return branches
+    return None
+
+
+def load_branch_intents(repo_root: Path, findings: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    path = repo_root / BRANCH_INTENT_PATH
+    if not path.exists():
+        return {}
+    rows = read_jsonl(path)
+    result: dict[str, dict[str, Any]] = {}
+    for idx, row in enumerate(rows, 1):
+        workflow_path = row.get("path")
+        if row.get("kind") != "ci.branchIntent.v1":
+            findings.append(finding("branch-intent-kind-invalid", "branch intent row kind is invalid", row=idx))
+        if not isinstance(workflow_path, str) or not WORKFLOW_RE.fullmatch(workflow_path):
+            findings.append(finding("branch-intent-path-invalid", "branch intent workflow path is invalid", row=idx, path=workflow_path))
+            continue
+        expected = row.get("pushBranches")
+        if expected is not None and (not isinstance(expected, list) or not all(isinstance(item, str) and item for item in expected)):
+            findings.append(finding("branch-intent-push-branches-invalid", "pushBranches must be non-empty strings", path=workflow_path))
+        active = row.get("activeBranch")
+        if active is not None and (not isinstance(active, str) or not active):
+            findings.append(finding("branch-intent-active-branch-invalid", "activeBranch must be a non-empty string", path=workflow_path))
+        result[workflow_path] = row
+    return result
+
+
+def check_branch_intent(repo_root: Path, workflow_path: str, row: dict[str, Any]) -> list[dict[str, Any]]:
+    expected = row.get("pushBranches")
+    if expected is None and isinstance(row.get("activeBranch"), str):
+        expected = [row["activeBranch"]]
+    if expected is None:
+        return []
+    workflow_file = repo_root / workflow_path
+    if not workflow_file.exists():
+        return [finding("branch-intent-workflow-missing", "workflow file for branch intent is missing", path=workflow_path)]
+    actual = workflow_push_branches(workflow_file.read_text(encoding="utf-8"))
+    if actual is None:
+        return [finding("branch-intent-push-missing", "workflow has no push trigger", path=workflow_path)]
+    if sorted(actual) != sorted(expected):
+        return [finding("branch-intent-mismatch", "workflow push branches do not match declared intent", path=workflow_path, expected=expected, actual=actual)]
+    return []
+
+
 def check_ci(repo_root: Path, ci_path: Path) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     actual = workflow_files(repo_root)
     if not ci_path.exists():
         return [finding("ci-intent-missing", "ci intent file is missing", path=str(ci_path))]
+    branch_intents = load_branch_intents(repo_root, findings)
     rows = read_jsonl(ci_path)
     declared: dict[str, dict[str, Any]] = {}
     primary_count = 0
@@ -124,6 +219,8 @@ def check_ci(repo_root: Path, ci_path: Path) -> list[dict[str, Any]]:
             workflow_text = (repo_root / path).read_text(encoding="utf-8") if (repo_root / path).exists() else ""
             if "nix flake check" not in workflow_text:
                 findings.append(finding("nix-entrypoint-missing", "primary_nix_check must run nix flake check", path=path))
+        if path in branch_intents:
+            findings.extend(check_branch_intent(repo_root, path, branch_intents[path]))
         if role == "artifact_exporter" and row.get("source") not in {None, "nix-output"}:
             findings.append(finding("artifact-exporter-source-invalid", "artifact_exporter source must be nix-output", path=path))
         if role == "bootstrap_exception":
@@ -140,6 +237,8 @@ def check_ci(repo_root: Path, ci_path: Path) -> list[dict[str, Any]]:
                             findings.append(finding("exception-expired", "bootstrap_exception expiry is in the past", path=path))
                     except ValueError:
                         findings.append(finding("exception-expiry-invalid", "expiry must be ISO date", path=path))
+    for path in sorted(set(branch_intents) - set(declared)):
+        findings.append(finding("branch-intent-undeclared-workflow", "branch intent references an undeclared workflow", path=path))
     if actual and primary_count == 0:
         findings.append(finding("primary-nix-check-missing", "one primary_nix_check workflow is required"))
     declared_paths = set(declared)
