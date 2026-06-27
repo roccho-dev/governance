@@ -6,7 +6,7 @@ Gen1 stop-ok must remain a claim, not approval. A selected-objective accept need
 
 ## Decision
 
-Add `tools/check-purpose-readback.py` and wire its selftest into `nix flake check`.
+Add `tools/check-purpose-readback.py` and run its selftest from the GitHub CI workflow before the existing flake contract step.
 
 The gate checks:
 
@@ -20,8 +20,8 @@ The gate checks:
 
 ## Boundary
 
-This is a local deterministic gate only. It does not change branch protection, merge policy, SSOT adoption, or business-value proof.
+This is a local deterministic gate only. It does not change branch protection, merge policy, SSOT adoption, flake surface, or business-value proof.
 
 ## Merge Gate
 
-Merge only if `purpose-readback-gate-selftest` stays in `flake.nix` and the check remains limited to Gen0/Gen1 readback shape.
+Merge only if the GitHub CI step `Check purpose readback gate` stays present and the check remains limited to Gen0/Gen1 readback shape.
