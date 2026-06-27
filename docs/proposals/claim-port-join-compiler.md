@@ -32,4 +32,4 @@ The compiler reads normalized ports only. Repo-specific sources are handled by t
 
 ## Merge gate
 
-`nix flake check` must include `claim-port-join-compiler-selftest`, and that selftest must cover both admitted and rejected joins.
+The checked-in GitHub workflow `claim-port join` must run `tools/compile-claim-port-joins.py selftest` and cover both admitted and rejected joins.
