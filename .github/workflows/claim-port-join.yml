@@ -1,0 +1,23 @@
+name: claim-port join
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - proposals
+  push:
+    branches:
+      - proposals
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    name: claim port compiler selftest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+      - name: Run claim port compiler selftest
+        run: python3 tools/compile-claim-port-joins.py selftest
