@@ -1,0 +1,20 @@
+name: intent reality projection
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - proposals
+  push:
+    branches:
+      - proposals
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-intent-reality-projection.py --fixtures fixtures/intent-reality-projection/cases.jsonl
