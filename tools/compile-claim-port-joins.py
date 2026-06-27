@@ -12,6 +12,16 @@ from typing import Any
 ACTIVE = "organization-active"
 BLOCKING_LIFECYCLES = {"pending", "deprecated", "superseded", "conflicting", "revoked"}
 
+DIAGNOSTIC_CLASS_BY_RESULT = {
+    "organization-active": "organization-active",
+    "orphan-assertion": "adrs-lagging-feat",
+    "unclaimed-grant": "feat-lagging-adrs",
+    "asserted-but-unproven": "claim-unproven",
+    "stale-assertion": "claim-stale",
+    "conflict": "claim-conflict",
+    "revoked-grant": "claim-revoked",
+}
+
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
@@ -65,6 +75,10 @@ def receipt_index(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return index
 
 
+def diagnostic_class(result: str) -> str:
+    return DIAGNOSTIC_CLASS_BY_RESULT.get(result, "claim-conflict")
+
+
 def admission(
     subject: str,
     result: str,
@@ -92,6 +106,7 @@ def admission(
         "subjectId": subject,
         "claimClass": "downstream-assertion" if assertion else "accepted-upstream-grant",
         "admissionResult": result,
+        "diagnosticClass": diagnostic_class(result),
         "acceptedBundleMatches": bundle_matches,
         "sourceClosureMatches": closure_matches,
         "sourceClosureHeadMatches": True,
@@ -179,18 +194,18 @@ def selftest() -> None:
         "sourceClosureDigest": "sha256:closure",
     }
     cases = [
-        ([base_grant], [base_assertion], [base_receipt], ACTIVE),
-        ([], [base_assertion], [base_receipt], "orphan-assertion"),
-        ([base_grant], [], [], "unclaimed-grant"),
-        ([base_grant], [base_assertion], [], "asserted-but-unproven"),
-        ([base_grant], [dict(base_assertion, sourceClosureDigest="sha256:old")], [base_receipt], "stale-assertion"),
-        ([base_grant], [dict(base_assertion, lifecycle="revoked")], [base_receipt], "revoked-grant"),
-        ([base_grant], [base_assertion, dict(base_assertion, assertionId="assert:duplicate")], [base_receipt], "conflict"),
+        ([base_grant], [base_assertion], [base_receipt], ACTIVE, "organization-active"),
+        ([], [base_assertion], [base_receipt], "orphan-assertion", "adrs-lagging-feat"),
+        ([base_grant], [], [], "unclaimed-grant", "feat-lagging-adrs"),
+        ([base_grant], [base_assertion], [], "asserted-but-unproven", "claim-unproven"),
+        ([base_grant], [dict(base_assertion, sourceClosureDigest="sha256:old")], [base_receipt], "stale-assertion", "claim-stale"),
+        ([base_grant], [dict(base_assertion, lifecycle="revoked")], [base_receipt], "revoked-grant", "claim-revoked"),
+        ([base_grant], [base_assertion, dict(base_assertion, assertionId="assert:duplicate")], [base_receipt], "conflict", "claim-conflict"),
     ]
-    for grants, assertions, receipts, expected in cases:
+    for grants, assertions, receipts, expected, expected_diagnostic in cases:
         rows = compile_admissions(grants, assertions, receipts)
-        if rows[0]["admissionResult"] != expected:
-            raise SystemExit(json.dumps({"expected": expected, "rows": rows}, indent=2, sort_keys=True))
+        if rows[0]["admissionResult"] != expected or rows[0]["diagnosticClass"] != expected_diagnostic:
+            raise SystemExit(json.dumps({"expected": expected, "expectedDiagnosticClass": expected_diagnostic, "rows": rows}, indent=2, sort_keys=True))
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         write_jsonl(root / "grants.jsonl", [base_grant])
@@ -198,8 +213,9 @@ def selftest() -> None:
         write_jsonl(root / "receipts.jsonl", [base_receipt])
         rows = compile_admissions(read_jsonl(root / "grants.jsonl"), read_jsonl(root / "assertions.jsonl"), read_jsonl(root / "receipts.jsonl"))
         write_jsonl(root / "admissions.jsonl", rows)
-        if not (root / "admissions.jsonl").read_text(encoding="utf-8").strip():
-            raise SystemExit("selftest admission output missing")
+        text = (root / "admissions.jsonl").read_text(encoding="utf-8").strip()
+        if not text or '"diagnosticClass":"organization-active"' not in text:
+            raise SystemExit("selftest admission diagnosticClass output missing")
     print(json.dumps({"status": "claim-port-join-compiler-selftest-pass"}, sort_keys=True))
 
 
