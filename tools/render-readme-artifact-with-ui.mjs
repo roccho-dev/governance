@@ -9,12 +9,23 @@ function arg(name) {
   return process.argv[idx + 1];
 }
 
+function firstExisting(paths) {
+  for (const candidate of paths) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(`ui renderer entrypoint not found: ${paths.join(", ")}`);
+}
+
 const modelPath = arg("--model");
 const outDir = arg("--out");
 const uiLibSrc = process.env.UI_LIB_SRC;
 if (!uiLibSrc) throw new Error("UI_LIB_SRC is required");
 
-const mod = await import(pathToFileURL(path.join(uiLibSrc, "src", "index.mjs")).href);
+const uiEntrypoint = firstExisting([
+  path.join(uiLibSrc, "packages", "core-port", "src", "index.mjs"),
+  path.join(uiLibSrc, "src", "index.mjs"),
+]);
+const mod = await import(pathToFileURL(uiEntrypoint).href);
 const model = JSON.parse(fs.readFileSync(modelPath, "utf8"));
 const result = mod.renderMarkdownDocument({ model });
 fs.mkdirSync(outDir, { recursive: true });
