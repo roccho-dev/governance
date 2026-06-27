@@ -1,1 +1,2 @@
 {"kind":"governance.claimPort.downstreamAssertion.v1","subjectId":"repo:governance","assertionId":"a1","acceptedBundleDigest":"sha256:bundle","sourceClosureDigest":"sha256:closure","lifecycle":"active"}
+{"kind":"governance.claimPort.downstreamAssertion.v1","subjectId":"repo:old","assertionId":"a2","acceptedBundleDigest":"sha256:bundle","sourceClosureDigest":"sha256:old","lifecycle":"active"}
