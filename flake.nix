@@ -99,7 +99,8 @@
           README artifact packet selftest, org admission gate selftest,
           claim port join compiler selftest, claim admission checker export selftest,
           claim check adoption monitor selftest, ops selected-universe adoption selftest,
-          organization admission join fixture proof, and ADRS shadow monitor selftest.
+          central claim drift report selftest, organization admission join fixture proof,
+          and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -276,6 +277,14 @@ EOF
           python3 tools/check-ops-claim-adoption-selected-universe.py selftest > "$TMPDIR/ops-claim-adoption.json"
           grep -q '"kind": "governance.opsClaimAdoptionSelectedUniverse.selftest.v1"' "$TMPDIR/ops-claim-adoption.json"
           grep -q '"status": "pass"' "$TMPDIR/ops-claim-adoption.json"
+          touch "$out"
+        '';
+        central-claim-drift-report-selftest = pkgs.runCommand "central-claim-drift-report-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/build-central-claim-drift-report.py selftest > "$TMPDIR/central-claim-drift-report.json"
+          grep -q '"kind": "governance.centralClaimDriftReport.selftest.v1"' "$TMPDIR/central-claim-drift-report.json"
+          grep -q '"status": "pass"' "$TMPDIR/central-claim-drift-report.json"
           touch "$out"
         '';
         org-admission-join-fixture-proof = pkgs.runCommand "org-admission-join-fixture-proof" { nativeBuildInputs = [ pkgs.python3 ]; } ''
