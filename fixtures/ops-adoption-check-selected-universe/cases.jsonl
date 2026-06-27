@@ -1,1 +1,2 @@
-{}
+{"case":"ok","selected":true,"check":true,"projection":"present","mode":"strict","expected":"ok"}
+{"case":"temp-warn","selected":true,"check":true,"projection":"missing","mode":"warn","expected":"temp-warn"}
