@@ -1,3 +1,4 @@
 {"case":"ok","selected":"yes","check":"yes","projection":"present","mode":"strict","expected":"ok"}
 {"case":"missing-check","selected":"yes","check":"absent","projection":"present","mode":"strict","expected":"missing-check"}
 {"case":"temp-warn","selected":"yes","check":"yes","projection":"missing","mode":"warn","expected":"temp-warn"}
+{"case":"strict-needed","selected":"yes","check":"yes","projection":"present","mode":"warn","expected":"strict-needed"}
