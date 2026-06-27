@@ -132,6 +132,9 @@ jobs:
           cd "$RUNNER_TEMP/cue-fixture"
           nix shell github:NixOS/nixpkgs/nixos-unstable#cue -c cue vet schema.cue contract.cue consumer.cue
 
+      - name: Check purpose readback gate
+        run: python3 tools/check-purpose-readback.py selftest
+
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
 
