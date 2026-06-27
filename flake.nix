@@ -98,7 +98,8 @@
           Nix default surface, provider CI YAML generated-output selftest,
           README artifact packet selftest, org admission gate selftest,
           claim port join compiler selftest, claim admission checker export selftest,
-          organization admission join fixture proof, and ADRS shadow monitor selftest.
+          claim check adoption monitor selftest, organization admission join fixture proof,
+          and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -259,6 +260,14 @@ EOF
           ${mkClaimAdmissionCheckProgram pkgs}/bin/claim-admission-check selftest > "$TMPDIR/claim-admission-check.json"
           grep -q '"kind": "governance.claimAdmissionCheck.selftest.v1"' "$TMPDIR/claim-admission-check.json"
           grep -q '"status": "pass"' "$TMPDIR/claim-admission-check.json"
+          touch "$out"
+        '';
+        claim-check-adoption-monitor-selftest = pkgs.runCommand "claim-check-adoption-monitor-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/check-claim-check-adoption-monitor.py selftest > "$TMPDIR/claim-check-adoption-monitor.json"
+          grep -q '"kind": "governance.claimCheckAdoptionMonitor.selftest.v1"' "$TMPDIR/claim-check-adoption-monitor.json"
+          grep -q '"status": "pass"' "$TMPDIR/claim-check-adoption-monitor.json"
           touch "$out"
         '';
         org-admission-join-fixture-proof = pkgs.runCommand "org-admission-join-fixture-proof" { nativeBuildInputs = [ pkgs.python3 ]; } ''
