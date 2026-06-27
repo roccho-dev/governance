@@ -32,3 +32,7 @@ Fixture-only. No live GitHub reads. No all-repo rollout. No production admission
 ## Merge gate
 
 `nix flake check` must run `org-admission-join-fixture-proof`. The check must compile the fixture route, run the existing organization admission gate, and prove the non-active view is rejected.
+
+## Evidence
+
+The proof is local and deterministic. A cancelled CI attempt is not accepted as proof; a fresh completed run is required before merge.
