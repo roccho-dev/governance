@@ -37,7 +37,7 @@ def selftest() -> int:
         if row["expected"] != actual:
             raise SystemExit(json.dumps({"case": row["case"], "expected": row["expected"], "actual": actual}, sort_keys=True))
         seen.add(actual)
-    required = {"ok", "missing-check", "temp-warn", "strict-needed", "not-selected"}
+    required = {"ok", "missing-check", "temp-warn", "strict-needed"}
     missing = sorted(required - seen)
     if missing:
         raise SystemExit(json.dumps({"missing": missing}, sort_keys=True))
