@@ -8,13 +8,13 @@ Once ADRS defines a selected universe, governance needs a concrete check proving
 
 Add a governance-side check for the `ops` selected repo snapshot.
 
-The check verifies:
+The check verifies the selected ops cases for:
 
-- `ops` is in the selected universe
-- `ops` declares the claim admission check in generated checks or CI intent
-- `ops` keeps a governance checker input
-- `ops` exposes downstream claim and receipt surfaces
-- warning-only mode is allowed only when the selected universe still lacks upstream grant projection
+- required claim admission check presence
+- temporary warning mode while upstream grant projection is still missing
+- strict mode requirement once upstream grant projection is present
+
+Broader adoption fields such as governance input, CI intent, downstream claim surface, and receipt surface are covered by the general adoption monitor.
 
 ## Dependency
 
@@ -26,9 +26,9 @@ This is a governance verification of adoption, not execution of ops business log
 
 ## Implementation proof
 
-`tools/check-ops-claim-adoption-selected-universe.py selftest` reads `fixtures/ops-adoption-check-selected-universe/cases.jsonl` and proves pass, missing-check failure, warning-only temporary allowance before upstream grant projection, warning-only failure after upstream grant projection, and ops-not-selected failure.
+`tools/check-ops-claim-adoption-selected-universe.py selftest` reads `fixtures/ops-adoption-check-selected-universe/cases.jsonl` and proves pass, missing-check failure, temporary warning allowance before upstream grant projection, and strict-mode requirement after upstream grant projection.
 
-Fixture count: 5 cases.
+Fixture count: 4 selected-ops cases.
 
 ## Merge gate
 
