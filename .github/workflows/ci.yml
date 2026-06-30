@@ -135,6 +135,14 @@ jobs:
       - name: Check purpose readback gate
         run: python3 tools/check-purpose-readback.py selftest
 
+      - name: Check package governance selftests
+        run: |
+          set -euo pipefail
+          for script in tools/check-package-*.py tools/build-package-*.py; do
+            [ -e "$script" ] || continue
+            python3 "$script" selftest
+          done
+
       - name: Show flake surface
         run: nix flake show --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
 
