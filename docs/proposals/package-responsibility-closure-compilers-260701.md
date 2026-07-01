@@ -1,18 +1,19 @@
-# Package responsibility closure compiler work order
+# Package responsibility closure compiler implementation
 
 ## Purpose
 
-Turn the ADRS package responsibility closure plane into governance-owned non-authority compilers and reports.
+Implement the governance side of the Package Responsibility Closure Plane as non-authority compilers and reports.
 
 The gap is not that governance lacks a package parser or package join. Those exist for governance-ready rows. The gap is that old ADRS package proposals and real repo packages are not yet normalized into the same input surface.
 
-This PR defines implementation responsibilities for:
+This PR implements the current governance compiler layer for:
 
 1. ADRS obligation extraction.
 2. Repo package inventory scanning.
-3. Feature response normalization.
-4. Three-way drift joining.
-5. Drift-to-PR work order reporting.
+3. Feature package response normalization.
+4. Obligation x inventory x response drift joining.
+5. Drift-to-PR work-order reporting.
+6. Deterministic fixture selftests.
 
 ## Boundary
 
@@ -27,51 +28,61 @@ This PR must not:
 - turn selected rollout into all-repo strict;
 - treat generated outputs as authority.
 
-## Current usable base
+## Implemented surface
 
-Existing package parser and joins already handle governance-readable rows. This work should extend input surfaces, not replace the existing parser/join/status code.
+The implementation lives in:
+
+- `tools/build-package-responsibility-closure.py`
+- `fixtures/package-responsibility-closure/**`
+
+The tool supports:
+
+```text
+python3 tools/build-package-responsibility-closure.py selftest
+python3 tools/build-package-responsibility-closure.py build --adrs <path> --repo <path> --responses <path> --out-dir <out>
+```
+
+CI also runs the tool through the existing package governance selftest loop because it is named `tools/build-package-*.py`.
 
 ## Target architecture
 
 ```text
 ADRS docs/jsonl
   -> package-obligation-extractor
-  -> packageObligation.v1 rows
+  -> governance.packageObligation.v1 rows
 
-repo tree / flake / package manifests / package jsonl
+repo tree / package manifests / package jsonl
   -> package-inventory-scanner
-  -> packageInventory.v1 rows
+  -> governance.packageInventory.v1 rows
 
 repo package response files
   -> package-response-normalizer
-  -> packageResponse.v1 rows
+  -> governance.packageResponse.v1 rows
 
 obligation + inventory + response
   -> package-drift-join
-  -> packageDrift.v1 rows
+  -> governance.packageDrift.v1 rows
 
-packageDrift.v1 rows
+packageDrift.v1 + parser/scanner/normalizer diagnostics
   -> drift-work-order-report
-  -> PR work order candidates
+  -> governance.packageWorkOrder.v1 rows
 ```
 
 ## Work package 1: ADRS obligation extractor
 
 ### Input
 
-- ADRS explicit JSONL package records.
-- ADRS proposal docs with explicit package obligation tables.
-- Existing ADRS #100/#101/#102 package obligation contract records.
+- explicit JSONL package records;
+- explicit markdown package obligation tables.
 
 ### Output
 
-`packageObligation.v1` JSONL rows with the governance identity fields and expanded requirement/test rows.
+`governance.packageObligation.v1` JSONL rows.
 
-### Required diagnostics
+### Diagnostics
 
 | Diagnostic | Meaning |
 |---|---|
-| `adrs-obligation-shape-invalid` | required obligation field is missing |
 | `package-id-missing` | stable package identity is absent |
 | `package-path-missing` | current package path is absent |
 | `required-test-missing` | obligation has no required test |
@@ -79,42 +90,40 @@ packageDrift.v1 rows
 
 ### Non-goals
 
-- Do not infer package obligations from arbitrary prose in the first implementation.
+- Do not infer package obligations from arbitrary prose.
 - Do not claim ADRS docs without explicit tables/jsonl are fully backfilled.
 
 ## Work package 2: package inventory scanner
 
 ### Input
 
-- repo `packages/**` directories;
-- flake packages and checks;
-- `package.json` workspaces;
-- repo-local `build/packages.jsonl` and `build/checks.jsonl` when present;
-- checked-in package response locations.
+- repo `packages/*` directories;
+- root `package.json` package;
+- repo-local `build/packages.jsonl` when present;
+- generated-looking package manifests for misclassification diagnostics.
 
 ### Output
 
-`packageInventory.v1` rows.
+`governance.packageInventory.v1` rows.
 
 ### Required fields
 
-- `repo_locator`
-- `package_path`
-- `package_id_candidate`
-- `source_kind`
+- `repoLocator`
+- `packagePath`
+- `packageIdCandidate`
+- `sourceKind`
 - `entrypoints[]`
 - `tests[]`
 - `confidence`
-- `discovered_by`
+- `discoveredBy`
 - `digest`
 
-### Required diagnostics
+### Diagnostics
 
 | Diagnostic | Meaning |
 |---|---|
 | `unregistered-package` | inventory row has no ADRS obligation |
-| `generated-artifact-misclassified` | generated/evidence output is counted as source package |
-| `inventory-source-unsupported` | scanner cannot classify source kind |
+| `generated-artifact-misclassified` | generated/evidence output is counted as source package candidate |
 
 ## Work package 3: response normalizer
 
@@ -122,14 +131,14 @@ packageDrift.v1 rows
 
 - `governance.packageResponse.v1` rows;
 - `ops.packageResponse.v1` rows;
-- UI package response rows;
-- future deploy package response rows.
+- `ui.packageResponse.v1` rows;
+- `deploy.packageResponse.v1` rows.
 
 ### Output
 
-Canonical `packageResponse.v1` rows that the existing package join can consume.
+Canonical `governance.packageResponse.v1` rows that the package join can consume.
 
-### Required diagnostics
+### Diagnostics
 
 | Diagnostic | Meaning |
 |---|---|
@@ -143,15 +152,15 @@ Canonical `packageResponse.v1` rows that the existing package join can consume.
 
 ### Input
 
-- `packageObligation.v1`
-- `packageInventory.v1`
-- `packageResponse.v1`
+- `governance.packageObligation.v1`
+- `governance.packageInventory.v1`
+- `governance.packageResponse.v1`
 
 ### Output
 
-`packageDrift.v1` rows.
+`governance.packageDrift.v1` rows.
 
-### Required drift codes
+### Drift codes
 
 | Drift | Meaning |
 |---|---|
@@ -171,9 +180,7 @@ Canonical `packageResponse.v1` rows that the existing package join can consume.
 
 ### Output
 
-`packageWorkOrder.report.v1` with PR-ready rows.
-
-Each work-order row must contain:
+`governance.packageWorkOrder.v1` PR-ready rows with:
 
 - `primary_gap_id`
 - `repo_locator`
@@ -188,17 +195,7 @@ Each work-order row must contain:
 - `residual_policy`
 - `blocking_level`
 
-## Rollout plan
-
-| Phase | Mode | Merge condition |
-|---|---|---|
-| 1 | selftest only | fixtures prove parser/scanner/normalizer/drift rows |
-| 2 | shadow | reports are emitted but do not fail all repos |
-| 3 | selected-warning | selected repos produce warnings for blocking drift |
-| 4 | selected-strict | explicit ADRS-selected repos fail on blocking drift |
-| 5 | all-repo-baseline | all repos inventoried without strict adoption claim |
-
-## Initial fixture matrix
+## Deterministic fixture matrix
 
 | Fixture | Expected diagnostic |
 |---|---|
@@ -207,12 +204,18 @@ Each work-order row must contain:
 | response with no ADRS obligation | `extra-response` |
 | package moved without receipt | `package-path-drift` |
 | response missing required test | `required-test-missing` |
-| adopted response missing receipt | `receipt-missing` |
-| blocked response missing reason | `blocked-without-reason` |
-| generated artifact counted as source package | `generated-artifact-misclassified` |
+| implemented response missing receipt | `receipt-missing` |
+| blocked response missing residual | `residual-hidden` |
+| wrong owner role answered | `owner-role-mismatch` |
+| response claims authority | `authority-collision` |
+| generated package-like output | `generated-artifact-misclassified` |
 
 ## Acceptance
 
-This PR is complete as a work order when it cleanly defines the governance implementation boundaries and fixture expectations.
+This PR is complete when:
 
-A later implementation PR should be considered complete only when it adds deterministic tools, selftests, and CI wiring for the work packages above without making governance an authority repo.
+- the compiler emits obligation, inventory, response, drift, diagnostic, and work-order rows;
+- deterministic selftests prove the fixture matrix;
+- outputs remain non-authority;
+- no downstream repo is mutated;
+- all-repo strict gating is not enabled.
