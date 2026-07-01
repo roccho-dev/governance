@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, json, pathlib, hashlib
+import argparse, hashlib, json, pathlib, tempfile
 from typing import Any
 
 EXPECTED_FACETS = [
@@ -46,6 +46,65 @@ def read_jsonl(path: pathlib.Path) -> list[dict[str, Any]]:
 def sha_file(path: pathlib.Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
+def write_json(path: pathlib.Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)+"\n", encoding="utf-8")
+
+def write_jsonl(path: pathlib.Path, rows: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(row, ensure_ascii=False, sort_keys=True)+"\n" for row in rows), encoding="utf-8")
+
+def build_selftest_fixture(root: pathlib.Path) -> None:
+    proof = root / PROOF_REL
+    write_jsonl(root / RECORD_REL, [{
+        "kind": "packageFacetProof.v1",
+        "status": "poc-non-authority",
+        "authorityBoundary": {"duckdbRole": "read model / evaluator only"},
+    }])
+    summary = {
+        "facets": EXPECTED_FACETS,
+        "counts": {
+            "facets_current": len(EXPECTED_FACETS),
+            "blockers": 1,
+            "quarantine": 1,
+            "tests_failed": 0,
+            "promotion_ledger": 1,
+        },
+        "proofResults": {
+            "allCurrentFacetsPresent": True,
+            "allJsonlParsed": True,
+            "blockersExcludedFromCurrent": True,
+            "deterministicRebuild": True,
+            "incrementalEqualsFull": True,
+            "destructiveFixturesGreen": True,
+        },
+        "notRun": ["CUE input/output gate", "100k/1m/10m row perf"],
+    }
+    write_json(proof / "dist/summary.json", summary)
+    for facet in EXPECTED_FACETS:
+        row = {"kind": "packageFacetCurrent.v1", "facet": facet, "status": "current"}
+        if facet == "secrets":
+            row = {"kind": "packageFacetCurrent.v1", "facet": facet, "status": "redacted"}
+        write_jsonl(proof / "dist/current" / f"{facet}.jsonl", [row])
+    write_jsonl(proof / "dist/blockers.jsonl", [{"kind": "packageFacetBlocker.v1", "id": "blocker.fixture"}])
+    write_jsonl(proof / "dist/quarantine.jsonl", [{"kind": "packageFacetQuarantine.v1", "id": "quarantine.fixture"}])
+    write_jsonl(proof / "dist/ledger/promotion_ledger.jsonl", [{"kind": "packageFacetLedger.v1", "id": "ledger.fixture"}])
+    proof_db = proof / "engine/proof.duckdb"
+    proof_db.parent.mkdir(parents=True, exist_ok=True)
+    proof_db.write_bytes(b"selftest proof placeholder\n")
+    manifest_paths = [
+        "dist/summary.json",
+        "dist/blockers.jsonl",
+        "dist/quarantine.jsonl",
+        "dist/ledger/promotion_ledger.jsonl",
+        "engine/proof.duckdb",
+    ] + [f"dist/current/{facet}.jsonl" for facet in EXPECTED_FACETS]
+    manifest = {
+        "facets": EXPECTED_FACETS,
+        "files": [{"path": rel, "sha256": sha_file(proof / rel)} for rel in manifest_paths],
+    }
+    write_json(proof / "dist/manifest.json", manifest)
+
 def run(root: pathlib.Path) -> dict[str, Any]:
     proof=root/PROOF_REL
     check(proof.is_dir(), "proof artifact directory missing")
@@ -90,30 +149,22 @@ def run(root: pathlib.Path) -> dict[str, Any]:
     check(len(ledger)==counts.get("promotion_ledger"), "promotion ledger count mismatch")
     return {"status":"pass", "facets":len(EXPECTED_FACETS), "blockers":len(blockers), "quarantine":len(quarantine), "promotionLedgerRows":len(ledger), "deterministicRebuild":results.get("deterministicRebuild"), "incrementalEqualsFull":results.get("incrementalEqualsFull"), "authority":"poc-non-authority"}
 
-def selftest() -> dict[str, Any]:
-    check(len(EXPECTED_FACETS) == 16, "expected facet count changed")
-    check(len(set(EXPECTED_FACETS)) == len(EXPECTED_FACETS), "duplicate expected facet")
-    check(PROOF_REL.parts[0] == "artifacts", "proof must stay artifact-scoped")
-    check(RECORD_REL.suffix == ".jsonl", "record must stay jsonl")
-    check("secrets" in EXPECTED_FACETS, "secrets facet must stay covered")
-    return {"kind": "governance.packageFacetProof.selftest.v1", "status": "pass", "facets": len(EXPECTED_FACETS), "authority": "poc-non-authority"}
-
 def main() -> None:
     ap=argparse.ArgumentParser()
-    ap.add_argument("command", nargs="?", choices=["selftest"])
+    ap.add_argument("command", nargs="?")
     ap.add_argument("--root", default=".")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--out")
     args=ap.parse_args()
+    if args.command not in (None, "selftest"):
+        fail(f"unknown-command:{args.command}")
     if args.command == "selftest":
-        result = selftest()
-        text=json.dumps(result, ensure_ascii=False, sort_keys=True)
-        if args.out:
-            pathlib.Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-            pathlib.Path(args.out).write_text(text+"\n", encoding="utf-8")
-        print(text)
-        return
-    result=run(pathlib.Path(args.root).resolve())
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            build_selftest_fixture(root)
+            result = run(root)
+    else:
+        result=run(pathlib.Path(args.root).resolve())
     text=json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)
     if args.out:
         pathlib.Path(args.out).parent.mkdir(parents=True, exist_ok=True)
