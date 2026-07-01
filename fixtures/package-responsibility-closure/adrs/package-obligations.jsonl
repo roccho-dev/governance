@@ -1,0 +1,4 @@
+{"adrsRef":"ADRS#fixture-alpha","kind":"packageObligation.v1","ownerRole":"ui","packageId":"alpha","packagePath":"packages/alpha-old","repoLocator":"repo:repo","requiredTests":["alpha-test"],"targetUniverse":"selected"}
+{"adrsRef":"ADRS#fixture-missing","kind":"packageObligation.v1","ownerRole":"ops","packageId":"missing","packagePath":"packages/missing","repoLocator":"repo:repo","requiredTests":["missing-test"],"targetUniverse":"selected"}
+{"adrsRef":"ADRS#fixture-clean","kind":"packageObligation.v1","ownerRole":"ops","packageId":"clean","packagePath":"packages/clean","repoLocator":"repo:repo","requiredTests":["clean-test"],"targetUniverse":"selected"}
+{"adrsRef":"ADRS#fixture-blocked","kind":"packageObligation.v1","ownerRole":"ops","packageId":"blocked","packagePath":"packages/blocked","repoLocator":"repo:repo","requiredTests":["blocked-test"],"targetUniverse":"selected"}
