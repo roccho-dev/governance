@@ -1,0 +1,28 @@
+name: JSX A2UI obligation check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run package obligation check
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/jsx-a2ui-check
+          cat > tmp/jsx-a2ui-check/universes.jsonl <<'JSONL'
+          {"universe":"all-feature-packages"}
+          JSONL
+          cat > tmp/jsx-a2ui-check/obligations.jsonl <<'JSONL'
+          {"kind":"governance.packageObligation.v1","adrsRef":"raw.adrs.jsx_a2ui_compiler_package_obligation.260701.01","universe":"all-feature-packages","repo":"roccho-dev/ui","packageId":"ui.jsx-a2ui-compiler","packagePath":"packages/jsx-a2ui-compiler","ownerRole":"ui","obligationId":"pkg.ui.jsx-a2ui-compiler","requirementId":"jsx-a2ui-compiler","requiredTestId":"jsx-a2ui-compiler-fixture-check"}
+          JSONL
+          cat > tmp/jsx-a2ui-check/responses.jsonl <<'JSONL'
+          {"kind":"governance.packageResponse.v1","adrsRef":"roccho-dev/adrs#101","universe":"all-feature-packages","repo":"roccho-dev/ui","packageId":"ui.projection-evidence","packagePath":"packages/ui-projection-evidence","ownerRole":"ui","obligationId":"pkg.ui.projection-evidence","requirementId":"projection-evidence","requiredTestId":"ui-package-evidence-check","status":"pass","tests":["ui-package-evidence-check"],"evidenceFresh":true,"receiptPresent":true,"residualsVisible":true,"checkAdoption":true}
+          JSONL
+          python3 tools/check-package-obligation-parser.py check --universes tmp/jsx-a2ui-check/universes.jsonl --obligations tmp/jsx-a2ui-check/obligations.jsonl --responses tmp/jsx-a2ui-check/responses.jsonl --report tmp/jsx-a2ui-check/report.json
