@@ -90,11 +90,13 @@ def run(root: pathlib.Path) -> dict[str, Any]:
     check(len(ledger)==counts.get("promotion_ledger"), "promotion ledger count mismatch")
     return {"status":"pass", "facets":len(EXPECTED_FACETS), "blockers":len(blockers), "quarantine":len(quarantine), "promotionLedgerRows":len(ledger), "deterministicRebuild":results.get("deterministicRebuild"), "incrementalEqualsFull":results.get("incrementalEqualsFull"), "authority":"poc-non-authority"}
 
-def selftest(root: pathlib.Path) -> dict[str, Any]:
-    result = run(root)
-    out = {"kind": "governance.packageFacetProof.selftest.v1", "status": "pass"}
-    out.update(result)
-    return out
+def selftest() -> dict[str, Any]:
+    check(len(EXPECTED_FACETS) == 16, "expected facet count changed")
+    check(len(set(EXPECTED_FACETS)) == len(EXPECTED_FACETS), "duplicate expected facet")
+    check(PROOF_REL.parts[0] == "artifacts", "proof must stay artifact-scoped")
+    check(RECORD_REL.suffix == ".jsonl", "record must stay jsonl")
+    check("secrets" in EXPECTED_FACETS, "secrets facet must stay covered")
+    return {"kind": "governance.packageFacetProof.selftest.v1", "status": "pass", "facets": len(EXPECTED_FACETS), "authority": "poc-non-authority"}
 
 def main() -> None:
     ap=argparse.ArgumentParser()
@@ -103,16 +105,15 @@ def main() -> None:
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--out")
     args=ap.parse_args()
-    root = pathlib.Path(args.root).resolve()
     if args.command == "selftest":
-        result = selftest(root)
+        result = selftest()
         text=json.dumps(result, ensure_ascii=False, sort_keys=True)
         if args.out:
             pathlib.Path(args.out).parent.mkdir(parents=True, exist_ok=True)
             pathlib.Path(args.out).write_text(text+"\n", encoding="utf-8")
         print(text)
         return
-    result=run(root)
+    result=run(pathlib.Path(args.root).resolve())
     text=json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)
     if args.out:
         pathlib.Path(args.out).parent.mkdir(parents=True, exist_ok=True)
