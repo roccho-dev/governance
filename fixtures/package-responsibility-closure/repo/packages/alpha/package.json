@@ -1,0 +1,7 @@
+{
+  "name": "alpha",
+  "scripts": {
+    "test": "echo test"
+  },
+  "version": "0.0.0"
+}
