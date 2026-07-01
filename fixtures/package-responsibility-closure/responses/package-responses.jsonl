@@ -1,0 +1,4 @@
+{"authority":true,"claims":["unexpected-claim"],"kind":"governance.packageResponse.v1","ownerRole":"ops","packageId":"alpha","receipts":[],"repoLocator":"repo:repo","requiredTests":[],"status":"implemented"}
+{"authority":false,"kind":"governance.packageResponse.v1","obligationId":"ADRS#fixture-clean#clean","ownerRole":"ops","packageId":"clean","receipts":["receipt:clean"],"repoLocator":"repo:repo","requiredTests":["clean-test"],"status":"implemented"}
+{"authority":false,"kind":"governance.packageResponse.v1","obligationId":"ADRS#fixture-blocked#blocked","ownerRole":"ops","packageId":"blocked","residuals":[],"repoLocator":"repo:repo","requiredTests":["blocked-test"],"status":"blocked"}
+{"authority":false,"kind":"governance.packageResponse.v1","ownerRole":"ops","packageId":"extra","receipts":["receipt:extra"],"repoLocator":"repo:repo","requiredTests":["extra-test"],"status":"implemented"}
