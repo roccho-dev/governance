@@ -138,8 +138,10 @@ jobs:
       - name: Check package governance selftests
         run: |
           set -euo pipefail
+          export PYTHONPATH="$PWD/tools${PYTHONPATH:+:$PYTHONPATH}"
           for script in tools/check-package-*.py tools/build-package-*.py; do
             [ -e "$script" ] || continue
+            echo "selftest $script"
             python3 "$script" selftest
           done
 
