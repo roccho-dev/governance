@@ -92,10 +92,13 @@ def run(root: pathlib.Path) -> dict[str, Any]:
 
 def main() -> None:
     ap=argparse.ArgumentParser()
+    ap.add_argument("command", nargs="?")
     ap.add_argument("--root", default=".")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--out")
     args=ap.parse_args()
+    if args.command not in (None, "selftest"):
+        fail(f"unknown-command:{args.command}")
     result=run(pathlib.Path(args.root).resolve())
     text=json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)
     if args.out:
