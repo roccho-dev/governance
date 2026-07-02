@@ -4,10 +4,11 @@
 
 This directory defines the repo-local `govPackageOutput.v1` packet for `roccho-dev/governance`.
 
-The packet is the future shape of:
+The same packet is exposed through:
 
 ```text
 packages.<system>.gov-package-output
+checks.<system>.gov-package-output
 ```
 
 It is evidence for governance joins, not meaning authority.
@@ -28,14 +29,9 @@ It is evidence for governance joins, not meaning authority.
 
 ## Current status
 
-This PR adds the packet as checked-in proposal evidence. It does not yet wire the packet as a Nix package output.
+This PR adds the packet as checked-in proposal evidence and wires it to the flake surface.
 
-The intended follow-through is to expose the same packet through:
-
-```text
-packages.<system>.gov-package-output
-checks.<system>.gov-package-output
-```
+The package output copies the checked-in packet files into the Nix store and validates the required packet files, non-authority boundary, proposal-preview mode, final gate reference, package rows, assertions, receipts, provider CI rows, findings, and admission rows.
 
 ## Boundary
 
