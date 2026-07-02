@@ -68,7 +68,7 @@ If a tool cannot prove a row is active, it must return a residual or blocking fi
 
 ## ADRS refs
 
-- Proposed: `roccho-dev/adrs#105` governance final-scope purpose join
-- Proposed: `roccho-dev/adrs#106` README projection plane
+- Accepted: `roccho-dev/adrs#105` governance final-scope purpose join
+- Accepted: `roccho-dev/adrs#106` README projection plane
 
-Until those ADRS proposals are accepted, this README is a projection candidate.
+This README is an accepted ADRS projection surface for `tools/`. It remains non-authority evidence and does not make tool checks final merge authority by itself.
