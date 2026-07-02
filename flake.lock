@@ -9,13 +9,13 @@
         "rev": "deb5e1ca5edfed1624143db96e483aaa675ed7de",
         "revCount": 28,
         "type": "git",
-        "url": "ssh://100.124.250.91/home/nixos/repos/adrs.git"
+        "url": "ssh://100.124.250.91/home/nixos/repos/.bare/adrs.git"
       },
       "original": {
         "ref": "refs/heads/proposal/record-jsonl-reproof-rehome-260619",
         "rev": "deb5e1ca5edfed1624143db96e483aaa675ed7de",
         "type": "git",
-        "url": "ssh://100.124.250.91/home/nixos/repos/adrs.git"
+        "url": "ssh://100.124.250.91/home/nixos/repos/.bare/adrs.git"
       }
     },
     "nixpkgs": {
