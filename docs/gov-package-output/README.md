@@ -37,4 +37,4 @@ The package output copies the checked-in packet files into the Nix store and val
 
 - ADRS remains meaning authority.
 - This packet is evidence and projection output.
-- A green packet is not final merge authority unless consumed by the final join after accepted cutover.
+- A green packet is not final merge authority unless consumed by final join after accepted cutover.
