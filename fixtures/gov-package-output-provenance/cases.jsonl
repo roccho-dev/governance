@@ -1,0 +1,9 @@
+{"caseId":"clean","expectedOutcome":"pass"}
+{"caseId":"shape-only-no-provenance","expectedOutcome":"fail","expectedDiagnosticClass":"missingProducerProvenance"}
+{"caseId":"fake-matching-provenance","expectedOutcome":"fail","expectedDiagnosticClass":"staleProducerRev"}
+{"caseId":"stale-producer-rev","expectedOutcome":"fail","expectedDiagnosticClass":"staleProducerRev"}
+{"caseId":"wrong-producer-digest","expectedOutcome":"fail","expectedDiagnosticClass":"producerDigestMismatch"}
+{"caseId":"missing-input-path","expectedOutcome":"fail","expectedDiagnosticClass":"missingSourceInput"}
+{"caseId":"wrong-input-lock-digest","expectedOutcome":"fail","expectedDiagnosticClass":"inputLockDigestMismatch"}
+{"caseId":"wrong-output-digest","expectedOutcome":"fail","expectedDiagnosticClass":"outputDigestMismatch"}
+{"caseId":"undeclared-source-input","expectedOutcome":"fail","expectedDiagnosticClass":"undeclaredOutputFile"}
