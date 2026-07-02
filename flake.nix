@@ -78,6 +78,8 @@
             Build the explicit bootstrap compatibility package.
           nix build .#readme-artifact
             Build the non-authority README artifact packet.
+          nix build .#gov-package-output
+            Build the repo-local non-authority govPackageOutput.v1 packet.
           nix build .#claim-admission-check
             Build the stable non-authority claim admission checker CLI.
           nix build .
@@ -96,11 +98,11 @@
             Run all governance checks.
           checks include ADR input presence, no local records/generated,
           Nix default surface, provider CI YAML generated-output selftest,
-          README artifact packet selftest, org admission gate selftest,
-          claim port join compiler selftest, claim admission checker export selftest,
-          claim check adoption monitor selftest, ops selected-universe adoption selftest,
-          central claim drift report selftest, organization admission join fixture proof,
-          and ADRS shadow monitor selftest.
+          README artifact packet selftest, gov package output packet selftest,
+          org admission gate selftest, claim port join compiler selftest,
+          claim admission checker export selftest, claim check adoption monitor selftest,
+          ops selected-universe adoption selftest, central claim drift report selftest,
+          organization admission join fixture proof, and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -180,6 +182,40 @@ EOF
 }
 EOF
         '';
+      mkGovPackageOutput = pkgs:
+        pkgs.runCommand "governance-gov-package-output" { nativeBuildInputs = [ pkgs.coreutils pkgs.gnugrep ]; } ''
+          set -euo pipefail
+          mkdir -p "$out"
+          cp ${self}/docs/gov-package-output/* "$out/"
+
+          for file in \
+            manifest.json \
+            repo.json \
+            packages.jsonl \
+            assertions.jsonl \
+            receipts.jsonl \
+            readmeProjectionReceipt.jsonl \
+            provider-ci.jsonl \
+            findings.jsonl \
+            admission.jsonl
+          do
+            test -s "$out/$file"
+          done
+
+          grep -q '"kind": "govPackageOutput.v1"' "$out/manifest.json"
+          grep -q '"repoId": "roccho-dev/governance"' "$out/manifest.json"
+          grep -q '"projectionMode": "proposal-preview"' "$out/manifest.json"
+          grep -q '"nonAuthority": true' "$out/manifest.json"
+          grep -q '"finalGateRef": "gov-final-scope-purpose-join / gate"' "$out/repo.json"
+          grep -q '"packageId":"tools"' "$out/packages.jsonl"
+          grep -q '"packageId":"modules"' "$out/packages.jsonl"
+          grep -q '"kind":"readmeProjectionReceipt.v1"' "$out/readmeProjectionReceipt.jsonl"
+          grep -q '"kind":"govPackageAssertion.v1"' "$out/assertions.jsonl"
+          grep -q '"kind":"govPackageReceipt.v1"' "$out/receipts.jsonl"
+          grep -q '"kind":"govProviderCiRow.v1"' "$out/provider-ci.jsonl"
+          grep -q '"kind":"govPackageFinding.v1"' "$out/findings.jsonl"
+          grep -q '"kind":"govPackageAdmission.v1"' "$out/admission.jsonl"
+        '';
     in
     {
       lib = forEachSystem (pkgs: {
@@ -193,6 +229,7 @@ ${bootstrapInputText}
 EOF
         '';
         readme-artifact = mkReadmeArtifact pkgs;
+        gov-package-output = mkGovPackageOutput pkgs;
         claim-admission-check = claimAdmissionCheckProgram;
       });
       apps = forEachSystem (pkgs: let
@@ -206,7 +243,10 @@ EOF
           program = "${claimAdmissionCheckProgram}/bin/claim-admission-check";
         };
       });
-      checks = forEachSystem (pkgs: let readmeArtifact = mkReadmeArtifact pkgs; in {
+      checks = forEachSystem (pkgs: let
+        readmeArtifact = mkReadmeArtifact pkgs;
+        govPackageOutput = mkGovPackageOutput pkgs;
+      in {
         adrs-input-presence = pkgs.runCommand "adrs-input-presence" { } ''
           set -euo pipefail
           test -d ${adrsRecords}
@@ -304,6 +344,24 @@ EOF
           grep -q '"sourceClosureDigest"' ${readmeArtifact}/manifest.json
           grep -q '"status": "success"' ${readmeArtifact}/receipt.json
           grep -q '"source": "nix-output"' ${readmeArtifact}/receipt.json
+          touch "$out"
+        '';
+        gov-package-output = pkgs.runCommand "gov-package-output-check" { } ''
+          set -euo pipefail
+          test -s ${govPackageOutput}/manifest.json
+          test -s ${govPackageOutput}/repo.json
+          test -s ${govPackageOutput}/packages.jsonl
+          test -s ${govPackageOutput}/assertions.jsonl
+          test -s ${govPackageOutput}/receipts.jsonl
+          test -s ${govPackageOutput}/readmeProjectionReceipt.jsonl
+          test -s ${govPackageOutput}/provider-ci.jsonl
+          test -s ${govPackageOutput}/findings.jsonl
+          test -s ${govPackageOutput}/admission.jsonl
+          grep -q '"kind": "govPackageOutput.v1"' ${govPackageOutput}/manifest.json
+          grep -q '"repoId": "roccho-dev/governance"' ${govPackageOutput}/manifest.json
+          grep -q '"projectionMode": "proposal-preview"' ${govPackageOutput}/manifest.json
+          grep -q '"nonAuthority": true' ${govPackageOutput}/manifest.json
+          grep -q '"finalGateRef": "gov-final-scope-purpose-join / gate"' ${govPackageOutput}/repo.json
           touch "$out"
         '';
         repo-convention-selftest = (repoConventionChecksFor pkgs {
