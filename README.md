@@ -32,7 +32,7 @@ It does this by:
 
 Do not infer authority from this README, a path name, generated output, cache, dashboard, artifact, fixture, or compatibility input name. Resolve authority through accepted ADR records and their digest-pinned projected bundle.
 
-README.md is a checked projection artifact. It may be handwritten, partially managed, or generated according to `readme_mode`. README.md is not an independent authority.
+README.md is a checked artifact and a checked projection artifact. It may be handwritten, partially managed, or generated according to `readme_mode`. README.md is not an independent authority.
 
 ## Final-scope purpose join
 
@@ -260,7 +260,7 @@ The active tree must not contain local `records/` or `generated/` directories. H
 
 They are not active authority and not active cache. Future consumers must read digest-pinned ADR-derived governance bundles, not `governance/records` or `governance/generated`.
 
-Reintroducing local `records/` or `generated/` requires a new accepted ADR and must fail CI by default.
+Reintroducing local `records/` or `generated` requires a new accepted ADR and must fail CI by default.
 
 ## bootstrap consumable input
 
