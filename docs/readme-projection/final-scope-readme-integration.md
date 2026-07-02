@@ -43,6 +43,10 @@ The gate must not treat README content as meaning authority. It only treats the 
 - `nextAction`
 - `adrsRef`
 
-## Current PR status
+## Current projection status
 
-`governance#77` includes root README, tools README, modules README, and proposal-stage receipt rows. This document defines how those rows become final-join inputs later.
+`governance#77` introduced root README, tools README, modules README, and proposal-stage receipt rows.
+
+Phase A/C follow-up work moves those receipt rows to accepted projection mode after the ADRS foundation in `roccho-dev/adrs#105` and `roccho-dev/adrs#106` has merged.
+
+Accepted-mode README projection receipts remain non-authority evidence. They do not make README projection green a final merge pass unless a later accepted final-scope gate consumes the receipt and all other required joins are active.
