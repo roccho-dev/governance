@@ -1,0 +1,1 @@
+{"kind":"govPackageFinding.v1","repoId":"roccho-dev/governance","diagnosticClass":"none","expected":"proposal preview packet present","actual":"proposal preview packet present","delta":"none","likelyOwner":"governance","nextAction":"wire packet to packages.<system>.gov-package-output","status":"non-blocking"}
