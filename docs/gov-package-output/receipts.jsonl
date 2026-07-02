@@ -1,0 +1,2 @@
+{"kind":"govPackageReceipt.v1","repoId":"roccho-dev/governance","packageId":"tools","receiptRef":"tools/README.md#required-receipt","receiptClass":"proposal-preview","status":"present"}
+{"kind":"govPackageReceipt.v1","repoId":"roccho-dev/governance","packageId":"modules","receiptRef":"modules/README.md#required-receipt","receiptClass":"proposal-preview","status":"present"}

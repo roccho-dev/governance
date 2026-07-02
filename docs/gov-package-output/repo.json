@@ -1,0 +1,14 @@
+{
+  "kind": "govRepoOutput.v1",
+  "repoId": "roccho-dev/governance",
+  "repoClass": "projection_gate",
+  "purpose": "Translate accepted ADRS decisions into package-facing contracts, assertions, receipts, diagnostics, and final-join inputs.",
+  "authorityBoundary": "ADRS owns accepted meaning; governance emits projection and evidence only.",
+  "finalGateRef": "gov-final-scope-purpose-join / gate",
+  "nonGoals": [
+    "do not mint accepted meaning",
+    "do not mutate target repositories",
+    "do not treat artifact green as final authority",
+    "do not hide residual package work"
+  ]
+}

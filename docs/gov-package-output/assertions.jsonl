@@ -1,0 +1,2 @@
+{"kind":"govPackageAssertion.v1","repoId":"roccho-dev/governance","packageId":"tools","assertion":"tools provide projection and check surfaces","sourceRef":"tools/README.md#required-assertion","status":"proposal-preview"}
+{"kind":"govPackageAssertion.v1","repoId":"roccho-dev/governance","packageId":"modules","assertion":"modules provide reusable Nix building blocks for projection and checks","sourceRef":"modules/README.md#required-assertion","status":"proposal-preview"}

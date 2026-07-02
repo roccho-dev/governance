@@ -1,0 +1,23 @@
+{
+  "kind": "govPackageOutput.v1",
+  "repoId": "roccho-dev/governance",
+  "repoClass": "projection_gate",
+  "projectionMode": "proposal-preview",
+  "nonAuthority": true,
+  "status": "proposal-preview",
+  "sourceRefs": [
+    "roccho-dev/adrs#105",
+    "roccho-dev/adrs#106"
+  ],
+  "packetFiles": [
+    "manifest.json",
+    "repo.json",
+    "packages.jsonl",
+    "assertions.jsonl",
+    "receipts.jsonl",
+    "readmeProjectionReceipt.jsonl",
+    "provider-ci.jsonl",
+    "findings.jsonl",
+    "admission.jsonl"
+  ]
+}

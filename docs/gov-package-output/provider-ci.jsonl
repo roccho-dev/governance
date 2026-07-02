@@ -1,0 +1,2 @@
+{"kind":"govProviderCiRow.v1","repoId":"roccho-dev/governance","surface":"GitHub Actions","workflow":"CI","role":"evidence-producer","status":"observed-success"}
+{"kind":"govProviderCiRow.v1","repoId":"roccho-dev/governance","surface":"GitHub Actions","workflow":"README artifact exporter","role":"artifact-producer","status":"observed-success"}
