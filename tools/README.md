@@ -13,6 +13,7 @@ The package exists to turn accepted ADRS-derived inputs into deterministic diagn
 - Produce deterministic findings with expected, actual, delta, likely owner, and nextAction.
 - Emit evidence that can be consumed by final-scope joins.
 - Keep selftests separate from final merge authority.
+- Build and verify non-authority `govPackageOutput.v1` producer evidence packets.
 
 ## Public contract
 
@@ -45,6 +46,7 @@ Receipts must identify:
 
 - `tools/*.py`
 - `tools/*.mjs`
+- `tools/check-package-gov-package-output-provenance.py`
 - Nix checks that invoke those tools
 - future final-scope purpose join compiler and README projection checker surfaces
 
@@ -65,6 +67,18 @@ Tools must not depend on hidden local `records/` or `generated/` trees.
 ## Residuals
 
 If a tool cannot prove a row is active, it must return a residual or blocking finding instead of disappearing the gap.
+
+## Gov-package-output producer/provenance tools
+
+`check-package-gov-package-output-provenance.py` provides a narrow producer/verifier surface:
+
+```text
+build
+verify
+selftest
+```
+
+The tool emits non-authority evidence only. Its destructive fixture matrix is tool quality evidence, not final merge authority.
 
 ## ADRS refs
 
