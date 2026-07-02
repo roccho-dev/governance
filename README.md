@@ -23,10 +23,10 @@ It does this by:
 
 ## Authority boundary
 
-- `adrs` owns accepted decisions, purposes, responsibilities, rules, non-goals, waivers, and destructive cases.
+- `adrs` owns accepted decisions, purposes, responsibilities, rules, non-goals, waivers, and exceptional cases.
 - `governance` may compile, project, lint, diagnose, and materialize evidence from accepted ADRS bundles.
 - `governance` must not own accepted-definition records or mint independent authority.
-- `governance` must not mutate repositories, perform runtime promotion, approve merges, approve policy retirement, or restore `spec`/`specs` as authority.
+- `governance` must not directly change target repositories, perform runtime promotion, approve merges, approve retirement, or make legacy `spec`/`specs` authoritative.
 - `ops` and owning feature repositories perform effectful execution and produce receipts.
 - `spec` and `specs` are deprecated legacy evidence only, not authority inputs.
 
@@ -72,20 +72,7 @@ A package should be able to use governance output without reading ADRS prose by 
 | residual finding | return incomplete work instead of hiding it |
 | `nextAction` | take the smallest action toward `organization-active` |
 
-Blocking findings should include:
-
-- `packageId`
-- `contractId`
-- `adrsRef`
-- `expected`
-- `actual`
-- `delta`
-- `diagnosticClass`
-- `likelyOwner`
-- `nextAction`
-- `decisionDigest`
-- `assertionDigest`
-- `receiptDigest`
+Blocking findings should include `packageId`, `contractId`, `adrsRef`, `expected`, `actual`, `delta`, `diagnosticClass`, `likelyOwner`, `nextAction`, `decisionDigest`, `assertionDigest`, and `receiptDigest`.
 
 ## README projection model
 
@@ -121,7 +108,7 @@ Package README responsibilities:
 
 This repository is a management surface for governance packages and projection/check tools.
 
-This PR starts package README rollout for the current package-like surfaces. Future PRs may split finer-grained tool/package READMEs, but package responsibility is no longer only described by the root README.
+Package responsibility is no longer only described by the root README. Current package-like surfaces have package README entrypoints, and future work may split finer-grained tool/package READMEs as needed.
 
 | Area | Role | README responsibility |
 |---|---|---|
@@ -132,13 +119,33 @@ This PR starts package README rollout for the current package-like surfaces. Fut
 
 ## README projection receipts
 
-This PR includes proposal-stage README projection receipts under [`docs/readme-projection/`](docs/readme-projection/):
+This repository includes README projection receipts under [`docs/readme-projection/`](docs/readme-projection/):
 
 - [`docs/readme-projection/README.md`](docs/readme-projection/README.md) explains the receipt role;
-- [`docs/readme-projection/readmeProjectionReceipt.jsonl`](docs/readme-projection/readmeProjectionReceipt.jsonl) records proposal-preview receipt rows for root README, `tools/README.md`, and `modules/README.md`;
+- [`docs/readme-projection/readmeProjectionReceipt.jsonl`](docs/readme-projection/readmeProjectionReceipt.jsonl) records receipt rows for root README, `tools/README.md`, and `modules/README.md`;
 - [`docs/readme-projection/final-scope-readme-integration.md`](docs/readme-projection/final-scope-readme-integration.md) defines how README drift enters the final-scope report.
 
 These receipts are evidence only. They do not make README authority and do not make README projection green a final merge pass.
+
+## Gov package output
+
+`packages.<system>.gov-package-output` exposes the repo-local `govPackageOutput.v1` packet for this repository.
+
+`checks.<system>.gov-package-output` verifies that the packet contains the required files and minimum identity markers.
+
+Packet files live under [`docs/gov-package-output/`](docs/gov-package-output/):
+
+- `manifest.json`
+- `repo.json`
+- `packages.jsonl`
+- `assertions.jsonl`
+- `receipts.jsonl`
+- `readmeProjectionReceipt.jsonl`
+- `provider-ci.jsonl`
+- `findings.jsonl`
+- `admission.jsonl`
+
+The packet is evidence for governance joins. It is not meaning authority and is not final merge authority unless consumed by `gov-final-scope-purpose-join / gate` after accepted cutover.
 
 ## CI surfaces
 
@@ -156,7 +163,7 @@ These receipts are evidence only. They do not make README authority and do not m
 
 ## Current status versus target state
 
-Current checks include ADR input presence, no local records/generated trees, Nix surface checks, ADRS shadow monitor selftests, provider CI YAML selftests, repo convention checks, claim/admission checks, and artifact exporters.
+Current checks include ADR input presence, no local records/generated trees, Nix surface checks, ADRS shadow monitor selftests, provider CI YAML selftests, repo convention checks, claim/admission checks, gov package output checks, and artifact exporters.
 
 These checks are useful, but they are transitional unless and until they are consumed by the final-scope join.
 
@@ -182,6 +189,7 @@ Input:
 - CI receipts
 - provider CI state
 - README projection receipts
+- repo-local gov package output packets
 
 Output:
 
@@ -211,6 +219,7 @@ Required properties:
 - CI receipts
 - provider CI state
 - README projection receipts
+- repo-local gov package output packets
 - repo-local intent files such as `ci.intent.v1.jsonl`
 - repo-local convention manifests such as `repo-convention.intent.v1.json`
 - Nix inputs declared by `flake.nix`
@@ -223,6 +232,7 @@ Required properties:
 - README projection receipts
 - repo convention findings
 - package responsibility closure reports
+- gov package output packets
 - final-scope purpose join reports
 - non-authority projection artifacts and compatibility packages
 
@@ -232,7 +242,7 @@ The current primary verification entrypoint is `nix flake check`.
 
 That does not make `nix flake check` the final merge authority. It is a high-level evidence producer until final-scope join cutover.
 
-Current checks include ADR input presence, no local records/generated trees, Nix surface checks, ADRS shadow monitor selftests, provider CI YAML selftests, repo convention checks, claim/admission checks, and artifact exporters.
+Current checks include ADR input presence, no local records/generated trees, Nix surface checks, ADRS shadow monitor selftests, provider CI YAML selftests, repo convention checks, claim/admission checks, gov package output checks, and artifact exporters.
 
 `.github/workflows/*.yml` are checked-in provider adapter artifacts. They are executable by GitHub, but they are not authority. All GitHub provider workflows must be declared by `ci.intent.v1.jsonl`.
 
@@ -249,7 +259,8 @@ Effectful execution belongs to owning repos, ops, and provider control planes.
 - `tools/` — reference pure projectors, compilers, checks, and linters
 - `modules/` — Nix building blocks only when they support projection/check surfaces
 - `issues/` — legacy issue-ledger evidence, not decision authority
-- `docs/readme-projection/` — proposal-stage README projection receipts and final-scope integration contract
+- `docs/readme-projection/` — README projection receipts and final-scope integration contract
+- `docs/gov-package-output/` — repo-local `govPackageOutput.v1` packet
 - `MIGRATION_SOURCE.md` — deletion boundary note for removed local records/generated content
 
 The active tree must not contain local `records/` or `generated/` directories. Historical data remains available through Git history and accepted ADR-derived projection bundles.
@@ -277,7 +288,7 @@ The bootstrap pinned-flake-input consumer reads `requiredSsot`, `specsOptional`,
 - treat README, artifacts, screenshots, or generated output as authority;
 - treat shadow reports as merge authority;
 - treat standalone green checks as final ADRS compliance;
-- mutate target repos;
+- directly change target repos;
 - approve branch protection cutover without an accepted cutover decision;
 - hide residual work;
 - move package-specific responsibility back into root README once package README rollout exists.
@@ -286,11 +297,9 @@ The bootstrap pinned-flake-input consumer reads `requiredSsot`, `specsOptional`,
 
 This repository is the history-preserving merge of governance-records@eaefe95 and governance-nix@683f0b3. Both source lineages remain present in Git history. Their former local record/projection trees are historical evidence only after this proposal.
 
-## ADRS proposal provenance
+## ADRS provenance
 
-This README projection is based on proposed ADRS contracts:
+This README projection is based on ADRS contracts merged through:
 
 - `roccho-dev/adrs#105` — governance final-scope purpose join
-- `roccho-dev/adrs#106` — README projection plane
-
-Until those ADRS proposals are accepted, this README is a projection candidate rather than an accepted-source projection.
+- `roccho-dev/adrs#106` — README projection plane and gov package output plane
