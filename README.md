@@ -121,14 +121,24 @@ Package README responsibilities:
 
 This repository is a management surface for governance packages and projection/check tools.
 
-Current package/detail documentation is still transitional. A later package README rollout should move package-specific responsibilities out of this root README.
+This PR starts package README rollout for the current package-like surfaces. Future PRs may split finer-grained tool/package READMEs, but package responsibility is no longer only described by the root README.
 
 | Area | Role | README responsibility |
 |---|---|---|
-| `tools/` | reference projectors, compilers, checks, and linters | tool/package READMEs should define package purpose, inputs, outputs, assertions, receipts, and non-goals |
-| `modules/` | Nix building blocks for projection/check surfaces | package READMEs should define accepted usage and dependency boundaries |
+| [`tools/`](tools/README.md) | reference projectors, compilers, checks, and linters | defines tool/package purpose, inputs, outputs, assertions, receipts, and non-goals |
+| [`modules/`](modules/README.md) | Nix building blocks for projection/check surfaces | defines accepted usage, dependency boundaries, and receipt expectations |
 | `issues/` | legacy issue-ledger evidence | must remain evidence only, not decision authority |
 | `MIGRATION_SOURCE.md` | deletion boundary note for removed local records/generated content | explains migration evidence, not active authority |
+
+## README projection receipts
+
+This PR includes proposal-stage README projection receipts under [`docs/readme-projection/`](docs/readme-projection/):
+
+- [`docs/readme-projection/README.md`](docs/readme-projection/README.md) explains the receipt role;
+- [`docs/readme-projection/readmeProjectionReceipt.jsonl`](docs/readme-projection/readmeProjectionReceipt.jsonl) records proposal-preview receipt rows for root README, `tools/README.md`, and `modules/README.md`;
+- [`docs/readme-projection/final-scope-readme-integration.md`](docs/readme-projection/final-scope-readme-integration.md) defines how README drift enters the final-scope report.
+
+These receipts are evidence only. They do not make README authority and do not make README projection green a final merge pass.
 
 ## CI surfaces
 
@@ -171,6 +181,7 @@ Input:
 - package assertions
 - CI receipts
 - provider CI state
+- README projection receipts
 
 Output:
 
@@ -182,6 +193,7 @@ Output:
 - provenance and digest metadata
 - final-scope purpose join reports
 - projection receipts and findings
+- README drift findings
 
 Required properties:
 
@@ -198,6 +210,7 @@ Required properties:
 - repo/package assertions
 - CI receipts
 - provider CI state
+- README projection receipts
 - repo-local intent files such as `ci.intent.v1.jsonl`
 - repo-local convention manifests such as `repo-convention.intent.v1.json`
 - Nix inputs declared by `flake.nix`
@@ -207,6 +220,7 @@ Required properties:
 - deterministic check receipts from `nix flake check`
 - provider CI adapter findings
 - README projection findings
+- README projection receipts
 - repo convention findings
 - package responsibility closure reports
 - final-scope purpose join reports
@@ -235,6 +249,7 @@ Effectful execution belongs to owning repos, ops, and provider control planes.
 - `tools/` — reference pure projectors, compilers, checks, and linters
 - `modules/` — Nix building blocks only when they support projection/check surfaces
 - `issues/` — legacy issue-ledger evidence, not decision authority
+- `docs/readme-projection/` — proposal-stage README projection receipts and final-scope integration contract
 - `MIGRATION_SOURCE.md` — deletion boundary note for removed local records/generated content
 
 The active tree must not contain local `records/` or `generated/` directories. Historical data remains available through Git history and accepted ADR-derived projection bundles.
