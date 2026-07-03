@@ -14,6 +14,7 @@ The package exists to turn accepted ADRS-derived inputs into deterministic diagn
 - Emit evidence that can be consumed by final-scope joins.
 - Keep selftests separate from final merge authority.
 - Build and verify non-authority `govPackageOutput.v1` producer evidence packets.
+- Join required repo universe, packet registry, packet findings, and producer provenance into org-level evidence rows.
 
 ## Public contract
 
@@ -47,6 +48,7 @@ Receipts must identify:
 - `tools/*.py`
 - `tools/*.mjs`
 - `tools/check-package-gov-package-output-provenance.py`
+- `tools/check-package-required-repo-org-join.py`
 - Nix checks that invoke those tools
 - future final-scope purpose join compiler and README projection checker surfaces
 
@@ -79,6 +81,19 @@ selftest
 ```
 
 The tool emits non-authority evidence only. Its destructive fixture matrix is tool quality evidence, not final merge authority.
+
+## Required repo packet org join tool
+
+`check-package-required-repo-org-join.py` provides the Phase D evidence path:
+
+```text
+check
+selftest
+```
+
+It reads required repo universe rows, packet registry rows, packet findings, and producer provenance signals. It emits `organization-active` only for clean required repo packet evidence and blocking findings for missing, stale, malformed, unavailable, unpinned, or invalid-provenance packet evidence.
+
+This is org-join precursor evidence only. It is not branch protection authority and is not final-scope gate cutover.
 
 ## ADRS refs
 

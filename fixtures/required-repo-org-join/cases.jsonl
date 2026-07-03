@@ -1,0 +1,10 @@
+{"caseId":"clean","expectedOutcome":"pass"}
+{"caseId":"missing-required-field","expectedOutcome":"fail","expectedDiagnosticClass":"missingRequiredRepoField"}
+{"caseId":"duplicate-required-repo","expectedOutcome":"fail","expectedDiagnosticClass":"duplicateRequiredRepoId"}
+{"caseId":"unknown-repo-class","expectedOutcome":"fail","expectedDiagnosticClass":"unknownRepoClass"}
+{"caseId":"missing-packet-source","expectedOutcome":"fail","expectedDiagnosticClass":"missingPacketSource"}
+{"caseId":"unpinned-source","expectedOutcome":"fail","expectedDiagnosticClass":"missingPacketSourceField"}
+{"caseId":"missing-packet","expectedOutcome":"fail","expectedDiagnosticClass":"missingGovPackageOutput"}
+{"caseId":"stale-packet","expectedOutcome":"fail","expectedDiagnosticClass":"stalePacketSourceRev"}
+{"caseId":"malformed-packet","expectedOutcome":"fail","expectedDiagnosticClass":"malformedGovPackageOutput"}
+{"caseId":"invalid-provenance","expectedOutcome":"fail","expectedDiagnosticClass":"producerRevMismatch"}
