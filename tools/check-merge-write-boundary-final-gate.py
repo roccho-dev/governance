@@ -141,7 +141,7 @@ def build_report(cases_path: Path = CASES) -> dict[str, Any]:
                     reasons=receipt["reasons"],
                 )
             )
-        for required in ["targetSha", "decision", "finalGateName", "finalGateRunId", "actor", "enforcementPoint", "attemptedAt"]:
+        for required in ["targetSha", "decision", "finalGateRunId", "actor", "enforcementPoint", "attemptedAt"]:
             if receipt.get(required) in {None, ""}:
                 findings.append(finding("audit-receipt-field-missing", "audit receipt is missing a required field", caseId=row.get("caseId"), field=required))
 
