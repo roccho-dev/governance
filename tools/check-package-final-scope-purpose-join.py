@@ -27,12 +27,16 @@ def load_module(name: str, path: Path):
 def run_selftest() -> dict[str, Any]:
     closure = load_module("package_closure_strict", ROOT / "tools" / "check-package-closure-strict.py")
     provider = load_module("provider_ci_yaml", ROOT / "tools" / "check-provider-ci-yaml.py")
+    org_join = load_module("required_repo_org_join", ROOT / "tools" / "check-package-required-repo-org-join.py")
 
     closure_report = closure.selftest()
     provider_code = provider.selftest()
+    org_join_code = org_join.selftest()
+
     if provider_code != 0:
         raise SystemExit(canonical({"status": "fail", "reason": "provider-ci-selftest-failed", "code": provider_code}))
-
+    if org_join_code != 0:
+        raise SystemExit(canonical({"status": "fail", "reason": "org-join-selftest-failed", "code": org_join_code}))
     if closure_report.get("status") != "pass":
         raise SystemExit(canonical({"status": "fail", "reason": "closure-selftest-failed", "closureReport": closure_report}))
 
@@ -44,12 +48,18 @@ def run_selftest() -> dict[str, Any]:
         "evidenceMode": "strict-gate-adapter-selftest",
         "consumes": [
             "package closure strict gate",
+            "required repo packet org join selftest",
             "provider CI drift selftest",
             "future README projection drift findings",
-            "future govPackageOutput producer provenance findings",
             "future selected-universe admission rows",
         ],
         "strictFailureCapability": [
+            "missing packet source",
+            "missing govPackageOutput packet",
+            "malformed or handwritten packet",
+            "stale packet source revision",
+            "invalid producer provenance",
+            "packet digest mismatch",
             "missing package inventory or package path",
             "missing package response",
             "missing receipt",
@@ -60,6 +70,7 @@ def run_selftest() -> dict[str, Any]:
             "generated artifact misclassified as pass",
         ],
         "closureStrictGate": closure_report,
+        "requiredRepoOrgJoinSelftest": "pass",
         "providerCiSelftest": "pass",
         "boundary": "This is the final gate adapter and regression surface. It is not branch-protection cutover, not ADRS authority, and not proof that all downstream selected repos are active.",
     }
