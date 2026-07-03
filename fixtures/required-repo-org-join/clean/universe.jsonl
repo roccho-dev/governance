@@ -1,0 +1,2 @@
+{"kind":"govRequiredRepo.v1","repoId":"roccho-dev/governance","repoClass":"projection_gate","requiredOutput":"govPackageOutput.v1","requiredProducer":"roccho-dev/governance","enforcementMode":"shadow","effectiveFrom":"2026-07-03","owner":"governance"}
+{"kind":"govRequiredRepo.v1","repoId":"roccho-dev/adrs","repoClass":"authority_records","requiredOutput":"govPackageOutput.v1","requiredProducer":"roccho-dev/governance","enforcementMode":"shadow","effectiveFrom":"2026-07-03","owner":"adrs"}
