@@ -15,6 +15,7 @@ The package exists to turn accepted ADRS-derived inputs into deterministic diagn
 - Keep selftests separate from final merge authority.
 - Build and verify non-authority `govPackageOutput.v1` producer evidence packets.
 - Join required repo universe, packet registry, packet findings, and producer provenance into org-level evidence rows.
+- Provide the `gov-final-scope-purpose-join / gate` adapter surface without claiming branch-protection cutover.
 
 ## Public contract
 
@@ -47,6 +48,7 @@ Receipts must identify:
 
 - `tools/*.py`
 - `tools/*.mjs`
+- `tools/check-package-final-scope-purpose-join.py`
 - `tools/check-package-gov-package-output-provenance.py`
 - `tools/check-package-required-repo-org-join.py`
 - Nix checks that invoke those tools
@@ -69,6 +71,18 @@ Tools must not depend on hidden local `records/` or `generated/` trees.
 ## Residuals
 
 If a tool cannot prove a row is active, it must return a residual or blocking finding instead of disappearing the gap.
+
+## Final-scope purpose join gate adapter
+
+`check-package-final-scope-purpose-join.py` provides the final check-name adapter:
+
+```text
+gov-final-scope-purpose-join / gate
+```
+
+The adapter currently runs strict gate regression selftests and provider-CI drift regression selftests. It is a merge-gate surface only after same-name green evidence and explicit branch-protection/ruleset cutover.
+
+It emits non-authority evidence only. A green selftest is not selected real organization closure by itself.
 
 ## Gov-package-output producer/provenance tools
 
