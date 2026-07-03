@@ -1,9 +1,9 @@
 {
-  "attachedChildIssueCount": 3,
+  "attachedChildIssueCount": 2,
   "authority": false,
-  "blockingCandidateCount": 3,
+  "blockingCandidateCount": 2,
   "boundary": "This is observation and burn-down routing evidence. It does not close selected real package closure-pass and does not change branch protection.",
-  "burnDownDigest": "sha256:bed03c1c645e591eb9ecacd9f3c5147a563683bf0f8ba9d09f3cf839e52aa3cb",
+  "burnDownDigest": "sha256:281ce5db455a0fb4d71ad9855bfa4980792f4c970bf56d2f06c8461256af8588",
   "burnDownIssue": "governance#111",
   "burnDownRows": [
     {
@@ -24,16 +24,18 @@
     {
       "authority": false,
       "burnDownIssue": "governance#111",
-      "disposition": "attached-child-issue",
+      "disposition": "resolved",
       "findingClass": "selected-ops-closure-pending",
       "kind": "governance.selectedShadowBurnDown.v1",
-      "nextAction": "emit selected ops inventory responses and receipts or return residual",
+      "mergeCommit": "d2e534ef9977a67a0c62d005f9ff1057a57de96e",
+      "nextAction": "keep selected ops closure evidence available for governance final join",
       "owner": "ops",
-      "ownerRef": "roccho-dev/ops#30",
+      "ownerRef": "roccho-dev/ops#25",
       "parent": "governance#125",
       "phaseParent": "governance#82",
       "repoId": "roccho-dev/ops",
-      "severity": "blocking",
+      "resolvedBy": "roccho-dev/ops#25",
+      "severity": "resolved",
       "shadowIssue": "governance#110"
     },
     {
@@ -91,8 +93,8 @@
       "repoId": "roccho-dev/ops",
       "requiredOutput": "selected ops inventory responses and receipts",
       "requiredProducer": "roccho-dev/ops",
-      "source": "roccho-dev/ops#30",
-      "status": "blocking-candidate"
+      "source": "roccho-dev/ops#25 merged d2e534ef9977a67a0c62d005f9ff1057a57de96e",
+      "status": "shadow-observed"
     },
     {
       "kind": "governance.selectedUniverseRepo.v1",
@@ -111,5 +113,5 @@
   "selectedRepoCount": 4,
   "shadowIssue": "governance#110",
   "status": "report-generated",
-  "universeDigest": "sha256:7733b8fe919ce75da564d2657e7b2daa103c0cfecfd0f21179f1dab4d7e28227"
+  "universeDigest": "sha256:22c1588b1aec64f06a930b7d3a63a751dbeaebf465e7ade6fea25eeefa227dd6"
 }
