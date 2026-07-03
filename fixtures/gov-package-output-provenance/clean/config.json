@@ -1,0 +1,30 @@
+{
+  "kind": "govPackageOutputProducer.config.v1",
+  "repoId": "roccho-dev/example",
+  "repoClass": "fixture_repo",
+  "repoPurpose": "fixture repo for govPackageOutput producer and provenance verifier",
+  "projectionMode": "fixture",
+  "status": "fixture",
+  "sourceRefs": ["fixture"],
+  "producer": {
+    "producerRepo": "roccho-dev/governance",
+    "producerRev": "fixture-producer-rev",
+    "producerDigest": "sha256:fixture-producer-digest",
+    "generatedBy": "tools/check-package-gov-package-output-provenance.py fixture"
+  },
+  "inputs": {
+    "packages": {"path": "source/packages.jsonl"},
+    "assertions": {"path": "source/assertions.jsonl"},
+    "receipts": {"path": "source/receipts.jsonl"},
+    "readmeProjectionReceipt": {"path": "source/readmeProjectionReceipt.jsonl"},
+    "providerCi": {"path": "source/provider-ci.jsonl"},
+    "findings": {"path": "source/findings.jsonl"},
+    "admission": {"path": "source/admission.jsonl"},
+    "sourcePaths": [
+      {"role": "packageInventory", "path": "source/packages.jsonl", "required": true},
+      {"role": "packageAssertions", "path": "source/assertions.jsonl", "required": true},
+      {"role": "packageReceipts", "path": "source/receipts.jsonl", "required": true},
+      {"role": "providerCi", "path": "source/provider-ci.jsonl", "required": true}
+    ]
+  }
+}

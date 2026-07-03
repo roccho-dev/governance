@@ -26,12 +26,40 @@ It is evidence for governance joins, not meaning authority.
 | `provider-ci.jsonl` | provider CI rows relevant to governance output |
 | `findings.jsonl` | blocking and non-blocking diagnostics |
 | `admission.jsonl` | organization-active admission rows |
+| `input-manifest.jsonl` | producer source input closure and `inputLockDigest` source |
+| `producer-provenance.json` | producer repo/rev/digest and recomputable output digest claim |
+
+## Reusable producer
+
+The reusable producer surface is `nix/gov-package-output-producer.nix`.
+Downstream repos can import it from `inputs.governance` and call:
+
+```text
+mkGovPackageOutput
+mkGovPackageOutputCheck
+```
+
+The producer requires explicit `repoId`, `repoClass`, package inventory,
+assertions, receipts, README projection receipts, provider CI rows, findings,
+admission rows, and declared source paths. Missing required inputs fail closed.
+
+## Provenance verification
+
+`tools/check-package-gov-package-output-provenance.py` verifies provenance fields
+by recomputing the input lock digest and output digest. Packet-internal
+provenance is treated as a claim, not proof.
+
+Destructive cases live under `fixtures/gov-package-output-provenance/` and cover
+shape-only packets, fake provenance, stale producer revisions, wrong producer
+digests, missing source inputs, wrong input locks, wrong output digests, and
+undeclared packet output.
 
 ## Current status
 
-This PR adds the packet as checked-in proposal evidence and wires it to the flake surface.
+This phase adds reusable producer/provenance evidence only.
 
-The package output copies the checked-in packet files into the Nix store and validates the required packet files, non-authority boundary, proposal-preview mode, final gate reference, package rows, assertions, receipts, provider CI rows, findings, and admission rows.
+It does not claim final join active status, downstream rollout, branch protection
+cutover, accepted ADRS meaning, or final merge authority.
 
 ## Boundary
 
