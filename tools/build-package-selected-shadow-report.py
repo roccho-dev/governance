@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-UNIVERSE = ROOT / "docs" / "final-scope-purpose-join" / "selected-universe.jsonl"
-BURN_DOWN = ROOT / "docs" / "final-scope-purpose-join" / "selected-shadow-burn-down.jsonl"
+BASE = ROOT / "docs" / "final-scope-purpose-join"
+UNIVERSE = BASE / "selected-universe.jsonl"
+BURN_DOWN = BASE / "selected-shadow-burn-down.jsonl"
+REPORT = BASE / "selected-shadow-report.json"
 FINAL_CHECK_NAME = "gov-final-scope-purpose-join / gate"
 
 
@@ -34,6 +36,13 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
             raise SystemExit(canonical({"status": "fail", "path": str(path), "line": line_no, "reason": "row-not-object"}))
         rows.append(row)
     return rows
+
+
+def read_json(path: Path) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise SystemExit(canonical({"status": "fail", "path": str(path), "reason": "json-not-object"}))
+    return value
 
 
 def finding(code: str, message: str, **extra: Any) -> dict[str, Any]:
@@ -105,6 +114,9 @@ def write_report(path: Path, report: dict[str, Any]) -> None:
 
 def selftest() -> dict[str, Any]:
     report = build_report()
+    checked = read_json(REPORT)
+    if checked != report:
+        raise SystemExit(canonical({"status": "fail", "reason": "checked shadow report does not match generated report", "expected": report, "actual": checked}))
     if report["status"] != "report-generated":
         raise SystemExit(canonical(report))
     if report["blockingCandidateCount"] <= 0:
@@ -120,6 +132,7 @@ def selftest() -> dict[str, Any]:
         "shadowStatus": report["status"],
         "blockingCandidateCount": report["blockingCandidateCount"],
         "attachedChildIssueCount": report["attachedChildIssueCount"],
+        "reportArtifact": REPORT.relative_to(ROOT).as_posix(),
         "boundary": report["boundary"],
     }
 
