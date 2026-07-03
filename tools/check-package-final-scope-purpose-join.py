@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -15,30 +16,20 @@ def canonical(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-def load_module(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise SystemExit(canonical({"status": "fail", "reason": "cannot-load-module", "path": str(path)}))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def run_component(name: str, args: list[str]) -> dict[str, Any]:
+    proc = subprocess.run(args, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    return {"name": name, "status": "pass" if proc.returncode == 0 else "fail", "exitCode": proc.returncode, "output": proc.stdout.strip().splitlines()[-5:]}
 
 
 def run_selftest() -> dict[str, Any]:
-    closure = load_module("package_closure_strict", ROOT / "tools" / "check-package-closure-strict.py")
-    provider = load_module("provider_ci_yaml", ROOT / "tools" / "check-provider-ci-yaml.py")
-    org_join = load_module("required_repo_org_join", ROOT / "tools" / "check-package-required-repo-org-join.py")
-
-    closure_report = closure.selftest()
-    provider_code = provider.selftest()
-    org_join_code = org_join.selftest()
-
-    if provider_code != 0:
-        raise SystemExit(canonical({"status": "fail", "reason": "provider-ci-selftest-failed", "code": provider_code}))
-    if org_join_code != 0:
-        raise SystemExit(canonical({"status": "fail", "reason": "org-join-selftest-failed", "code": org_join_code}))
-    if closure_report.get("status") != "pass":
-        raise SystemExit(canonical({"status": "fail", "reason": "closure-selftest-failed", "closureReport": closure_report}))
+    components = [
+        run_component("package-closure-strict", [sys.executable, "tools/check-package-closure-strict.py", "selftest", "--json"]),
+        run_component("required-repo-org-join", [sys.executable, "tools/check-package-required-repo-org-join.py", "selftest"]),
+        run_component("provider-ci-yaml", [sys.executable, "tools/check-provider-ci-yaml.py", "selftest"]),
+    ]
+    failed = [row for row in components if row["status"] != "pass"]
+    if failed:
+        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.selftest.v1", "status": "fail", "failedComponents": failed}))
 
     return {
         "kind": "governance.finalScopePurposeJoin.selftest.v1",
@@ -46,13 +37,7 @@ def run_selftest() -> dict[str, Any]:
         "authority": False,
         "finalCheckName": FINAL_CHECK_NAME,
         "evidenceMode": "strict-gate-adapter-selftest",
-        "consumes": [
-            "package closure strict gate",
-            "required repo packet org join selftest",
-            "provider CI drift selftest",
-            "future README projection drift findings",
-            "future selected-universe admission rows",
-        ],
+        "components": components,
         "strictFailureCapability": [
             "missing packet source",
             "missing govPackageOutput packet",
@@ -69,9 +54,6 @@ def run_selftest() -> dict[str, Any]:
             "expired waiver",
             "generated artifact misclassified as pass",
         ],
-        "closureStrictGate": closure_report,
-        "requiredRepoOrgJoinSelftest": "pass",
-        "providerCiSelftest": "pass",
         "boundary": "This is the final gate adapter and regression surface. It is not branch-protection cutover, not ADRS authority, and not proof that all downstream selected repos are active.",
     }
 
