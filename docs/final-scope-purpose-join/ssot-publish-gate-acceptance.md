@@ -17,7 +17,7 @@ Provider id:
 bare-repo-ssot-checked-mirror-publish
 ```
 
-This provider is acceptable only when selected ref or mirror publish attempts are refused unless `gov-final-scope-purpose-join / gate` accepts the exact target SHA.
+This provider is acceptable only when `refs/heads/main` mirror publish attempts are refused unless `gov-final-scope-purpose-join / gate` accepts the exact target SHA.
 
 ## Acceptance packet
 
@@ -29,7 +29,7 @@ docs/final-scope-purpose-join/ssot-publish-gate-acceptance.json
 
 The packet must contain:
 
-- selected ref: `refs/heads/proposals`;
+- selected ref: `refs/heads/main`;
 - final gate name: `gov-final-scope-purpose-join / gate`;
 - provider id;
 - at least one exact target SHA allow receipt;
@@ -51,6 +51,6 @@ The verifier checks packet shape and acceptance evidence requirements. It is run
 
 ## Boundary
 
-The checked-in packet is a fixture until populated from a real provider execution log.
+The checked-in packet is a fixture until populated from a real `refs/heads/main` provider execution log.
 
 Do not close governance #115 merely because this verifier passes. Close #115 only after the packet or attached external evidence comes from active selected-ref enforcement.
