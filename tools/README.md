@@ -15,7 +15,8 @@ The package exists to turn accepted ADRS-derived inputs into deterministic diagn
 - Keep selftests separate from final merge authority.
 - Build and verify non-authority `govPackageOutput.v1` producer evidence packets.
 - Join required repo universe, packet registry, packet findings, and producer provenance into org-level evidence rows.
-- Provide the `gov-final-scope-purpose-join / gate` adapter surface without claiming branch-protection cutover.
+- Provide the `gov-final-scope-purpose-join / gate` adapter surface without claiming provider cutover.
+- Prove provider-neutral merge/write boundary decisions and audit receipts for exact target SHA checks.
 
 ## Public contract
 
@@ -49,6 +50,7 @@ Receipts must identify:
 - `tools/*.py`
 - `tools/*.mjs`
 - `tools/check-package-final-scope-purpose-join.py`
+- `tools/check-merge-write-boundary-final-gate.py`
 - `tools/check-package-gov-package-output-provenance.py`
 - `tools/check-package-required-repo-org-join.py`
 - Nix checks that invoke those tools
@@ -64,7 +66,7 @@ Tools must not depend on hidden local `records/` or `generated/` trees.
 
 - Do not accept or reject ADRS meaning.
 - Do not mutate target repositories.
-- Do not approve branch protection or provider cutover.
+- Do not approve provider cutover.
 - Do not hide residual work.
 - Do not turn selftests into final merge authority.
 
@@ -80,9 +82,23 @@ If a tool cannot prove a row is active, it must return a residual or blocking fi
 gov-final-scope-purpose-join / gate
 ```
 
-The adapter currently runs strict gate regression selftests and provider-CI drift regression selftests. It is a merge-gate surface only after same-name green evidence and explicit branch-protection/ruleset cutover.
+The adapter currently runs strict gate regression selftests, provider-CI drift regression selftests, and merge/write boundary decision selftests. It is a merge-gate surface only after same-name green evidence and explicit provider cutover.
 
 It emits non-authority evidence only. A green selftest is not selected real organization closure by itself.
+
+## Merge/write boundary gate proof
+
+`check-merge-write-boundary-final-gate.py` validates provider-neutral selected-ref update decisions:
+
+```text
+check
+build
+selftest
+```
+
+The tool allows only the exact target SHA accepted by `gov-final-scope-purpose-join / gate`, rejects stale or missing final-gate decisions, rejects old-CI-only evidence, and emits audit receipts.
+
+The proof is provider-neutral and remains non-authority evidence until the selected enforcement provider is accepted.
 
 ## Gov-package-output producer/provenance tools
 

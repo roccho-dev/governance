@@ -1,0 +1,115 @@
+{
+  "allowCount": 1,
+  "allowedEnforcementPoints": [
+    "bot-only-merge",
+    "branch-protection",
+    "github-ruleset",
+    "merge-daemon",
+    "server-side-hook",
+    "ssot-publish-gate"
+  ],
+  "auditReceiptCount": 4,
+  "authority": false,
+  "boundary": "This proves the provider-neutral merge/write boundary decision rule and audit receipt format. It does not mutate GitHub rulesets, make governance meaning authority, or claim selected real package closure-pass by itself.",
+  "caseCount": 4,
+  "decisions": {
+    "allow-exact-final-gate": "allow",
+    "reject-human-direct-write": "reject",
+    "reject-old-ci-only": "reject",
+    "reject-stale-target-sha": "reject"
+  },
+  "finalGateName": "gov-final-scope-purpose-join / gate",
+  "findings": [],
+  "kind": "governance.mergeWriteBoundaryFinalGate.proof.v1",
+  "parent": "governance#125",
+  "phaseIssue": "governance#115",
+  "providerNeutral": true,
+  "receipts": [
+    {
+      "actor": "merge-daemon",
+      "attemptedAt": "2026-07-04T00:00:00Z",
+      "authority": false,
+      "caseId": "allow-exact-final-gate",
+      "decision": "allow",
+      "enforcementPoint": "merge-daemon",
+      "finalGateName": "gov-final-scope-purpose-join / gate",
+      "finalGateOutputDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "finalGateRunId": "local-selftest-accept",
+      "finalGateStatus": "pass",
+      "finalGateTargetSha": "1111111111111111111111111111111111111111",
+      "kind": "governance.mergeWriteBoundary.auditReceipt.v1",
+      "oldCiStatus": "success",
+      "reasons": [],
+      "selectedRef": "refs/heads/proposals",
+      "targetSha": "1111111111111111111111111111111111111111"
+    },
+    {
+      "actor": "merge-daemon",
+      "attemptedAt": "2026-07-04T00:01:00Z",
+      "authority": false,
+      "caseId": "reject-old-ci-only",
+      "decision": "reject",
+      "enforcementPoint": "merge-daemon",
+      "finalGateName": null,
+      "finalGateOutputDigest": null,
+      "finalGateRunId": "missing-final-gate",
+      "finalGateStatus": "missing",
+      "finalGateTargetSha": null,
+      "kind": "governance.mergeWriteBoundary.auditReceipt.v1",
+      "oldCiStatus": "success",
+      "reasons": [
+        "final-gate-name-mismatch",
+        "final-gate-not-pass",
+        "target-sha-mismatch",
+        "final-gate-digest-missing",
+        "old-ci-not-authority"
+      ],
+      "selectedRef": "refs/heads/proposals",
+      "targetSha": "2222222222222222222222222222222222222222"
+    },
+    {
+      "actor": "merge-daemon",
+      "attemptedAt": "2026-07-04T00:02:00Z",
+      "authority": false,
+      "caseId": "reject-stale-target-sha",
+      "decision": "reject",
+      "enforcementPoint": "merge-daemon",
+      "finalGateName": "gov-final-scope-purpose-join / gate",
+      "finalGateOutputDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "finalGateRunId": "local-selftest-stale",
+      "finalGateStatus": "pass",
+      "finalGateTargetSha": "4444444444444444444444444444444444444444",
+      "kind": "governance.mergeWriteBoundary.auditReceipt.v1",
+      "oldCiStatus": "success",
+      "reasons": [
+        "target-sha-mismatch"
+      ],
+      "selectedRef": "refs/heads/proposals",
+      "targetSha": "3333333333333333333333333333333333333333"
+    },
+    {
+      "actor": "human-direct",
+      "attemptedAt": "2026-07-04T00:03:00Z",
+      "authority": false,
+      "caseId": "reject-human-direct-write",
+      "decision": "reject",
+      "enforcementPoint": "human-direct",
+      "finalGateName": "gov-final-scope-purpose-join / gate",
+      "finalGateOutputDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "finalGateRunId": "local-selftest-human-direct",
+      "finalGateStatus": "pass",
+      "finalGateTargetSha": "5555555555555555555555555555555555555555",
+      "kind": "governance.mergeWriteBoundary.auditReceipt.v1",
+      "oldCiStatus": "success",
+      "reasons": [
+        "enforcement-point-invalid",
+        "direct-human-write-rejected"
+      ],
+      "selectedRef": "refs/heads/proposals",
+      "targetSha": "5555555555555555555555555555555555555555"
+    }
+  ],
+  "rejectCount": 3,
+  "selectedRef": "refs/heads/proposals",
+  "status": "pass"
+}
