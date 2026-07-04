@@ -1,0 +1,10 @@
+{
+  "kind": "fspj125.joinReport.v1",
+  "status": "candidate-pass",
+  "parent": "governance#125",
+  "inputManifest": "docs/fspj-125/m.json",
+  "blockingDriftCount": 0,
+  "receipt": "docs/fspj-125/receipt.json",
+  "residual": "docs/fspj-125/residual.json",
+  "boundary": "candidate report only; governance remains non-authority"
+}
