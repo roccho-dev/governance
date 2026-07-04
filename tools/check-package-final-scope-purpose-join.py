@@ -27,6 +27,7 @@ def run_selftest() -> dict[str, Any]:
         run_component("required-repo-org-join", [sys.executable, "tools/check-package-required-repo-org-join.py", "selftest"]),
         run_component("provider-ci-yaml", [sys.executable, "tools/check-provider-ci-yaml.py", "selftest"]),
         run_component("merge-write-boundary-final-gate", [sys.executable, "tools/check-merge-write-boundary-final-gate.py", "selftest", "--json"]),
+        run_component("selected-join-125", [sys.executable, "tools/check-package-selected-join-125.py", "selftest"]),
     ]
     failed = [row for row in components if row["status"] != "pass"]
     if failed:
@@ -54,8 +55,9 @@ def run_selftest() -> dict[str, Any]:
             "manual or stale provider CI edit",
             "expired waiver",
             "generated artifact misclassified as pass",
+            "selected join missing expected id or receipt",
         ],
-        "boundary": "This is the final gate adapter and regression surface. It is not branch-protection cutover, not ADRS authority, and not proof that all downstream selected repos are active.",
+        "boundary": "This is the final gate adapter and regression surface. It is not ADRS authority and does not turn local repo evidence into meaning authority.",
     }
 
 
