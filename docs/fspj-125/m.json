@@ -1,0 +1,6 @@
+{
+  "kind": "fspj125.manifest.v1",
+  "expectedIds": ["g", "o", "u"],
+  "requiredReceipts": ["r-g", "r-o", "r-u"],
+  "status": "ready"
+}
