@@ -1,0 +1,90 @@
+{
+  "authority": false,
+  "boundary": "Fixture packet for SSOT publish gate acceptance shape on refs/heads/main. Replace fixture IDs with real provider execution logs before closing governance #115.",
+  "finalGateName": "gov-final-scope-purpose-join / gate",
+  "kind": "governance.ssotPublishGateAcceptance.v1",
+  "parent": "governance#125",
+  "phaseIssue": "governance#115",
+  "provider": "bare-repo-ssot-checked-mirror-publish",
+  "receipts": [
+    {
+      "actor": "ssot-publish-gate-fixture",
+      "decision": "allow",
+      "finalGate": {
+        "name": "gov-final-scope-purpose-join / gate",
+        "outputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "runId": "fixture-final-gate-pass",
+        "status": "pass",
+        "targetSha": "1111111111111111111111111111111111111111"
+      },
+      "path": "ssot-to-mirror-publish",
+      "provider": "bare-repo-ssot-checked-mirror-publish",
+      "receiptId": "fixture-allow-exact-target-sha",
+      "selectedRef": "refs/heads/main",
+      "targetSha": "1111111111111111111111111111111111111111",
+      "timestamp": "2026-07-04T00:00:00Z"
+    },
+    {
+      "actor": "ssot-publish-gate-fixture",
+      "decision": "reject",
+      "finalGate": {
+        "runId": "fixture-missing-final-gate",
+        "status": "missing"
+      },
+      "path": "ssot-to-mirror-publish",
+      "provider": "bare-repo-ssot-checked-mirror-publish",
+      "reasons": [
+        "final-gate-missing"
+      ],
+      "receiptId": "fixture-reject-missing-final-gate",
+      "selectedRef": "refs/heads/main",
+      "targetSha": "2222222222222222222222222222222222222222",
+      "timestamp": "2026-07-04T00:01:00Z"
+    },
+    {
+      "actor": "ssot-publish-gate-fixture",
+      "decision": "reject",
+      "finalGate": {
+        "name": "gov-final-scope-purpose-join / gate",
+        "outputDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "runId": "fixture-stale-final-gate",
+        "status": "pass",
+        "targetSha": "4444444444444444444444444444444444444444"
+      },
+      "path": "ssot-to-mirror-publish",
+      "provider": "bare-repo-ssot-checked-mirror-publish",
+      "reasons": [
+        "target-sha-mismatch"
+      ],
+      "receiptId": "fixture-reject-stale-target-sha",
+      "selectedRef": "refs/heads/main",
+      "targetSha": "3333333333333333333333333333333333333333",
+      "timestamp": "2026-07-04T00:02:00Z"
+    },
+    {
+      "actor": "ssot-publish-gate-fixture",
+      "decision": "reject",
+      "finalGate": {
+        "name": "gov-final-scope-purpose-join / gate",
+        "outputDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "runId": "fixture-digest-mismatch",
+        "status": "pass",
+        "targetSha": "5555555555555555555555555555555555555555"
+      },
+      "path": "ssot-to-mirror-publish",
+      "provider": "bare-repo-ssot-checked-mirror-publish",
+      "reasons": [
+        "digest-mismatch"
+      ],
+      "receiptId": "fixture-reject-digest-mismatch",
+      "selectedRef": "refs/heads/main",
+      "targetSha": "5555555555555555555555555555555555555555",
+      "timestamp": "2026-07-04T00:03:00Z"
+    }
+  ],
+  "rollback": {
+    "documented": true,
+    "restorePreviousProviderState": "disable checked mirror publish and restore previous mirror-publish path only after recording rollback receipt"
+  },
+  "selectedRef": "refs/heads/main"
+}
