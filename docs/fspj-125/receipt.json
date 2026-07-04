@@ -1,0 +1,8 @@
+{
+  "kind": "fspj125.receipt.v1",
+  "parent": "governance#125",
+  "status": "candidate-recorded",
+  "source": "governance-pr",
+  "authority": false,
+  "report": "docs/fspj-125/join-report.json"
+}
