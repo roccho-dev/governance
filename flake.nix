@@ -364,6 +364,19 @@ EOF
           grep -q '"finalGateRef": "gov-final-scope-purpose-join / gate"' ${govPackageOutput}/repo.json
           touch "$out"
         '';
+        fspj-125-candidate = pkgs.runCommand "fspj-125-candidate-check" { } ''
+          set -euo pipefail
+          test -s ${self}/docs/fspj-125/m.json
+          test -s ${self}/docs/fspj-125/join-report.json
+          test -s ${self}/docs/fspj-125/receipt.json
+          test -s ${self}/docs/fspj-125/residual.json
+          grep -q '"kind": "fspj125.joinReport.v1"' ${self}/docs/fspj-125/join-report.json
+          grep -q '"blockingDriftCount": 0' ${self}/docs/fspj-125/join-report.json
+          grep -q '"kind": "fspj125.receipt.v1"' ${self}/docs/fspj-125/receipt.json
+          grep -q '"authority": false' ${self}/docs/fspj-125/receipt.json
+          grep -q '"blockingResidualCount": 0' ${self}/docs/fspj-125/residual.json
+          touch "$out"
+        '';
         repo-convention-selftest = (repoConventionChecksFor pkgs {
           src = self;
         }).repo-convention;
