@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "docs" / "final-scope-purpose-join"
 PACKET = BASE / "ssot-publish-gate-acceptance.json"
 FINAL_CHECK_NAME = "gov-final-scope-purpose-join / gate"
-SELECTED_REF = "refs/heads/proposals"
+SELECTED_REF = "refs/heads/main"
 PROVIDER = "bare-repo-ssot-checked-mirror-publish"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -144,7 +144,7 @@ def validate(packet: dict[str, Any]) -> dict[str, Any]:
         "rejectStaleCount": reject_stale,
         "rejectMismatchCount": reject_mismatch,
         "findings": findings,
-        "boundary": "This validates the SSOT publish gate acceptance packet shape. It does not by itself prove external active enforcement unless the packet is populated from a real provider execution log.",
+        "boundary": "This validates the SSOT publish gate acceptance packet shape for refs/heads/main. It does not by itself prove external active enforcement unless the packet is populated from a real provider execution log.",
     }
 
 
