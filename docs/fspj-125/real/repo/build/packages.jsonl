@@ -1,0 +1,3 @@
+{"kind":"row.v1","repoLocator":"repo:roccho-dev/governance","packageId":"gov-final","packagePath":"tools/final-scope-purpose-join","tests":["final-join"],"sourceKind":"selected-input","confidence":"high"}
+{"kind":"row.v1","repoLocator":"repo:roccho-dev/ops","packageId":"ops-refs","packagePath":"packages/ops-refs-vault","tests":["nix-check"],"sourceKind":"selected-input","confidence":"high"}
+{"kind":"row.v1","repoLocator":"repo:roccho-dev/ui","packageId":"ui-output","packagePath":"docs/cutover/ui-gov-package-output-cutover-98.md","tests":["pr-governance"],"sourceKind":"selected-input","confidence":"high"}

@@ -1,0 +1,3 @@
+{"kind":"row.v1","adrsRef":"adrs#178","obligationId":"obl-gov-final","repoLocator":"repo:roccho-dev/governance","packageId":"gov-final","ownerRole":"governance","requiredTests":["final-join"],"receipts":["receipt-gov-final"],"status":"implemented","authority":false}
+{"kind":"row.v1","adrsRef":"adrs#178","obligationId":"obl-ops-refs","repoLocator":"repo:roccho-dev/ops","packageId":"ops-refs","ownerRole":"ops","requiredTests":["nix-check"],"receipts":["receipt-ops-refs"],"status":"implemented","authority":false}
+{"kind":"row.v1","adrsRef":"adrs#178","obligationId":"obl-ui-output","repoLocator":"repo:roccho-dev/ui","packageId":"ui-output","ownerRole":"ui","requiredTests":["pr-governance"],"receipts":["receipt-ui-output"],"status":"implemented","authority":false}
