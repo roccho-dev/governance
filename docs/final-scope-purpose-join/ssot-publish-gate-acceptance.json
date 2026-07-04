@@ -1,6 +1,6 @@
 {
   "authority": false,
-  "boundary": "Fixture packet for SSOT publish gate acceptance shape. Replace fixture IDs with real provider execution logs before closing governance #115.",
+  "boundary": "Fixture packet for SSOT publish gate acceptance shape on refs/heads/main. Replace fixture IDs with real provider execution logs before closing governance #115.",
   "finalGateName": "gov-final-scope-purpose-join / gate",
   "kind": "governance.ssotPublishGateAcceptance.v1",
   "parent": "governance#125",
@@ -20,7 +20,7 @@
       "path": "ssot-to-mirror-publish",
       "provider": "bare-repo-ssot-checked-mirror-publish",
       "receiptId": "fixture-allow-exact-target-sha",
-      "selectedRef": "refs/heads/proposals",
+      "selectedRef": "refs/heads/main",
       "targetSha": "1111111111111111111111111111111111111111",
       "timestamp": "2026-07-04T00:00:00Z"
     },
@@ -37,7 +37,7 @@
         "final-gate-missing"
       ],
       "receiptId": "fixture-reject-missing-final-gate",
-      "selectedRef": "refs/heads/proposals",
+      "selectedRef": "refs/heads/main",
       "targetSha": "2222222222222222222222222222222222222222",
       "timestamp": "2026-07-04T00:01:00Z"
     },
@@ -57,7 +57,7 @@
         "target-sha-mismatch"
       ],
       "receiptId": "fixture-reject-stale-target-sha",
-      "selectedRef": "refs/heads/proposals",
+      "selectedRef": "refs/heads/main",
       "targetSha": "3333333333333333333333333333333333333333",
       "timestamp": "2026-07-04T00:02:00Z"
     },
@@ -77,7 +77,7 @@
         "digest-mismatch"
       ],
       "receiptId": "fixture-reject-digest-mismatch",
-      "selectedRef": "refs/heads/proposals",
+      "selectedRef": "refs/heads/main",
       "targetSha": "5555555555555555555555555555555555555555",
       "timestamp": "2026-07-04T00:03:00Z"
     }
@@ -86,5 +86,5 @@
     "documented": true,
     "restorePreviousProviderState": "disable checked mirror publish and restore previous mirror-publish path only after recording rollback receipt"
   },
-  "selectedRef": "refs/heads/proposals"
+  "selectedRef": "refs/heads/main"
 }
