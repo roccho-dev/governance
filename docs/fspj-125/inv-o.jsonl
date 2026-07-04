@@ -1,0 +1,1 @@
+{"kind":"row.v1","repoLocator":"repo:o","packageId":"ops-refs","packagePath":"packages/ops-refs-vault","tests":["nix-check"],"sourceKind":"selected-accepted-input","confidence":"high"}
