@@ -1,0 +1,30 @@
+name: fspj-125 manifest
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - proposals
+
+permissions:
+  contents: read
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check manifest
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('docs/fspj-125/manifest.json')
+          data = json.loads(path.read_text())
+          assert data.get('kind') == 'fspj125.manifest.v1'
+          assert sorted(data.get('expectedIds', [])) == ['g', 'o', 'u']
+          assert len(data.get('requiredReceipts', [])) == 3
+          assert data.get('status') == 'ready'
+          PY
