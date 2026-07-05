@@ -98,11 +98,12 @@
             Run all governance checks.
           checks include ADR input presence, no local records/generated,
           Nix default surface, provider CI YAML generated-output selftest,
-          README artifact packet selftest, gov package output packet selftest,
-          org admission gate selftest, claim port join compiler selftest,
-          claim admission checker export selftest, claim check adoption monitor selftest,
-          ops selected-universe adoption selftest, central claim drift report selftest,
-          organization admission join fixture proof, and ADRS shadow monitor selftest.
+          README artifact packet selftest, README materialization common selftest,
+          gov package output packet selftest, org admission gate selftest,
+          claim port join compiler selftest, claim admission checker export selftest,
+          claim check adoption monitor selftest, ops selected-universe adoption selftest,
+          central claim drift report selftest, organization admission join fixture proof,
+          and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -128,6 +129,8 @@ ${helpText}
         '';
       repoConventionChecksFor = pkgs:
         import ./nix/repo-convention-checks.nix { inherit pkgs; governanceSrc = self; };
+      readmeMaterializationChecksFor = pkgs:
+        import ./nix/readme-materialization-checks.nix { inherit pkgs; governanceSrc = self; };
       mkReadmeArtifact = pkgs:
         pkgs.runCommand "governance-readme-artifact" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
           set -euo pipefail
@@ -246,6 +249,17 @@ EOF
       checks = forEachSystem (pkgs: let
         readmeArtifact = mkReadmeArtifact pkgs;
         govPackageOutput = mkGovPackageOutput pkgs;
+        readmeMaterializationChecks = readmeMaterializationChecksFor pkgs;
+        readmeMaterializationFixtureReadme = pkgs.writeText "README.md" ''
+# README materialization fixture
+
+same
+        '';
+        readmeMaterializationPassArtifact = pkgs.runCommand "readme-materialization-pass-artifact" { } ''
+          set -euo pipefail
+          mkdir -p "$out"
+          cp ${readmeMaterializationFixtureReadme} "$out/README.md"
+        '';
       in {
         adrs-input-presence = pkgs.runCommand "adrs-input-presence" { } ''
           set -euo pipefail
@@ -346,6 +360,21 @@ EOF
           grep -q '"source": "nix-output"' ${readmeArtifact}/receipt.json
           touch "$out"
         '';
+        readme-materialization-common-selftest = readmeMaterializationChecks.selftest;
+        readme-materialization-generated-fixture = readmeMaterializationChecks.mkReadmeMaterializedCheck {
+          repoId = "fixture/readme-generated";
+          readmeArtifact = readmeMaterializationPassArtifact;
+          committedReadme = readmeMaterializationFixtureReadme;
+        };
+        readme-materialization-residual-fixture = readmeMaterializationChecks.mkReadmeMaterializationResidual {
+          repoId = "fixture/readme-residual";
+          mode = "manual";
+          owner = "governance#144";
+          reason = "fixture repo is not in generated README mode";
+          nextAction = "switch to generated mode when readme-artifact exists";
+          returnCondition = "readme-artifact and committed README are byte-identical";
+          expires = "2026-08-31";
+        };
         gov-package-output = pkgs.runCommand "gov-package-output-check" { } ''
           set -euo pipefail
           test -s ${govPackageOutput}/manifest.json
