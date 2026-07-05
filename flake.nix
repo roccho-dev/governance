@@ -223,7 +223,6 @@ EOF
     {
       lib = forEachSystem (pkgs: {
         repoConventionChecks = repoConventionChecksFor pkgs;
-        readmeMaterializationChecks = readmeMaterializationChecksFor pkgs;
       });
       packages = forEachSystem (pkgs: let claimAdmissionCheckProgram = mkClaimAdmissionCheckProgram pkgs; in {
         bootstrap-input = pkgs.runCommand "bootstrap-input" { } ''
@@ -251,7 +250,7 @@ EOF
         readmeArtifact = mkReadmeArtifact pkgs;
         govPackageOutput = mkGovPackageOutput pkgs;
         readmeMaterializationChecks = readmeMaterializationChecksFor pkgs;
-        readmeMaterializationFixtureText = ''
+        readmeMaterializationFixtureReadme = pkgs.writeText "README.md" ''
 # README materialization fixture
 
 same
@@ -259,11 +258,8 @@ same
         readmeMaterializationPassArtifact = pkgs.runCommand "readme-materialization-pass-artifact" { } ''
           set -euo pipefail
           mkdir -p "$out"
-          cat > "$out/README.md" <<'EOF'
-${readmeMaterializationFixtureText}
-EOF
+          cp ${readmeMaterializationFixtureReadme} "$out/README.md"
         '';
-        readmeMaterializationCommitted = pkgs.writeText "README.md" readmeMaterializationFixtureText;
       in {
         adrs-input-presence = pkgs.runCommand "adrs-input-presence" { } ''
           set -euo pipefail
@@ -368,7 +364,7 @@ EOF
         readme-materialization-generated-fixture = readmeMaterializationChecks.mkReadmeMaterializedCheck {
           repoId = "fixture/readme-generated";
           readmeArtifact = readmeMaterializationPassArtifact;
-          committedReadme = readmeMaterializationCommitted;
+          committedReadme = readmeMaterializationFixtureReadme;
         };
         readme-materialization-residual-fixture = readmeMaterializationChecks.mkReadmeMaterializationResidual {
           repoId = "fixture/readme-residual";
