@@ -135,6 +135,9 @@ jobs:
       - name: Check purpose readback gate
         run: python3 tools/check-purpose-readback.py selftest
 
+      - name: Check README materialization common selftest
+        run: python3 tools/check-readme-materialization.py selftest
+
       - name: Check package governance selftests
         run: |
           set -euo pipefail
@@ -150,6 +153,15 @@ jobs:
 
       - name: Run flake check
         run: nix flake check --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT"
+
+      - name: Check README materialization common Nix selftest
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.readme-materialization-common-selftest
+
+      - name: Check README materialization generated fixture
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.readme-materialization-generated-fixture
+
+      - name: Check README materialization residual fixture
+        run: nix build --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .#checks.x86_64-linux.readme-materialization-residual-fixture
 
       - name: Run default help
         run: nix run --show-trace --no-write-lock-file --override-input adrsRecords "$ADRS_INPUT" .
