@@ -1,6 +1,8 @@
-{ pkgs }:
+{ pkgs, governanceSrc ? ../. }:
 let
   sanitizeName = value: builtins.replaceStrings [ "/" ":" " " ] [ "-" "-" "-" ] value;
+  checkTool = "${governanceSrc}/tools/check-readme-materialization.py";
+
   mkReadmeMaterializedCheck =
     { repoId
     , readmeArtifact
@@ -10,38 +12,17 @@ let
     , generatedBy ? "nix/readme-materialization-checks.nix:mkReadmeMaterializedCheck"
     }:
     pkgs.runCommand "${sanitizeName repoId}-readme-materialized-check" {
-      nativeBuildInputs = [ pkgs.coreutils pkgs.diffutils ];
+      nativeBuildInputs = [ pkgs.python3 ];
     } ''
       set -euo pipefail
-      mkdir -p "$out"
-
-      if [ "${mode}" != "generated" ]; then
-        cat > "$out/residual.json" <<EOF
-      {"kind":"readmeMaterializationResidual.v1","repoId":"${repoId}","mode":"${mode}","status":"residual","authority":false,"nonAuthority":true,"reason":"repo is not declared as generated README mode"}
-EOF
-        touch "$out/pass"
-        exit 0
-      fi
-
-      test -s ${readmeArtifact}/README.md
-      test -s ${committedReadme}
-
-      artifact_digest=$(sha256sum ${readmeArtifact}/README.md | cut -d ' ' -f1)
-      committed_digest=$(sha256sum ${committedReadme} | cut -d ' ' -f1)
-
-      if ! cmp ${readmeArtifact}/README.md ${committedReadme}; then
-        echo "[FAIL] committed README.md differs from generated README artifact for ${repoId}" >&2
-        diff -u ${readmeArtifact}/README.md ${committedReadme} >&2 || true
-        cat > "$out/finding.json" <<EOF
-      {"kind":"readmeMaterializationFinding.v1","repoId":"${repoId}","status":"fail","diagnosticClass":"readme-materialization-drift","expected":"generated README artifact README.md","actual":"committed README.md","artifactDigest":"$artifact_digest","committedDigest":"$committed_digest","nextAction":"materialize README.md from the generated artifact or change repo-convention readme_mode with a residual","authority":false,"nonAuthority":true}
-EOF
-        exit 1
-      fi
-
-      cat > "$out/receipt.json" <<EOF
-      {"kind":"readmeMaterializationReceipt.v1","repoId":"${repoId}","status":"pass","mode":"generated","artifactDigest":"$artifact_digest","committedDigest":"$committed_digest","producerRepo":"${producerRepo}","generatedBy":"${generatedBy}","authority":false,"nonAuthority":true}
-EOF
-      touch "$out/pass"
+      python3 ${checkTool} check \
+        --repo-id ${pkgs.lib.escapeShellArg repoId} \
+        --mode ${pkgs.lib.escapeShellArg mode} \
+        --artifact-readme ${pkgs.lib.escapeShellArg "${readmeArtifact}/README.md"} \
+        --committed-readme ${pkgs.lib.escapeShellArg "${committedReadme}"} \
+        --producer-repo ${pkgs.lib.escapeShellArg producerRepo} \
+        --generated-by ${pkgs.lib.escapeShellArg generatedBy} \
+        --out "$out"
     '';
 
   mkReadmeMaterializationResidual =
@@ -53,15 +34,34 @@ EOF
     , returnCondition
     , expires
     }:
-    pkgs.runCommand "${sanitizeName repoId}-readme-materialization-residual" { } ''
+    pkgs.runCommand "${sanitizeName repoId}-readme-materialization-residual" {
+      nativeBuildInputs = [ pkgs.python3 ];
+    } ''
       set -euo pipefail
-      mkdir -p "$out"
-      cat > "$out/residual.json" <<EOF
-      {"kind":"readmeMaterializationResidual.v1","repoId":"${repoId}","mode":"${mode}","status":"residual","owner":"${owner}","reason":"${reason}","nextAction":"${nextAction}","returnCondition":"${returnCondition}","expires":"${expires}","authority":false,"nonAuthority":true}
-EOF
-      touch "$out/pass"
+      python3 ${checkTool} residual \
+        --repo-id ${pkgs.lib.escapeShellArg repoId} \
+        --mode ${pkgs.lib.escapeShellArg mode} \
+        --owner ${pkgs.lib.escapeShellArg owner} \
+        --reason ${pkgs.lib.escapeShellArg reason} \
+        --next-action ${pkgs.lib.escapeShellArg nextAction} \
+        --return-condition ${pkgs.lib.escapeShellArg returnCondition} \
+        --expires ${pkgs.lib.escapeShellArg expires} \
+        --out "$out"
     '';
+
+  selftest = pkgs.runCommand "readme-materialization-common-selftest" {
+    nativeBuildInputs = [ pkgs.python3 pkgs.gnugrep ];
+  } ''
+    set -euo pipefail
+    mkdir -p "$out"
+    python3 ${checkTool} selftest > "$out/selftest.json"
+    grep -q '"kind":"readmeMaterializationChecker.selftest.v1"' "$out/selftest.json"
+    grep -q '"status":"pass"' "$out/selftest.json"
+    grep -q '"name":"generated-drift"' "$out/selftest.json"
+    grep -q '"kind":"readmeMaterializationResidual.v1"' "$out/selftest.json"
+    touch "$out/pass"
+  '';
 in {
-  inherit mkReadmeMaterializedCheck mkReadmeMaterializationResidual;
+  inherit mkReadmeMaterializedCheck mkReadmeMaterializationResidual selftest;
   boundary = "local README materialization evidence only; no README authority, no final join authority, no branch protection mutation";
 }
