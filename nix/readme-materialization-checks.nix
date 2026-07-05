@@ -15,7 +15,7 @@ let
       nativeBuildInputs = [ pkgs.python3 ];
     } ''
       set -euo pipefail
-      python3 ${checkTool} check \
+      python3 "${checkTool}" check \
         --repo-id ${pkgs.lib.escapeShellArg repoId} \
         --mode ${pkgs.lib.escapeShellArg mode} \
         --artifact-readme ${pkgs.lib.escapeShellArg "${readmeArtifact}/README.md"} \
@@ -38,7 +38,7 @@ let
       nativeBuildInputs = [ pkgs.python3 ];
     } ''
       set -euo pipefail
-      python3 ${checkTool} residual \
+      python3 "${checkTool}" residual \
         --repo-id ${pkgs.lib.escapeShellArg repoId} \
         --mode ${pkgs.lib.escapeShellArg mode} \
         --owner ${pkgs.lib.escapeShellArg owner} \
@@ -54,7 +54,7 @@ let
   } ''
     set -euo pipefail
     mkdir -p "$out"
-    python3 ${checkTool} selftest > "$out/selftest.json"
+    python3 "${checkTool}" selftest > "$out/selftest.json"
     grep -q '"kind":"readmeMaterializationChecker.selftest.v1"' "$out/selftest.json"
     grep -q '"status":"pass"' "$out/selftest.json"
     grep -q '"name":"generated-drift"' "$out/selftest.json"
