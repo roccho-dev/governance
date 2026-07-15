@@ -99,11 +99,11 @@
           checks include ADR input presence, no local records/generated,
           Nix default surface, provider CI YAML generated-output selftest,
           README artifact packet selftest, README materialization common selftest,
-          gov package output packet selftest, org admission gate selftest,
-          claim port join compiler selftest, claim admission checker export selftest,
-          claim check adoption monitor selftest, ops selected-universe adoption selftest,
-          central claim drift report selftest, organization admission join fixture proof,
-          and ADRS shadow monitor selftest.
+          README materialization self residual proof, gov package output packet selftest,
+          org admission gate selftest, claim port join compiler selftest,
+          claim admission checker export selftest, claim check adoption monitor selftest,
+          ops selected-universe adoption selftest, central claim drift report selftest,
+          organization admission join fixture proof, and ADRS shadow monitor selftest.
 
         Dev shells:
           none exposed.
@@ -373,6 +373,15 @@ same
           reason = "fixture repo is not in generated README mode";
           nextAction = "switch to generated mode when readme-artifact exists";
           returnCondition = "readme-artifact and committed README are byte-identical";
+          expires = "2026-08-31";
+        };
+        readme-materialization-self-residual = readmeMaterializationChecks.mkReadmeMaterializationResidual {
+          repoId = "roccho-dev/governance";
+          mode = "checked_handwritten";
+          owner = "governance#144";
+          reason = "governance has a README artifact producer, but the committed root README remains the current ADRS projection and boundary document rather than byte-identical generated README mode";
+          nextAction = "replace the governance README artifact model with the accepted root README projection before switching this repo to mkReadmeMaterializedCheck generated mode";
+          returnCondition = "packages.readme-artifact/README.md and committed README.md are byte-identical while preserving the non-authority boundary";
           expires = "2026-08-31";
         };
         gov-package-output = pkgs.runCommand "gov-package-output-check" { } ''
