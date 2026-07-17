@@ -111,7 +111,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: c7dca3ddee5ff8b5b3a33af5f4021b35e16e84a8
+          ref: ecb2409884789df28d6c650c08e29f0b9626fe17
           path: .diagnostic/adrs
           token: ${{ steps.adrs-contents-token.outputs.token }}
           persist-credentials: false
@@ -126,7 +126,7 @@ jobs:
         working-directory: .diagnostic/adrs
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "c7dca3ddee5ff8b5b3a33af5f4021b35e16e84a8"
+          test "$(git rev-parse HEAD)" = "ecb2409884789df28d6c650c08e29f0b9626fe17"
           nix flake check -L
           first="$RUNNER_TEMP/adrs-225-first"
           second="$RUNNER_TEMP/adrs-225-second"
