@@ -19,8 +19,13 @@ jobs:
     name: gate
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout governance
+      - name: Checkout exact governance candidate
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
-      - name: Run final-scope purpose join gate adapter selftest
-        run: python3 tools/check-package-final-scope-purpose-join.py selftest --json
+      - name: Run current exact-SHA non-authority gate fixture
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --json
