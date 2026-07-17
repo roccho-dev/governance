@@ -64,16 +64,21 @@ jobs:
       - name: Run live provider-detached proof
         env:
           ADRS_TOKEN: ${{ steps.adrs-token.outputs.token }}
-        run: tools/code-governance/run-live-proof.sh
+        run: |
+          set -o pipefail
+          mkdir -p tools/code-governance/out
+          tools/code-governance/run-live-proof.sh 2>&1 | tee tools/code-governance/out/run.log
 
       - name: Upload non-authority proof packet
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: adrs-code-governance-fixture-proof
           path: |
+            tools/code-governance/out/run.log
             tools/code-governance/out/proof-receipt.json
             tools/code-governance/out/nix-output.json
             tools/code-governance/out/tests.log
             tools/code-governance/out/transports/live/transport-receipt.json
             tools/code-governance/out/evaluations/live-local/
-          if-no-files-found: error
+          if-no-files-found: warn
