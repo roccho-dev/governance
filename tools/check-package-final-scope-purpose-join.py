@@ -28,6 +28,7 @@ def regression_components() -> list[dict[str, Any]]:
         run_component("provider-ci-yaml", [sys.executable, "tools/check-provider-ci-yaml.py", "selftest"]),
         run_component("merge-write-boundary-final-gate", [sys.executable, "tools/check-merge-write-boundary-final-gate.py", "selftest", "--json"]),
         run_component("fspj-real-join", [sys.executable, "tools/check-package-fspj-real.py"]),
+        run_component("exact-candidate-checkout", [sys.executable, "tools/check-package-exact-candidate-checkout.py", "selftest", "--json"]),
         run_component("final-ci-topology-migration-safety", [sys.executable, "tools/check-package-final-ci-topology.py", "selftest", "--json"]),
         run_component("final-ci-topology-hardening", [sys.executable, "tools/check-package-final-ci-topology-hardening.py", "selftest", "--json"]),
     ]
@@ -63,6 +64,8 @@ def run_selftest() -> dict[str, Any]:
             "generated artifact misclassified as pass",
             "fspj real join blocking drift",
             "exact candidate SHA mismatch",
+            "candidate claim differs from checked-out tree",
+            "checkout credential persistence",
             "stale claim or receipt",
             "authority class collision or incomplete class set",
             "wrong merge-admission target",
