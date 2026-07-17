@@ -10,9 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CI_INTENT = ROOT / "ci.intent.v1.jsonl"
 WORKFLOWS = ROOT / ".github" / "workflows"
 FINAL_CHECK_NAME = "gov-final-scope-purpose-join / gate"
+FINAL_ROLE = "primary_required_surface_after_accepted_cutover"
+CUTOVER_STATE = "pre-acceptance-current-sha-fixture"
 
 EXPECTED_FINAL_ROLES = {
-    ".github/workflows/gov-final-scope-purpose-join.yml": "primary_required_surface_after_cutover",
+    ".github/workflows/gov-final-scope-purpose-join.yml": FINAL_ROLE,
     ".github/workflows/ci.yml": "receipt_producer_and_tool_selftest_after_cutover",
     ".github/workflows/manual-ci.yml": "manual_observation_only",
     ".github/workflows/adrs-shadow-monitor.yml": "artifact_or_shadow_observer",
@@ -23,9 +25,10 @@ EXPECTED_FINAL_ROLES = {
     ".github/workflows/claim-port-org-admission.yml": "final_join_admission_step",
     ".github/workflows/log-route-join.yml": "final_join_internal_step_or_tool_selftest",
     ".github/workflows/intent-reality-gap.yml": "final_join_internal_step_or_tool_selftest",
+    ".github/workflows/adrs-code-governance-fixture.yml": "artifact_or_shadow_observer",
 }
-
-NON_AUTHORITY_FINAL_ROLES = set(EXPECTED_FINAL_ROLES.values()) - {"primary_required_surface_after_cutover"}
+NON_AUTHORITY_FINAL_ROLES = set(EXPECTED_FINAL_ROLES.values()) - {FINAL_ROLE}
+REQUIRED_EXCEPTION_FIELDS = {"owner", "reason", "expiry", "return_condition", "blocking_residual"}
 
 
 def canonical(value: Any) -> str:
@@ -69,9 +72,13 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
     findings: list[dict[str, Any]] = []
 
     actual = workflow_files()
-    for workflow_path in sorted(actual):
-        if workflow_path not in by_path:
-            findings.append(finding("workflow-undemoted", "workflow exists without ci.intent row", path=workflow_path))
+    expected = set(EXPECTED_FINAL_ROLES)
+    for workflow_path in sorted(actual - set(by_path)):
+        findings.append(finding("workflow-undemoted", "workflow exists without ci.intent row", path=workflow_path))
+    for workflow_path in sorted(set(by_path) - actual):
+        findings.append(finding("intent-without-workflow", "ci.intent row has no workflow", path=workflow_path))
+    if actual != expected:
+        findings.append(finding("workflow-universe-mismatch", "workflow universe differs from the bounded 12-surface inventory", expected=sorted(expected), actual=sorted(actual)))
 
     for workflow_path, expected_role in sorted(EXPECTED_FINAL_ROLES.items()):
         row = by_path.get(workflow_path)
@@ -79,29 +86,40 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
             findings.append(finding("final-role-row-missing", "expected workflow row is missing", path=workflow_path))
             continue
         if row.get("authority") is not False:
-            findings.append(finding("workflow-authority-invalid", "workflow authority must be false", path=workflow_path))
+            findings.append(finding("workflow-authority-invalid", "workflow authority must remain false before accepted cutover", path=workflow_path))
         actual_role = row.get("final_role")
         if actual_role != expected_role:
-            findings.append(finding("final-role-mismatch", "workflow final_role does not match demotion plan", path=workflow_path, expected=expected_role, actual=actual_role))
+            findings.append(finding("final-role-mismatch", "workflow final_role does not match the bounded migration plan", path=workflow_path, expected=expected_role, actual=actual_role))
         if expected_role in NON_AUTHORITY_FINAL_ROLES and row.get("required_check_name"):
-            findings.append(finding("old-ci-required-check-name", "old CI surface must not declare a required final check name", path=workflow_path))
+            findings.append(finding("old-ci-required-check-name", "non-final CI surface must not declare a required final check name", path=workflow_path))
 
     gate = by_path.get(".github/workflows/gov-final-scope-purpose-join.yml", {})
     if gate.get("required_check_name") != FINAL_CHECK_NAME:
-        findings.append(finding("final-check-name-mismatch", "final gate must declare the exact required check name", expected=FINAL_CHECK_NAME, actual=gate.get("required_check_name")))
-    if gate.get("cutover_state") != "same-name-green-required-before-ruleset-cutover":
-        findings.append(finding("cutover-state-missing", "final gate must require same-name green before ruleset cutover", actual=gate.get("cutover_state")))
+        findings.append(finding("final-check-name-mismatch", "final gate must preserve the exact check name", expected=FINAL_CHECK_NAME, actual=gate.get("required_check_name")))
+    if gate.get("cutover_state") != CUTOVER_STATE:
+        findings.append(finding("cutover-state-mismatch", "final gate must remain in the accepted pre-cutover fixture state", expected=CUTOVER_STATE, actual=gate.get("cutover_state")))
+    if gate.get("authority_class") != "evidence-only":
+        findings.append(finding("gate-authority-class-invalid", "pre-acceptance gate must be evidence-only", actual=gate.get("authority_class")))
+    exception = gate.get("exception")
+    if not isinstance(exception, dict):
+        findings.append(finding("gate-exception-missing", "pre-acceptance gate requires a bounded exception contract"))
+    else:
+        missing = sorted(field for field in REQUIRED_EXCEPTION_FIELDS if not exception.get(field))
+        if missing:
+            findings.append(finding("gate-exception-incomplete", "pre-acceptance gate exception is incomplete", missing=missing))
 
     return {
         "kind": "governance.ciFinalRoleDemotion.report.v1",
         "status": "pass" if not findings else "fail",
         "authority": False,
+        "authorityClass": "evidence-only",
         "finalCheckName": FINAL_CHECK_NAME,
+        "cutoverState": CUTOVER_STATE,
         "checkedIntentPath": path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path),
         "expectedWorkflowCount": len(EXPECTED_FINAL_ROLES),
         "actualWorkflowCount": len(actual),
         "findings": findings,
-        "boundary": "This validates CI role demotion and naming clarity. It does not change branch protection and does not close selected real package closure-pass.",
+        "boundary": "This validates the bounded 12-surface inventory, non-authority demotion, stable check identity, and pre-acceptance fixture state. It performs no ruleset cutover, effect, or workflow deletion.",
     }
 
 
@@ -113,8 +131,9 @@ def selftest() -> dict[str, Any]:
         "kind": "governance.ciFinalRoleDemotion.selftest.v1",
         "status": "pass",
         "authority": False,
+        "authorityClass": "evidence-only",
         "finalCheckName": FINAL_CHECK_NAME,
-        "coveredIssues": ["governance#117", "governance#118"],
+        "coveredIssues": ["governance#117", "governance#118", "governance#150"],
         "report": report,
     }
 
