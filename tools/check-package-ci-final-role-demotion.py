@@ -9,12 +9,14 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 CI_INTENT = ROOT / "ci.intent.v1.jsonl"
 WORKFLOWS = ROOT / ".github" / "workflows"
+GATE_WORKFLOW = ".github/workflows/gov-final-scope-purpose-join.yml"
 FINAL_CHECK_NAME = "gov-final-scope-purpose-join / gate"
 FINAL_ROLE = "primary_required_surface_after_accepted_cutover"
 CUTOVER_STATE = "pre-acceptance-current-sha-fixture"
+CANDIDATE_SHA_SOURCE = "github.event.pull_request.head.sha || github.sha"
 
 EXPECTED_FINAL_ROLES = {
-    ".github/workflows/gov-final-scope-purpose-join.yml": FINAL_ROLE,
+    GATE_WORKFLOW: FINAL_ROLE,
     ".github/workflows/ci.yml": "receipt_producer_and_tool_selftest_after_cutover",
     ".github/workflows/manual-ci.yml": "manual_observation_only",
     ".github/workflows/adrs-shadow-monitor.yml": "artifact_or_shadow_observer",
@@ -93,13 +95,18 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         if expected_role in NON_AUTHORITY_FINAL_ROLES and row.get("required_check_name"):
             findings.append(finding("old-ci-required-check-name", "non-final CI surface must not declare a required final check name", path=workflow_path))
 
-    gate = by_path.get(".github/workflows/gov-final-scope-purpose-join.yml", {})
+    gate = by_path.get(GATE_WORKFLOW, {})
     if gate.get("required_check_name") != FINAL_CHECK_NAME:
         findings.append(finding("final-check-name-mismatch", "final gate must preserve the exact check name", expected=FINAL_CHECK_NAME, actual=gate.get("required_check_name")))
     if gate.get("cutover_state") != CUTOVER_STATE:
         findings.append(finding("cutover-state-mismatch", "final gate must remain in the accepted pre-cutover fixture state", expected=CUTOVER_STATE, actual=gate.get("cutover_state")))
     if gate.get("authority_class") != "evidence-only":
         findings.append(finding("gate-authority-class-invalid", "pre-acceptance gate must be evidence-only", actual=gate.get("authority_class")))
+    if gate.get("candidate_sha_source") != CANDIDATE_SHA_SOURCE:
+        findings.append(finding("candidate-sha-source-mismatch", "gate intent must bind the actual PR head or pushed SHA", expected=CANDIDATE_SHA_SOURCE, actual=gate.get("candidate_sha_source")))
+    gate_text = (ROOT / GATE_WORKFLOW).read_text(encoding="utf-8") if (ROOT / GATE_WORKFLOW).is_file() else ""
+    if CANDIDATE_SHA_SOURCE not in gate_text:
+        findings.append(finding("candidate-sha-workflow-drift", "provider workflow does not use the declared exact candidate SHA source", expected=CANDIDATE_SHA_SOURCE))
     exception = gate.get("exception")
     if not isinstance(exception, dict):
         findings.append(finding("gate-exception-missing", "pre-acceptance gate requires a bounded exception contract"))
@@ -115,11 +122,12 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         "authorityClass": "evidence-only",
         "finalCheckName": FINAL_CHECK_NAME,
         "cutoverState": CUTOVER_STATE,
+        "candidateShaSource": CANDIDATE_SHA_SOURCE,
         "checkedIntentPath": path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path),
         "expectedWorkflowCount": len(EXPECTED_FINAL_ROLES),
         "actualWorkflowCount": len(actual),
         "findings": findings,
-        "boundary": "This validates the bounded 12-surface inventory, non-authority demotion, stable check identity, and pre-acceptance fixture state. It performs no ruleset cutover, effect, or workflow deletion.",
+        "boundary": "This validates the bounded 12-surface inventory, non-authority demotion, exact candidate identity, stable check identity, and pre-acceptance fixture state. It performs no ruleset cutover, effect, or workflow deletion.",
     }
 
 
