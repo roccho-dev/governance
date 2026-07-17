@@ -23,4 +23,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run current exact-SHA non-authority gate fixture
-        run: python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$GITHUB_SHA" --json
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --json
