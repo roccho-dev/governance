@@ -50,8 +50,8 @@ def generate(ledger: Path, output: Path) -> None:
     current = source_comments(rows, actor_a, 1000, 6)
     previous = current[:-1]
     discussion_a = {"id": 900, "created_at": "2030-01-01T00:00:00Z", "updated_at": "2030-01-01T00:00:00Z", "author": {"login": actor_a}, "body": "Narrative text by the source writer is not semantic input."}
-    write_pages(output / "github-a-previous", [discussion_a, *previous], [4, 5])
-    write_pages(output / "github-a", [discussion_a, *current], [5, 5])
+    write_pages(output / "github-a-previous", [*previous, discussion_a], [4, 5])
+    write_pages(output / "github-a", [*current, discussion_a], [5, 5])
 
     actor_b = "fixture-writer-b"
     discussion_b = {"id": 8900, "created_at": "2030-01-01T00:00:00Z", "updated_at": "2030-01-01T00:00:00Z", "author": {"login": actor_b}, "body": "A non-JSONL receipt is transport-only."}
