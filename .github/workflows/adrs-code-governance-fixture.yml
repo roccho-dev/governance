@@ -45,15 +45,17 @@ jobs:
             extra-experimental-features = nix-command
 
       - name: Install pinned checker dependencies
-        working-directory: ${{ runner.temp }}/governance
-        run: python3 -m pip install --disable-pip-version-check -r tools/code-governance/requirements.txt
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/governance"
+          python3 -m pip install --disable-pip-version-check -r tools/code-governance/requirements.txt
 
       - name: Run live provider-detached proof
-        working-directory: ${{ runner.temp }}/governance
         env:
           ADRS_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
+          cd "$RUNNER_TEMP/governance"
           tools/code-governance/run-live-proof.sh 2>&1 | tee "$RUNNER_TEMP/code-governance-run.log"
 
       - name: Upload non-authority proof packet
