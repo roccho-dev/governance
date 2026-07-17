@@ -66,8 +66,7 @@ jobs:
           ADRS_TOKEN: ${{ steps.adrs-token.outputs.token }}
         run: |
           set -o pipefail
-          mkdir -p tools/code-governance/out
-          tools/code-governance/run-live-proof.sh 2>&1 | tee tools/code-governance/out/run.log
+          tools/code-governance/run-live-proof.sh 2>&1 | tee "$RUNNER_TEMP/code-governance-run.log"
 
       - name: Upload non-authority proof packet
         if: always()
@@ -75,7 +74,7 @@ jobs:
         with:
           name: adrs-code-governance-fixture-proof
           path: |
-            tools/code-governance/out/run.log
+            ${{ runner.temp }}/code-governance-run.log
             tools/code-governance/out/proof-receipt.json
             tools/code-governance/out/nix-output.json
             tools/code-governance/out/tests.log
