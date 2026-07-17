@@ -1,0 +1,517 @@
+{
+  "$defs": {
+    "base": {
+      "additionalProperties": false,
+      "properties": {
+        "authority": {
+          "const": false
+        },
+        "id": {
+          "pattern": "^event:[a-z0-9][a-z0-9._:-]*$",
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "row_kind": {
+          "enum": [
+            "record",
+            "edge",
+            "contract"
+          ]
+        },
+        "schema_ref": {
+          "const": "urn:roccho:code-governance-ledger:v1"
+        },
+        "semantic_family": {
+          "const": "code-governance"
+        },
+        "semantic_kind": {
+          "enum": [
+            "fixture-contract",
+            "purpose",
+            "code-rule",
+            "test-case",
+            "purpose-parent",
+            "rule-purpose"
+          ]
+        },
+        "subject_key": {
+          "pattern": "^(contract|purpose|rule|case|edge):[A-Za-z0-9_.:-]+$",
+          "type": "string"
+        },
+        "supersedes": {
+          "items": {
+            "pattern": "^event:[a-z0-9][a-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "row_kind",
+        "semantic_family",
+        "semantic_kind",
+        "schema_ref",
+        "subject_key",
+        "supersedes",
+        "authority",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "casePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "expected": {
+          "enum": [
+            "pass",
+            "fail"
+          ]
+        },
+        "expected_findings": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "path": {
+          "pattern": "^fixtures/code/[A-Za-z0-9_.-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "expected",
+        "expected_findings"
+      ],
+      "type": "object"
+    },
+    "caseRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/casePayload"
+            },
+            "row_kind": {
+              "const": "record"
+            },
+            "semantic_kind": {
+              "const": "test-case"
+            }
+          }
+        }
+      ]
+    },
+    "contractPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_cases": {
+          "items": {
+            "pattern": "^case:",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "fixture_id": {
+          "const": "code-governance-ingest-v0"
+        },
+        "language": {
+          "const": "go"
+        },
+        "reducer_version": {
+          "const": "explicit-supersession-v1"
+        },
+        "top_purpose": {
+          "pattern": "^purpose:",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "reducer_version",
+        "language",
+        "top_purpose",
+        "expected_cases"
+      ],
+      "type": "object"
+    },
+    "contractRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/contractPayload"
+            },
+            "row_kind": {
+              "const": "contract"
+            },
+            "semantic_kind": {
+              "const": "fixture-contract"
+            }
+          }
+        }
+      ]
+    },
+    "dependencyPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_to_roles": {
+          "items": {
+            "$ref": "#/$defs/role"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "from_role": {
+          "$ref": "#/$defs/role"
+        },
+        "rule_type": {
+          "const": "dependency-edge"
+        },
+        "severity": {
+          "const": "blocking"
+        }
+      },
+      "required": [
+        "rule_type",
+        "severity",
+        "from_role",
+        "allowed_to_roles"
+      ],
+      "type": "object"
+    },
+    "effectPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "forbidden_calls": {
+          "items": {
+            "pattern": "^[A-Za-z0-9_./-]+\\.[A-Za-z0-9_*]+$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/role"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "rule_type": {
+          "const": "effect-boundary"
+        },
+        "severity": {
+          "const": "blocking"
+        }
+      },
+      "required": [
+        "rule_type",
+        "severity",
+        "roles",
+        "forbidden_calls"
+      ],
+      "type": "object"
+    },
+    "pathRolePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "path_prefix": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/role"
+        },
+        "rule_type": {
+          "const": "path-role"
+        },
+        "severity": {
+          "const": "blocking"
+        }
+      },
+      "required": [
+        "rule_type",
+        "severity",
+        "path_prefix",
+        "role"
+      ],
+      "type": "object"
+    },
+    "purposeParentEdge": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/purposeParentPayload"
+            },
+            "row_kind": {
+              "const": "edge"
+            },
+            "semantic_kind": {
+              "const": "purpose-parent"
+            }
+          }
+        }
+      ]
+    },
+    "purposeParentPayload": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "mechanism"
+                  ]
+                },
+                {
+                  "required": [
+                    "falsification"
+                  ]
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "relation": {
+                "const": "indirect"
+              }
+            },
+            "required": [
+              "relation"
+            ]
+          },
+          "then": {
+            "required": [
+              "mechanism",
+              "falsification"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "falsification": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "from_subject": {
+          "pattern": "^purpose:",
+          "type": "string"
+        },
+        "mechanism": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "relation": {
+          "enum": [
+            "direct",
+            "indirect"
+          ]
+        },
+        "to_subject": {
+          "pattern": "^purpose:",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_subject",
+        "to_subject",
+        "relation"
+      ],
+      "type": "object"
+    },
+    "purposePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "enum": [
+            "scope",
+            "outcome",
+            "meta"
+          ]
+        },
+        "outcome_status": {
+          "const": "unverified"
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "level",
+        "outcome_status"
+      ],
+      "type": "object"
+    },
+    "purposeRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/purposePayload"
+            },
+            "row_kind": {
+              "const": "record"
+            },
+            "semantic_kind": {
+              "const": "purpose"
+            }
+          }
+        }
+      ]
+    },
+    "role": {
+      "enum": [
+        "data",
+        "calculation",
+        "port",
+        "action",
+        "adapter",
+        "composition"
+      ]
+    },
+    "rulePurposeEdge": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "properties": {
+            "payload": {
+              "$ref": "#/$defs/rulePurposePayload"
+            },
+            "row_kind": {
+              "const": "edge"
+            },
+            "semantic_kind": {
+              "const": "rule-purpose"
+            }
+          }
+        }
+      ]
+    },
+    "rulePurposePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "from_subject": {
+          "pattern": "^rule:",
+          "type": "string"
+        },
+        "to_subject": {
+          "pattern": "^purpose:",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_subject",
+        "to_subject"
+      ],
+      "type": "object"
+    },
+    "ruleRow": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "properties": {
+            "payload": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/pathRolePayload"
+                },
+                {
+                  "$ref": "#/$defs/dependencyPayload"
+                },
+                {
+                  "$ref": "#/$defs/effectPayload"
+                },
+                {
+                  "$ref": "#/$defs/yagniPayload"
+                }
+              ]
+            },
+            "row_kind": {
+              "const": "record"
+            },
+            "semantic_kind": {
+              "const": "code-rule"
+            }
+          }
+        }
+      ]
+    },
+    "yagniPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "language": {
+          "const": "go"
+        },
+        "rule_type": {
+          "const": "yagni-unused-dependency"
+        },
+        "severity": {
+          "const": "blocking"
+        }
+      },
+      "required": [
+        "rule_type",
+        "severity",
+        "language"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:roccho:code-governance-ledger:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/contractRow"
+    },
+    {
+      "$ref": "#/$defs/purposeRow"
+    },
+    {
+      "$ref": "#/$defs/ruleRow"
+    },
+    {
+      "$ref": "#/$defs/caseRow"
+    },
+    {
+      "$ref": "#/$defs/purposeParentEdge"
+    },
+    {
+      "$ref": "#/$defs/rulePurposeEdge"
+    }
+  ],
+  "title": "Append-only code-governance fixture ledger V1"
+}
