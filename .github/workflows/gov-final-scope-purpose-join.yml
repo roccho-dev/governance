@@ -22,5 +22,5 @@ jobs:
       - name: Checkout governance
         uses: actions/checkout@v4
 
-      - name: Run final-scope purpose join gate adapter selftest
-        run: python3 tools/check-package-final-scope-purpose-join.py selftest --json
+      - name: Run current exact-SHA non-authority gate fixture
+        run: python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$GITHUB_SHA" --json
