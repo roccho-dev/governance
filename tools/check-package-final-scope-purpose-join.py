@@ -29,6 +29,7 @@ def regression_components() -> list[dict[str, Any]]:
         run_component("merge-write-boundary-final-gate", [sys.executable, "tools/check-merge-write-boundary-final-gate.py", "selftest", "--json"]),
         run_component("fspj-real-join", [sys.executable, "tools/check-package-fspj-real.py"]),
         run_component("final-ci-topology-migration-safety", [sys.executable, "tools/check-package-final-ci-topology.py", "selftest", "--json"]),
+        run_component("final-ci-topology-hardening", [sys.executable, "tools/check-package-final-ci-topology-hardening.py", "selftest", "--json"]),
     ]
 
 
@@ -63,7 +64,9 @@ def run_selftest() -> dict[str, Any]:
             "fspj real join blocking drift",
             "exact candidate SHA mismatch",
             "stale claim or receipt",
-            "authority class collision",
+            "authority class collision or incomplete class set",
+            "wrong merge-admission target",
+            "fixture repository or decision-source substitution",
             "incomplete CI responsibility transfer",
             "fixture or fallback offered as production admission",
         ],
@@ -73,6 +76,17 @@ def run_selftest() -> dict[str, Any]:
 
 def run_check(candidate_sha: str) -> dict[str, Any]:
     selftest = run_selftest()
+    hardening = run_component(
+        "current-exact-sha-hardening",
+        [
+            sys.executable,
+            "tools/check-package-final-ci-topology-hardening.py",
+            "check",
+            "--candidate-sha",
+            candidate_sha,
+            "--json",
+        ],
+    )
     gate = run_component(
         "current-exact-sha-non-authority-fixture",
         [
@@ -84,8 +98,9 @@ def run_check(candidate_sha: str) -> dict[str, Any]:
             "--json",
         ],
     )
-    if gate["status"] != "pass":
-        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.fixtureCheck.v1", "status": "fail", "gate": gate}))
+    failed = [row for row in (hardening, gate) if row["status"] != "pass"]
+    if failed:
+        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.fixtureCheck.v1", "status": "fail", "failedComponents": failed}))
     return {
         "kind": "governance.finalScopePurposeJoin.fixtureCheck.v1",
         "status": "pass",
@@ -94,6 +109,7 @@ def run_check(candidate_sha: str) -> dict[str, Any]:
         "finalCheckName": FINAL_CHECK_NAME,
         "candidateSha": candidate_sha,
         "regression": selftest,
+        "hardening": hardening,
         "gate": gate,
         "productionAdmission": False,
         "allRepositoriesEnforced": False,
