@@ -62,15 +62,47 @@ jobs:
           extra_nix_config: |
             extra-experimental-features = nix-command flakes
 
-      - name: Run complete deterministic regression
+      - name: Verify exact candidate identity
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+
+      - name: Run Nix regression
+        id: nix
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          nix flake check -L 2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
+
+      - name: Run Python regression
+        id: python
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          {
+            python3 tools/compile-claim-port-joins.py selftest
+            python3 tools/check-package-final-scope-purpose-join.py selftest --json
+          } 2>&1 | tee "$RUNNER_TEMP/final-ci-python.log"
+
+      - name: Upload regression diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-ci-regression-diagnostics
+          path: |
+            ${{ runner.temp }}/final-ci-nix.log
+            ${{ runner.temp }}/final-ci-python.log
+          if-no-files-found: warn
+
+      - name: Reduce regression receipt
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          NIX_OUTCOME: ${{ steps.nix.outcome }}
+          PYTHON_OUTCOME: ${{ steps.python.outcome }}
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          nix flake check -L
-          python3 tools/compile-claim-port-joins.py selftest
-          python3 tools/check-package-final-scope-purpose-join.py selftest --json
+          test "$NIX_OUTCOME" = success
+          test "$PYTHON_OUTCOME" = success
           printf '{"kind":"governance.regressionReceipt.v1","status":"pass","candidateSha":"%s","authority":false}\n' "$CANDIDATE_SHA" > regression-receipt.json
 
       - name: Upload regression receipt
