@@ -1,0 +1,21 @@
+{
+  "kind": "governance.finalCiRemediation.v1",
+  "issue": "roccho-dev/governance#150",
+  "parentDecision": "roccho-dev/adrs#233",
+  "previousClosureWithdrawn": true,
+  "required": {
+    "liveConsumerClaimReadback": true,
+    "liveReceiptArtifactDownload": true,
+    "artifactMetadataDigestMatchesDownloadedZip": true,
+    "receiptCandidateShaMatchesCurrentHead": true,
+    "candidateShaPreservedThroughAdmission": true,
+    "scheduledCanaryFreshnessObservation": true,
+    "activeRulesetAndRequiredCheckReadback": true
+  },
+  "boundaries": {
+    "allRepositoriesEnforced": false,
+    "meaningAuthority": false,
+    "canaryMayAdmit": false,
+    "oneMergeProvesPermanentExclusivity": false
+  }
+}
