@@ -152,12 +152,13 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C candidate-adrs rev-parse HEAD)" = "c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068"
+          nix flake check -L "path:$PWD/candidate-adrs" \
+            2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs-234.log"
           (
             cd candidate-adrs
-            nix flake check -L
             bash ci/check-recursive-contract-modeling-v1-static.sh
             python3 tools/check-recursive-contract-modeling-v1.py selftest
-          ) 2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs-234.log"
+          ) 2>&1 | tee -a "$RUNNER_TEMP/gov-canary-adrs-234.log"
 
       - name: Upload ADRS observation
         if: always()
