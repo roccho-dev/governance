@@ -68,14 +68,13 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
 
       - name: Run Nix regression
-        id: nix
         continue-on-error: true
         run: |
           set -o pipefail
           nix flake check -L 2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
+          touch "$RUNNER_TEMP/final-ci-nix.pass"
 
       - name: Run Python regression
-        id: python
         continue-on-error: true
         run: |
           set -o pipefail
@@ -83,6 +82,7 @@ jobs:
             python3 tools/compile-claim-port-joins.py selftest
             python3 tools/check-package-final-scope-purpose-join.py selftest --json
           } 2>&1 | tee "$RUNNER_TEMP/final-ci-python.log"
+          touch "$RUNNER_TEMP/final-ci-python.pass"
 
       - name: Upload regression diagnostics
         if: always()
@@ -97,12 +97,10 @@ jobs:
       - name: Reduce regression receipt
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          NIX_OUTCOME: ${{ steps.nix.outcome }}
-          PYTHON_OUTCOME: ${{ steps.python.outcome }}
         run: |
           set -euo pipefail
-          test "$NIX_OUTCOME" = success
-          test "$PYTHON_OUTCOME" = success
+          test -f "$RUNNER_TEMP/final-ci-nix.pass"
+          test -f "$RUNNER_TEMP/final-ci-python.pass"
           printf '{"kind":"governance.regressionReceipt.v1","status":"pass","candidateSha":"%s","authority":false}\n' "$CANDIDATE_SHA" > regression-receipt.json
 
       - name: Upload regression receipt
