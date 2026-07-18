@@ -5,6 +5,7 @@ import argparse
 import importlib.util
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -14,6 +15,7 @@ def load_engine(path: Path):
     if spec is None or spec.loader is None:
         raise SystemExit("cannot load contract-modeling engine")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
