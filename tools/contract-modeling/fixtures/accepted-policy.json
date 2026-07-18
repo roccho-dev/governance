@@ -19,10 +19,11 @@
     "source": "roccho-dev/adrs#234",
     "status": "accepted-candidate"
   },
+  "evaluation_date": "2026-07-18",
   "kind": "contractModelingPolicyInput.v1",
   "legacy": {
     "source": "bounded-proof-corpus:specs/packages/jsonl-datamodeling-duckdb-ci",
-    "source_digest": "be736567e5fb4751dfd53a272aeede308c38f9da9d51d18a60bcc2d74f946b07",
+    "source_digest": "cfb47ace6877dfabe7322c18448962628611d26d328b81b5689b6c184e04e76d",
     "unexplained_allowed": 0
   },
   "mode": "shadow",
