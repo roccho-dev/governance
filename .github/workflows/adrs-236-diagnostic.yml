@@ -1,0 +1,81 @@
+name: ADRS 236 exact-head diagnostic
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-adrs-236-proof:
+    name: exact ADRS 236 hosted proof
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Validate ADRS reader configuration
+        env:
+          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: |
+          set -euo pipefail
+          test -n "$ADRS_READER_CLIENT_ID"
+          test -n "$ADRS_READER_PRIVATE_KEY"
+
+      - name: Create least-privilege ADRS contents token
+        id: adrs-contents-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - name: Checkout exact ADRS candidate
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: 580c8e7060f18e1783cd4ecb35ee28414e243c19
+          path: .diagnostic/adrs
+          token: ${{ steps.adrs-contents-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+
+      - name: Run exact candidate Nix and deterministic proofs
+        working-directory: .diagnostic/adrs
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "580c8e7060f18e1783cd4ecb35ee28414e243c19"
+          nix flake check -L
+          first="$RUNNER_TEMP/adrs-236-first"
+          second="$RUNNER_TEMP/adrs-236-second"
+          selftest="$RUNNER_TEMP/adrs-236-selftest.json"
+          rm -rf "$first" "$second"
+          python3 tools/check-recursive-contract-modeling-v1.py check --out "$first" >/dev/null
+          python3 tools/check-recursive-contract-modeling-v1.py check --out "$second" >/dev/null
+          python3 tools/check-recursive-contract-modeling-v1.py selftest | tee "$selftest"
+          cmp "$first/report.json" "$second/report.json"
+          cmp "$first/receipt.json" "$second/receipt.json"
+          cmp "$first/pass" "$second/pass"
+          jq -e '.status == "pass" and .destructiveCaseCount == 34 and .requiredCategoryCount == 26' "$selftest" >/dev/null
+          bash ci/decision-append.sh --validate decision/live/issue-234-recursive-contract-modeling-v1.jsonl >/dev/null
+          test "$(sha256sum contract_modeling/v1/contract.json | cut -d ' ' -f1)" = "1bc8ee618113215753c3be21f1a90db1c44007feb5e0b855fb0ee4bc6ca770e0"
+          test "$(sha256sum contract_modeling/v1/closure.json | cut -d ' ' -f1)" = "8366b8fe8e756142676871f299313fe622c669306ad579094297ee98d6224c82"
+          test "$(sha256sum contract_modeling/v1/source-seed.jsonl | cut -d ' ' -f1)" = "91440857f4d648b699f0f8c44f452a3615d03e9f2185095bf1283301650aec9c"
+          test "$(sha256sum decision/live/issue-234-recursive-contract-modeling-v1.jsonl | cut -d ' ' -f1)" = "319a0808bfe1a30376ed47efbe73b31e9cca59924cf7b737e7de64889c110573"
+          test "$(sha256sum tools/check-recursive-contract-modeling-v1.py | cut -d ' ' -f1)" = "222baada4dc429cce86426eba7f985171fa8b0a03c85da12150bb6071a6bf60a"
+
+      - name: Upload exact ADRS 236 diagnostic proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adrs-236-exact-head-diagnostic
+          path: |
+            ${{ runner.temp }}/adrs-236-first/
+            ${{ runner.temp }}/adrs-236-selftest.json
+          if-no-files-found: error
