@@ -28,6 +28,8 @@ jobs:
           set -euo pipefail
           python3 tools/check-package-final-ci-production.py selftest --json | tee "$RUNNER_TEMP/final-ci-topology-selftest.json"
           python3 tools/check-package-ci-final-role-demotion.py check --json | tee "$RUNNER_TEMP/final-ci-role-report.json"
+          python3 tools/check-live-final-ci-consumers.py selftest | tee "$RUNNER_TEMP/live-consumer-selftest.json"
+          python3 tools/check-live-final-ci-control-plane.py selftest | tee "$RUNNER_TEMP/control-plane-selftest.json"
 
       - name: Upload topology observation
         uses: actions/upload-artifact@v4
@@ -36,7 +38,61 @@ jobs:
           path: |
             ${{ runner.temp }}/final-ci-topology-selftest.json
             ${{ runner.temp }}/final-ci-role-report.json
+            ${{ runner.temp }}/live-consumer-selftest.json
+            ${{ runner.temp }}/control-plane-selftest.json
           if-no-files-found: error
+
+  selected-consumers:
+    name: live selected consumer observer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+        with:
+          ref: proposals
+          persist-credentials: false
+
+      - name: Fetch current UI and Ops claims, runs, and artifact bodies
+        run: |
+          set -euo pipefail
+          python3 tools/check-live-final-ci-consumers.py capture \
+            --out "$RUNNER_TEMP/live-selected-consumers.json"
+          grep -q '"status":"pass"' "$RUNNER_TEMP/live-selected-consumers.json"
+          grep -q '"candidateSha"' "$RUNNER_TEMP/live-selected-consumers.json"
+          grep -q '"artifactDigest"' "$RUNNER_TEMP/live-selected-consumers.json"
+
+      - name: Upload current consumer observation
+        uses: actions/upload-artifact@v4
+        with:
+          name: gov-canary-live-selected-consumers
+          path: ${{ runner.temp }}/live-selected-consumers.json
+          if-no-files-found: error
+
+  control-plane:
+    name: live required-check and ruleset observer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+        with:
+          ref: proposals
+          persist-credentials: false
+
+      - name: Read current workflow intent and active rulesets
+        run: |
+          set -euo pipefail
+          python3 tools/check-live-final-ci-control-plane.py check \
+            --out "$RUNNER_TEMP/live-control-plane.json"
+          grep -q '"stableCheckExclusive":true' "$RUNNER_TEMP/live-control-plane.json"
+          grep -q '"permanentMergePathProven":true' "$RUNNER_TEMP/live-control-plane.json"
+
+      - name: Upload control-plane observation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gov-canary-live-control-plane
+          path: ${{ runner.temp }}/live-control-plane.json
+          if-no-files-found: warn
 
   adrs-observer:
     name: read-only ADRS observer
