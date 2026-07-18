@@ -122,12 +122,32 @@ jobs:
           extra_nix_config: |
             extra-experimental-features = nix-command flakes
 
-      - name: Run exact candidate Nix and deterministic proofs
+      - name: Verify exact candidate identity
+        working-directory: .diagnostic/adrs
+        run: test "$(git rev-parse HEAD)" = "ad98ae7d472e51ffd62e47f4098dad002098e2a8"
+
+      - name: Run exact candidate Nix
+        id: nix
+        continue-on-error: true
+        working-directory: .diagnostic/adrs
+        run: |
+          set -o pipefail
+          nix flake check -L 2>&1 | tee "$RUNNER_TEMP/adrs-235-nix.log"
+
+      - name: Run exact static decision proof
+        id: static
+        continue-on-error: true
+        working-directory: .diagnostic/adrs
+        run: |
+          set -o pipefail
+          bash ci/check-final-organization-ci-topology-v1-static.sh 2>&1 | tee "$RUNNER_TEMP/adrs-235-static.log"
+
+      - name: Run deterministic proof directly
+        id: proof
+        continue-on-error: true
         working-directory: .diagnostic/adrs
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "ad98ae7d472e51ffd62e47f4098dad002098e2a8"
-          nix flake check -L
           first="$RUNNER_TEMP/adrs-235-first"
           second="$RUNNER_TEMP/adrs-235-second"
           python3 tools/check-final-organization-ci-topology-v1.py check --contract ci_topology/v1/contract.json --out "$first" | tee "$RUNNER_TEMP/adrs-235-report.json"
@@ -146,4 +166,18 @@ jobs:
             ${{ runner.temp }}/adrs-235-first/
             ${{ runner.temp }}/adrs-235-report.json
             ${{ runner.temp }}/adrs-235-selftest.json
-          if-no-files-found: error
+            ${{ runner.temp }}/adrs-235-nix.log
+            ${{ runner.temp }}/adrs-235-static.log
+          if-no-files-found: warn
+
+      - name: Reduce diagnostic verdict
+        if: always()
+        env:
+          NIX_OUTCOME: ${{ steps.nix.outcome }}
+          STATIC_OUTCOME: ${{ steps.static.outcome }}
+          PROOF_OUTCOME: ${{ steps.proof.outcome }}
+        run: |
+          printf 'nix=%s static=%s proof=%s\n' "$NIX_OUTCOME" "$STATIC_OUTCOME" "$PROOF_OUTCOME"
+          test "$NIX_OUTCOME" = success
+          test "$STATIC_OUTCOME" = success
+          test "$PROOF_OUTCOME" = success
