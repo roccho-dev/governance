@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse,copy,hashlib,json
+import argparse,copy,hashlib,json,sys
 from pathlib import Path
 from typing import Any,Callable
+ROOT=Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path: sys.path.insert(0,str(ROOT))
 from tools.promotion.core import Policy,PromotionError,digest,make_promotion_candidate
-ROOT=Path(__file__).resolve().parents[1]; POLICY=ROOT/"tools/promotion/policy-shadow.v1.json"; BASELINE=ROOT/"governance/signed-promotion-baseline.v1.json"
+POLICY=ROOT/"tools/promotion/policy-shadow.v1.json"; BASELINE=ROOT/"governance/signed-promotion-baseline.v1.json"
 ENGINE_FILES=["tools/promotion/core.py","tools/promotion/ed25519.py","tools/promotion/ports.py","tools/promotion/adapters.py","tools/promotion/cli.py"]
 def need(ok:bool,code:str)->None:
  if not ok: raise PromotionError(code)
