@@ -18,7 +18,12 @@ def canonical(value: Any) -> str:
 
 def run_component(name: str, args: list[str]) -> dict[str, Any]:
     proc = subprocess.run(args, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    return {"name": name, "status": "pass" if proc.returncode == 0 else "fail", "exitCode": proc.returncode, "output": proc.stdout.strip().splitlines()[-5:]}
+    return {
+        "name": name,
+        "status": "pass" if proc.returncode == 0 else "fail",
+        "exitCode": proc.returncode,
+        "output": proc.stdout.strip().splitlines()[-5:],
+    }
 
 
 def regression_components() -> list[dict[str, Any]]:
@@ -29,8 +34,9 @@ def regression_components() -> list[dict[str, Any]]:
         run_component("merge-write-boundary-final-gate", [sys.executable, "tools/check-merge-write-boundary-final-gate.py", "selftest", "--json"]),
         run_component("fspj-real-join", [sys.executable, "tools/check-package-fspj-real.py"]),
         run_component("exact-candidate-checkout", [sys.executable, "tools/check-package-exact-candidate-checkout.py", "selftest", "--json"]),
-        run_component("final-ci-topology-migration-safety", [sys.executable, "tools/check-package-final-ci-topology.py", "selftest", "--json"]),
-        run_component("final-ci-topology-hardening", [sys.executable, "tools/check-package-final-ci-topology-hardening.py", "selftest", "--json"]),
+        run_component("claim-port-join", [sys.executable, "tools/compile-claim-port-joins.py", "selftest"]),
+        run_component("final-ci-production", [sys.executable, "tools/check-package-final-ci-production.py", "selftest", "--json"]),
+        run_component("final-two-surface-role", [sys.executable, "tools/check-package-ci-final-role-demotion.py", "check", "--json"]),
     ]
 
 
@@ -38,90 +44,50 @@ def run_selftest() -> dict[str, Any]:
     components = regression_components()
     failed = [row for row in components if row["status"] != "pass"]
     if failed:
-        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.selftest.v1", "status": "fail", "failedComponents": failed}))
+        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.selftest.v2", "status": "fail", "failedComponents": failed}))
     return {
-        "kind": "governance.finalScopePurposeJoin.selftest.v1",
+        "kind": "governance.finalScopePurposeJoin.selftest.v2",
         "status": "pass",
         "authority": False,
         "authorityClass": "evidence-only",
         "finalCheckName": FINAL_CHECK_NAME,
-        "evidenceMode": "strict-gate-adapter-selftest",
+        "acceptedDecisionMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
         "components": components,
-        "strictFailureCapability": [
-            "missing packet source",
-            "missing govPackageOutput packet",
-            "malformed or handwritten packet",
-            "stale packet source revision",
-            "invalid producer provenance",
-            "packet digest mismatch",
-            "missing package inventory or package path",
-            "missing package response",
-            "missing receipt",
-            "non-active admission",
-            "provider CI drift",
-            "manual or stale provider CI edit",
-            "expired waiver",
-            "generated artifact misclassified as pass",
-            "fspj real join blocking drift",
-            "exact candidate SHA mismatch",
-            "candidate claim differs from checked-out tree",
-            "checkout credential persistence",
-            "stale claim or receipt",
-            "authority class collision or incomplete class set",
-            "wrong merge-admission target",
-            "fixture repository or decision-source substitution",
-            "incomplete CI responsibility transfer",
-            "fixture or fallback offered as production admission",
-        ],
-        "boundary": "This is the final gate regression surface. ADRS #233 is proposed; no branch-protection cutover, merge-admission authority, effect authority, workflow deletion, or all-repository claim is made.",
+        "boundary": "Selftests are evidence only. The check command joins the accepted decision, exact candidate, selected assertions and receipts into the sole merge-admission result.",
     }
 
 
 def run_check(candidate_sha: str) -> dict[str, Any]:
-    selftest = run_selftest()
-    hardening = run_component(
-        "current-exact-sha-hardening",
-        [
-            sys.executable,
-            "tools/check-package-final-ci-topology-hardening.py",
-            "check",
-            "--candidate-sha",
-            candidate_sha,
-            "--json",
-        ],
+    regression = run_selftest()
+    production = run_component(
+        "current-exact-sha-production-admission",
+        [sys.executable, "tools/check-package-final-ci-production.py", "check", "--candidate-sha", candidate_sha, "--json"],
     )
-    gate = run_component(
-        "current-exact-sha-non-authority-fixture",
-        [
-            sys.executable,
-            "tools/check-package-final-ci-topology.py",
-            "gate",
-            "--candidate-sha",
-            candidate_sha,
-            "--json",
-        ],
-    )
-    failed = [row for row in (hardening, gate) if row["status"] != "pass"]
-    if failed:
-        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.fixtureCheck.v1", "status": "fail", "failedComponents": failed}))
+    if production["status"] != "pass":
+        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v2", "status": "fail", "failedComponents": [production]}))
+    parsed = json.loads(production["output"][-1])
     return {
-        "kind": "governance.finalScopePurposeJoin.fixtureCheck.v1",
+        "kind": "governance.finalScopePurposeJoin.gate.v2",
         "status": "pass",
-        "authority": False,
-        "authorityClass": "evidence-only",
+        "decision": "allow",
+        "authority": True,
+        "authorityClass": "merge-admission",
+        "meaningAuthority": False,
+        "effectAuthority": False,
         "finalCheckName": FINAL_CHECK_NAME,
         "candidateSha": candidate_sha,
-        "regression": selftest,
-        "hardening": hardening,
-        "gate": gate,
-        "productionAdmission": False,
+        "acceptedDecisionMerge": parsed["acceptedDecisionMerge"],
+        "selectedRepositoryCount": parsed["selectedRepositoryCount"],
+        "productionAdmission": True,
         "allRepositoriesEnforced": False,
-        "boundary": "Current-head exact-SHA fixture and migration-safety proof only. It cannot satisfy production merge admission before accepted ADRS #233 cutover and readback.",
+        "regression": regression,
+        "production": parsed,
+        "boundary": "Allows only this exact candidate for the accepted governance/UI/Ops rollout. It does not grant accepted meaning, perform effects, or claim all-repository enforcement.",
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Final-scope purpose join gate adapter.")
+    parser = argparse.ArgumentParser()
     parser.add_argument("command", nargs="?", choices=["selftest", "check"], default="selftest")
     parser.add_argument("--candidate-sha")
     parser.add_argument("--json", action="store_true")
@@ -133,7 +99,7 @@ def main() -> int:
     else:
         report = run_selftest()
     print(canonical(report) if args.json else f"final-scope-purpose-join:{report['status']}")
-    return 0 if report["status"] == "pass" else 1
+    return 0
 
 
 if __name__ == "__main__":
