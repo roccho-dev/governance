@@ -11,9 +11,9 @@ from pathlib import Path
 
 
 def load_engine(path: Path):
-    spec = importlib.util.spec_from_file_location("contract_modeling_engine", path)
+    spec = importlib.util.spec_from_file_location("contract_modeling_epoch", path)
     if spec is None or spec.loader is None:
-        raise SystemExit("cannot load contract-modeling engine")
+        raise SystemExit("cannot load contract-modeling epoch engine")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -36,15 +36,23 @@ def main() -> int:
     if observed != args.candidate_sha:
         raise SystemExit(f"candidate SHA mismatch: expected {args.candidate_sha}, observed {observed}")
 
-    engine = load_engine(repo_root / "tools/contract-modeling/bin/engine.py")
+    engine = load_engine(repo_root / "tools/contract-modeling/bin/epoch.py")
     source = args.claims or repo_root / "tools/contract-modeling/fixtures/claims.jsonl"
     rows = engine.read_jsonl(source)
     rows.sort(key=lambda value: value["id"])
     with tempfile.TemporaryDirectory() as tmp:
         normalized = Path(tmp) / "claims.jsonl"
         normalized.write_text(
-            "".join(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
-                    for value in rows),
+            "".join(
+                json.dumps(
+                    value,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+                for value in rows
+            ),
             encoding="utf-8",
         )
         packet = engine.evaluate(
