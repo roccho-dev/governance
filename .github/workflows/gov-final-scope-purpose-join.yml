@@ -86,7 +86,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: 70b7c37c434e01b56f53a27091dab43b222d8f76
+          ref: e960e378b1c07002cbd8d9fbba35e94f4d6c37b5
           path: promotion-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -105,22 +105,16 @@ jobs:
       - name: Verify and package ADRS sources
         env:
           PUBLICATION_ADRS_SHA: b30c0750b4783f3349bc3c2d91e00853c90ab2ef
-          PROMOTION_ADRS_SHA: 70b7c37c434e01b56f53a27091dab43b222d8f76
+          PROMOTION_ADRS_SHA: e960e378b1c07002cbd8d9fbba35e94f4d6c37b5
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
           test "$(git -C candidate-adrs rev-parse HEAD)" = c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
           test "$(git -C publication-adrs rev-parse HEAD)" = "$PUBLICATION_ADRS_SHA"
           test "$(git -C promotion-adrs rev-parse HEAD)" = "$PROMOTION_ADRS_SHA"
-          python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check \
-            --contract accepted-adrs/ci_topology/v1/contract.json \
-            --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
-          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py selftest \
-            > "$RUNNER_TEMP/company-contract-publication-selftest.json"
-          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py check \
-            --source-sha "$PUBLICATION_ADRS_SHA" \
-            --out "$RUNNER_TEMP/company-contract-publication" \
-            > "$RUNNER_TEMP/company-contract-publication-check.json"
+          python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check --contract accepted-adrs/ci_topology/v1/contract.json --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
+          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py selftest > "$RUNNER_TEMP/company-contract-publication-selftest.json"
+          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py check --source-sha "$PUBLICATION_ADRS_SHA" --out "$RUNNER_TEMP/company-contract-publication" > "$RUNNER_TEMP/company-contract-publication-check.json"
           test -s "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
           test -s "$RUNNER_TEMP/company-contract-publication/publication-receipt.json"
           grep -q '"doubleRunByteIdentical":true' "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
@@ -199,10 +193,7 @@ jobs:
           CONSUMER_READER_TOKEN: ${{ steps.consumer-token.outputs.token }}
         run: |
           set -o pipefail
-          python3 tools/check-live-final-ci-consumers.py capture \
-            --token-env CONSUMER_READER_TOKEN \
-            --out live-selected-consumers.json \
-            2>&1 | tee live-selected-consumers.log
+          python3 tools/check-live-final-ci-consumers.py capture --token-env CONSUMER_READER_TOKEN --out live-selected-consumers.json 2>&1 | tee live-selected-consumers.log
       - name: Upload live diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -283,16 +274,9 @@ jobs:
       - name: Run Nix and ADRS candidate regression
         run: |
           set -euo pipefail
-          nix flake check -L --no-write-lock-file \
-            --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
-            --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" \
-            2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
-          nix flake check -L "path:$PWD/evidence/candidate-adrs" \
-            2>&1 | tee "$RUNNER_TEMP/adrs-234-candidate.log"
-          (
-            cd evidence/candidate-adrs
-            bash ci/check-recursive-contract-modeling-v1-static.sh
-          ) 2>&1 | tee -a "$RUNNER_TEMP/adrs-234-candidate.log"
+          nix flake check -L --no-write-lock-file --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" 2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
+          nix flake check -L "path:$PWD/evidence/candidate-adrs" 2>&1 | tee "$RUNNER_TEMP/adrs-234-candidate.log"
+          (cd evidence/candidate-adrs && bash ci/check-recursive-contract-modeling-v1-static.sh) 2>&1 | tee -a "$RUNNER_TEMP/adrs-234-candidate.log"
       - name: Run Python, contract-modeling, and promotion shadow regression
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -329,27 +313,7 @@ jobs:
           promotion=json.loads(Path(os.environ['RUNNER_TEMP'] + '/promotion-shadow-proof.json').read_text().splitlines()[-1])
           assert promotion['status']=='pass'
           assert promotion['productionPromotionEffect'] is False
-          receipt={
-              'kind':'governance.regressionReceipt.v3',
-              'status':'pass',
-              'candidateSha':os.environ['CANDIDATE_SHA'],
-              'authority':False,
-              'contractModeling':{
-                  'status':'shadow-pass',
-                  'decisionId':'01K0E1CM000000000000000234',
-                  'decisionDigest':'cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1',
-                  'adrsHead':'c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068',
-                  'migrationComplete':False,
-              },
-              'signedPromotion':{
-                  'status':'shadow-pass',
-                  'contractDigest':'sha256:3dd313525bf80a3afefd141cc019325287f6bd8b2516ed97e1a748842fe3fb34',
-                  'adrsHead':'70b7c37c434e01b56f53a27091dab43b222d8f76',
-                  'acceptedDecisionStatus':'proposed',
-                  'productionKeyProvisioned':False,
-                  'productionPromotionEffect':False,
-              },
-          }
+          receipt={'kind':'governance.regressionReceipt.v3','status':'pass','candidateSha':os.environ['CANDIDATE_SHA'],'authority':False,'contractModeling':{'status':'shadow-pass','decisionId':'01K0E1CM000000000000000234','decisionDigest':'cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1','adrsHead':'c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068','migrationComplete':False},'signedPromotion':{'status':'shadow-pass','contractDigest':'sha256:3dd313525bf80a3afefd141cc019325287f6bd8b2516ed97e1a748842fe3fb34','adrsHead':'e960e378b1c07002cbd8d9fbba35e94f4d6c37b5','acceptedDecisionStatus':'proposed','productionKeyProvisioned':False,'productionPromotionEffect':False}}
           Path('regression-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
           PY
       - if: always()
@@ -408,10 +372,7 @@ jobs:
           assert value['signedPromotion']['status']=='shadow-pass'
           assert value['signedPromotion']['productionPromotionEffect'] is False
           PY
-          python3 tools/check-package-final-scope-purpose-join.py check \
-            --candidate-sha "$CANDIDATE_SHA" \
-            --live-consumers evidence/live-consumers/live-selected-consumers.json \
-            --json | tee final-gate-report.json
+          python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --live-consumers evidence/live-consumers/live-selected-consumers.json --json | tee final-gate-report.json
           grep -q '"productionAdmission":true' final-gate-report.json
           grep -q '"artifactBodiesVerified":true' final-gate-report.json
           grep -q '"receiptCandidateShaBound":true' final-gate-report.json
