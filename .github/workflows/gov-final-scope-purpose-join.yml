@@ -46,8 +46,57 @@ jobs:
           path: accepted-decision-capture.json
           if-no-files-found: error
 
+  source-capture:
+    name: accepted ADRS source capture
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate read-only ADRS reader configuration
+        env:
+          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: |
+          set -euo pipefail
+          test -n "$ADRS_READER_CLIENT_ID"
+          test -n "$ADRS_READER_PRIVATE_KEY"
+
+      - name: Create read-only ADRS contents token
+        id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - name: Checkout exact accepted ADRS source
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: a8fc9e8e04d53f1d783317059e4421c8dc724d01
+          path: accepted-adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Verify and package accepted ADRS source
+        run: |
+          set -euo pipefail
+          test "$(git -C accepted-adrs rev-parse HEAD)" = "a8fc9e8e04d53f1d783317059e4421c8dc724d01"
+          python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check \
+            --contract accepted-adrs/ci_topology/v1/contract.json \
+            --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
+          tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
+
+      - name: Upload exact accepted ADRS source
+        uses: actions/upload-artifact@v4
+        with:
+          name: accepted-adrs-source
+          path: accepted-adrs-source.tar.gz
+          if-no-files-found: error
+
   regression:
     name: exact-candidate regression
+    needs: source-capture
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact governance candidate
@@ -55,6 +104,18 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+
+      - name: Download accepted ADRS source
+        uses: actions/download-artifact@v4
+        with:
+          name: accepted-adrs-source
+          path: evidence
+
+      - name: Extract accepted ADRS source
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/accepted-adrs
+          tar -C evidence/accepted-adrs -xzf evidence/accepted-adrs-source.tar.gz
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
@@ -71,7 +132,10 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          nix flake check -L 2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
+          nix flake check -L --no-write-lock-file \
+            --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
+            --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" \
+            2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
           touch "$RUNNER_TEMP/final-ci-nix.pass"
 
       - name: Run Python regression
