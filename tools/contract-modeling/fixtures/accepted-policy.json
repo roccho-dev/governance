@@ -40,6 +40,10 @@
     "max_nodes": 10000,
     "version": "contract-modeling-policy.v1"
   },
+  "previous_current": {
+    "digest": "34f4b725f3aa5e718a5f83a44b004e64c9506b72e9ceb27fe8d01f8458db0b84",
+    "path": "tools/contract-modeling/fixtures/previous-current.json"
+  },
   "required_package_universe": [
     {
       "packageId": "pkg:governance:code-governance",
