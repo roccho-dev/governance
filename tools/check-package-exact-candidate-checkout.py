@@ -26,14 +26,22 @@ def check(path: Path = WORKFLOW) -> dict[str, Any]:
 
     checkout_count = text.count("uses: actions/checkout@v4")
     credential_count = text.count("persist-credentials: false")
+    candidate_env_lines = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip().startswith("CANDIDATE_SHA:")
+    ]
+
     if checkout_count < 4:
         findings.append("checkout-stage-cardinality")
     if credential_count != checkout_count:
         findings.append("checkout-credentials-not-disabled-everywhere")
     if text.count(f"ref: {CANDIDATE_EXPRESSION}") < 3:
         findings.append("exact-candidate-checkout-missing")
-    if text.count(f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}") < 2:
+    if len(candidate_env_lines) < 2:
         findings.append("exact-candidate-env-missing")
+    if any(line != f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}" for line in candidate_env_lines):
+        findings.append("exact-candidate-env-mismatch")
     if "pull_request_target" in text:
         findings.append("unsafe-pull-request-target")
     if "persist-credentials: true" in text:
@@ -44,14 +52,15 @@ def check(path: Path = WORKFLOW) -> dict[str, Any]:
         findings.append("stable-gate-name")
 
     return {
-        "kind": "governance.exactCandidateCheckout.report.v2",
+        "kind": "governance.exactCandidateCheckout.report.v3",
         "status": "fail" if findings else "pass",
         "authority": False,
         "authorityClass": "evidence-only",
         "candidateExpression": CANDIDATE_EXPRESSION,
         "checkoutCount": checkout_count,
+        "candidateEnvironmentCount": len(candidate_env_lines),
         "findings": sorted(set(findings)),
-        "boundary": "All pull-request candidate execution names and checks the exact head SHA. Push-only post-effect readback binds github.sha separately.",
+        "boundary": "Every declared CANDIDATE_SHA binding uses the exact PR head or pushed SHA. External accepted/candidate source refs remain separately pinned.",
     }
 
 
@@ -62,7 +71,7 @@ def selftest(path: Path = WORKFLOW) -> dict[str, Any]:
     base = path.read_text(encoding="utf-8")
     cases = [
         ("persist-token", "checkout-credentials", base.replace("persist-credentials: false", "persist-credentials: true", 1)),
-        ("wrong-env", "exact-candidate-env", base.replace(f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}", "CANDIDATE_SHA: ${{ github.sha }}", 2)),
+        ("wrong-env", "exact-candidate-env-mismatch", base.replace(f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}", "CANDIDATE_SHA: ${{ github.sha }}", 1)),
         ("unsafe-event", "unsafe-pull-request-target", base.replace("pull_request:", "pull_request_target:")),
         ("write-permission", "write-permission", base.replace("contents: read", "contents: write")),
     ]
@@ -75,7 +84,14 @@ def selftest(path: Path = WORKFLOW) -> dict[str, Any]:
             if report["status"] != "fail" or not any(expected in finding for finding in report["findings"]):
                 raise SystemExit(canonical({"case": name, "expected": expected, "report": report}))
             results.append({"case": name, "status": "pass"})
-    return {"kind": "governance.exactCandidateCheckout.selftest.v2", "status": "pass", "positiveCases": 1, "destructiveCases": len(results), "cases": results, "authority": False}
+    return {
+        "kind": "governance.exactCandidateCheckout.selftest.v3",
+        "status": "pass",
+        "positiveCases": 1,
+        "destructiveCases": len(results),
+        "cases": results,
+        "authority": False,
+    }
 
 
 def main() -> int:
