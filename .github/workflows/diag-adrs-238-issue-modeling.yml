@@ -50,13 +50,13 @@ jobs:
         with:
           extra_nix_config: extra-experimental-features = nix-command flakes
 
-      - name: Read live ADRS Issue 238 JSONL and evaluate
+      - name: Read live ADRS Issue 238 JSONL
         env:
           ADRS_TOKEN: ${{ steps.adrs-token.outputs.token }}
-          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           mkdir -p diag-238
+          python3 tools/contract-modeling/fixtures/generate.py > diag-238/generate.log
           python3 - <<'PY'
           import json, os, urllib.request
           from pathlib import Path
@@ -68,7 +68,7 @@ jobs:
                   'Accept':'application/vnd.github+json',
                   'Authorization':f"Bearer {os.environ['ADRS_TOKEN']}",
                   'X-GitHub-Api-Version':'2022-11-28',
-                  'User-Agent':'governance-adrs238-modeling-diagnostic/1',
+                  'User-Agent':'governance-adrs238-modeling-diagnostic/2',
               },
           )
           with urllib.request.urlopen(req, timeout=60) as response:
@@ -107,6 +107,11 @@ jobs:
               ''.join(json.dumps(r,sort_keys=True,separators=(',',':'))+'\n' for r in combined),encoding='utf-8')
           PY
 
+      - name: Evaluate live ADRS Issue model twice
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
           python3 tools/contract-modeling/bin/evaluate_exact.py \
             --candidate-sha "$CANDIDATE_SHA" \
             --repo-root "$PWD" \
@@ -121,6 +126,9 @@ jobs:
             --out diag-238/semantic-packet-second.json > diag-238/evaluate-second.log
           cmp diag-238/semantic-packet.json diag-238/semantic-packet-second.json
 
+      - name: Verify derived decisions and fail-closed boundary
+        run: |
+          set -euo pipefail
           python3 - <<'PY'
           import importlib.util, json, sys
           from pathlib import Path
@@ -178,11 +186,11 @@ jobs:
           }
           Path('diag-238/receipt.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
           PY
-
           sha256sum diag-238/issue-238-live.jsonl diag-238/semantic-packet.json diag-238/receipt.json > diag-238/digests.txt
 
-      - uses: actions/upload-artifact@v4
+      - if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: adrs-238-issue-modeling-diagnostic
           path: diag-238/
-          if-no-files-found: error
+          if-no-files-found: warn
