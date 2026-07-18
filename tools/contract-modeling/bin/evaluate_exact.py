@@ -36,7 +36,7 @@ def main() -> int:
     if observed != args.candidate_sha:
         raise SystemExit(f"candidate SHA mismatch: expected {args.candidate_sha}, observed {observed}")
 
-    engine = load_engine(repo_root / "tools/contract-modeling/bin/contract_modeling.py")
+    engine = load_engine(repo_root / "tools/contract-modeling/bin/engine.py")
     source = args.claims or repo_root / "tools/contract-modeling/fixtures/claims.jsonl"
     rows = engine.read_jsonl(source)
     rows.sort(key=lambda value: value["id"])
