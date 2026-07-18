@@ -94,16 +94,7 @@ jobs:
           from pathlib import Path
           path=Path(os.environ['RUNNER_TEMP'])/'live-control-plane.json'
           observed=json.loads(path.read_text()) if path.exists() else {'status':'unavailable'}
-          report={
-            'kind':'governance.rulesetInformation.v1',
-            'status':'observed' if os.environ['OBSERVATION_OUTCOME']=='success' else 'absent-or-unavailable',
-            'severity':'information',
-            'promotionClosureImpact':'none',
-            'githubRulesetRequired':False,
-            'providerAuthority':False,
-            'observed':observed,
-            'authority':False,
-          }
+          report={'kind':'governance.rulesetInformation.v1','status':'observed' if os.environ['OBSERVATION_OUTCOME']=='success' else 'absent-or-unavailable','severity':'information','promotionClosureImpact':'none','githubRulesetRequired':False,'providerAuthority':False,'observed':observed,'authority':False}
           (Path(os.environ['RUNNER_TEMP'])/'ruleset-information.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
           PY
       - name: Upload control-plane information
@@ -193,7 +184,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: aaf6e73d73f61e1d0ad277ce5e7451a4dc0124b8
+          ref: 70b7c37c434e01b56f53a27091dab43b222d8f76
           path: promotion-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -235,7 +226,7 @@ jobs:
       - name: Run exact signed-promotion ADRS candidate observation
         run: |
           set -euo pipefail
-          test "$(git -C promotion-adrs rev-parse HEAD)" = "aaf6e73d73f61e1d0ad277ce5e7451a4dc0124b8"
+          test "$(git -C promotion-adrs rev-parse HEAD)" = "70b7c37c434e01b56f53a27091dab43b222d8f76"
           (
             cd promotion-adrs
             cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-signed-promotion.cue
