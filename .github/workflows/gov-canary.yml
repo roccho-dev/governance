@@ -94,6 +94,48 @@ jobs:
           path: ${{ runner.temp }}/live-control-plane.json
           if-no-files-found: warn
 
+  contract-modeling:
+    name: recursive contract-modeling observer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+        with:
+          ref: proposals
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.5'
+          cache: pip
+          cache-dependency-path: tools/contract-modeling/requirements.txt
+
+      - name: Install pinned dependencies
+        run: python3 -m pip install --disable-pip-version-check -r tools/contract-modeling/requirements.txt
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+
+      - name: Run evidence-only contract-modeling proof
+        env:
+          CANDIDATE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          python3 -m unittest discover -s tools/contract-modeling/tests -p 'test_*.py'
+          CANDIDATE_SHA="$CANDIDATE_SHA" bash tools/contract-modeling/run-proof.sh
+
+      - name: Upload contract-modeling observation
+        uses: actions/upload-artifact@v4
+        with:
+          name: gov-canary-contract-modeling
+          path: tools/contract-modeling/out/
+          if-no-files-found: error
+
   adrs-observer:
     name: read-only ADRS observer
     runs-on: ubuntu-latest
@@ -124,6 +166,15 @@ jobs:
           permission-contents: read
           permission-issues: read
 
+      - name: Checkout exact ADRS 234 candidate
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
+          path: candidate-adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -139,7 +190,7 @@ jobs:
         uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
-            extra-experimental-features = nix-command
+            extra-experimental-features = nix-command flakes
 
       - name: Install pinned checker dependencies
         run: python3 -m pip install --disable-pip-version-check -r tools/code-governance/requirements.txt
@@ -148,8 +199,20 @@ jobs:
         env:
           ADRS_TOKEN: ${{ steps.adrs-token.outputs.token }}
         run: |
-          set -o pipefail
+          set -euo pipefail
           tools/code-governance/run-live-proof.sh 2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs.log"
+
+      - name: Run exact ADRS 234 candidate observation
+        run: |
+          set -euo pipefail
+          test "$(git -C candidate-adrs rev-parse HEAD)" = "c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068"
+          nix flake check -L "path:$PWD/candidate-adrs" \
+            2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs-234.log"
+          (
+            cd candidate-adrs
+            bash ci/check-recursive-contract-modeling-v1-static.sh
+            python3 tools/check-recursive-contract-modeling-v1.py selftest
+          ) 2>&1 | tee -a "$RUNNER_TEMP/gov-canary-adrs-234.log"
 
       - name: Upload ADRS observation
         if: always()
@@ -158,6 +221,7 @@ jobs:
           name: gov-canary-adrs-observation
           path: |
             ${{ runner.temp }}/gov-canary-adrs.log
+            ${{ runner.temp }}/gov-canary-adrs-234.log
             tools/code-governance/out/proof-receipt.json
             tools/code-governance/out/transports/live/transport-receipt.json
             tools/code-governance/out/evaluations/live-local/
