@@ -7,6 +7,7 @@ on:
     branches: [proposals]
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -94,6 +95,36 @@ jobs:
           path: accepted-adrs-source.tar.gz
           if-no-files-found: error
 
+  live-consumers:
+    name: live selected consumer capture
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact governance candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Run live consumer checker selftest
+        run: python3 tools/check-live-final-ci-consumers.py selftest
+
+      - name: Fetch current claims and receipt artifact bodies
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 tools/check-live-final-ci-consumers.py capture \
+            --out live-selected-consumers.json
+          grep -q '"status":"pass"' live-selected-consumers.json
+          grep -q '"candidateSha"' live-selected-consumers.json
+
+      - name: Upload live selected consumer packet
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-selected-consumers
+          path: live-selected-consumers.json
+          if-no-files-found: error
+
   regression:
     name: exact-candidate regression
     needs: source-capture
@@ -176,7 +207,7 @@ jobs:
 
   gate:
     name: gate
-    needs: [capture, regression]
+    needs: [capture, regression, live-consumers]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact governance candidate
@@ -197,6 +228,12 @@ jobs:
           name: final-ci-regression
           path: evidence/regression
 
+      - name: Download live selected consumer packet
+        uses: actions/download-artifact@v4
+        with:
+          name: live-selected-consumers
+          path: evidence/live-consumers
+
       - name: Run final exact-SHA organization admission
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -205,8 +242,15 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           test -s evidence/accepted-decision/accepted-decision-capture.json
           test -s evidence/regression/regression-receipt.json
-          python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --json | tee final-gate-report.json
+          test -s evidence/live-consumers/live-selected-consumers.json
+          python3 tools/check-package-final-scope-purpose-join.py check \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --live-consumers evidence/live-consumers/live-selected-consumers.json \
+            --json | tee final-gate-report.json
           grep -q '"productionAdmission":true' final-gate-report.json
+          grep -q '"liveConsumerReadback":true' final-gate-report.json
+          grep -q '"artifactBodiesVerified":true' final-gate-report.json
+          grep -q '"receiptCandidateShaBound":true' final-gate-report.json
           grep -q '"allRepositoriesEnforced":false' final-gate-report.json
 
       - name: Upload final gate evidence
@@ -217,6 +261,7 @@ jobs:
             final-gate-report.json
             evidence/accepted-decision/accepted-decision-capture.json
             evidence/regression/regression-receipt.json
+            evidence/live-consumers/live-selected-consumers.json
           if-no-files-found: error
 
   post-effect:
