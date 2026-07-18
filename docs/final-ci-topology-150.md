@@ -1,60 +1,75 @@
-# Governance #150 pre-acceptance implementation
+# Governance #150 final organization CI topology
 
-## Boundary
+## Accepted source
 
-Parent decision `roccho-dev/adrs#233` is proposed and is not accepted decision authority.
-This change therefore performs only:
+ADRS #233 is accepted through merge `a8fc9e8e04d53f1d783317059e4421c8dc724d01`.
 
-- machine-readable inventory of the current 12 workflows;
-- explicit current and target authority classes;
-- exact-candidate-SHA non-authority gate fixture;
-- current claim-port and selected-scope closure reuse;
-- destructive migration-safety tests;
-- same-name current-head fixture execution.
+- decision: `01K0D7C3A00000000000000233`
+- release: `final-organization-ci-topology-v1.0.0`
+- contract digest: `8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314`
+- stable required check: `gov-final-scope-purpose-join / gate`
+- rollout: governance, UI, and Ops only
+- `allRepositoriesEnforced=false`
 
-It does not grant merge-admission or effect authority, change required checks, delete workflows, or claim all-repository enforcement.
+ADRS owns accepted meaning. Governance projects and enforces that exact accepted decision but cannot change its meaning.
 
-## Current topology findings
+## Final provider topology
 
-| Finding | Current fact | Required later action |
-|---|---|---|
-| Default branch | `proposals` | preserve exact default identity |
-| `repo-governance` push | `main` | move proof before deletion |
-| ruleset plan | `main`, legacy check, `authority:false` | accepted cutover and readback |
-| ADRS shadow default | `main` | bind accepted ADRS ref/release |
-| repo-explain fallback | fallback artifact can still become green | remove only after accepted output transfer |
-| merge-admission surfaces | `0` | exactly `1` only after accepted decision |
-| current workflow count | `12` | converge only with no-loss and no-residual proof |
+| Workflow | Trigger | Authority class | Responsibility |
+|---|---|---|---|
+| `gov-final-scope-purpose-join` | pull request, push to `proposals`, manual | merge-admission | exact candidate capture, complete regression, accepted decision join, selected-repository admission, final evidence, push readback |
+| `gov-canary` | schedule, manual | evidence-only | ADRS source drift, GitHub App read capacity, topology and lifecycle observation |
 
-## Implemented fixture equation
+Exactly one job has the stable check identity `gov-final-scope-purpose-join / gate`.
+The canary cannot admit a merge or perform an effect.
+
+## Gate equation
 
 ```text
-proposed ADRS fixture identity
-+ governance fixture assertion
-+ exact-candidate-SHA fixture receipt
-+ current claim-port organization admission
-+ scope/package/purpose pass
-+ source and engine identity equality
-+ zero current merge/effect authority
-= fixture-pass | block
+accepted ADRS #233 decision
++ exact governance candidate SHA
++ complete governance regression
++ governance self assertion and receipt
++ merged UI positive-consumer assertion and exact-head receipt
++ merged Ops migration-consumer assertion and exact-head receipt
++ claim-port classification = organization-active for all selected repositories
+= allow | block
 ```
 
-`fixture-pass` is evidence-only and is never production `allow`.
+Missing, stale, malformed, revoked, cross-repository, or wrong-SHA inputs block.
+Technical success never implies all-repository enforcement or a business outcome.
 
-## Destructive coverage
+## Security boundary
 
-The selftest rejects 25 cases including missing/stale decision, assertion and receipt inputs; repository/SHA mismatches; source and candidate races; authority collisions; fallback or generated artifacts offered as admission; expired exceptions; incomplete deletion; effect readback mismatch; write-secret exposure; and technical-to-business overclaims.
+- every candidate checkout names the exact PR head or pushed SHA;
+- checkout credentials are never persisted;
+- the required gate receives no write secret;
+- candidate code does not share a job with ADRS App credentials;
+- ADRS live observation is isolated in the scheduled read-only canary;
+- post-effect is push-only and records the exact written and observed SHA;
+- artifacts and receipts are evidence, not accepted meaning.
 
-## Residuals intentionally left open
+## Migration closure
 
-- accepted ADRS #233 decision/release digest;
-- accepted positive feature consumer and current assertion;
-- accepted migration consumer with a known mismatch;
-- accepted receipt contract and production receipts;
-- required-check or publish-gate control-plane adapter;
-- protected-ref/effect readback;
-- responsibility transfer and deletion readback;
-- final two-workflow cutover;
-- all-repository enforcement.
+The former twelve workflows were reduced to the two accepted surfaces only after:
 
-These residuals block closure of governance #150, but not merge of this bounded pre-acceptance fixture and inventory.
+1. responsibility transfer was represented in the accepted ADRS contract;
+2. the existing regression commands were retained by the final gate or canary;
+3. UI and Ops selected-consumer receipts were independently green;
+4. the stable check name was preserved;
+5. the ruleset plan was corrected from `main` and the legacy check to `proposals` and the stable final check;
+6. the deletion checker required no workflow, CI-intent, ruleset-plan, or selected-consumer residual.
+
+The exact consumer heads, merge commits, run IDs, and artifact digests are bound in `governance/selected-final-ci-rollout.v1.json`.
+
+## Closure boundary
+
+This implementation closes the accepted governance/UI/Ops rollout only.
+It does not claim:
+
+- every repository is governed;
+- every code property is statically observable;
+- CI completion creates buyer value by itself;
+- the corporate-sale outcome has occurred.
+
+Rollback restores the last accepted topology and exact accepted source/engine identities; it does not infer an implicit latest state.
