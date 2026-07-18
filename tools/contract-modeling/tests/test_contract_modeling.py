@@ -15,8 +15,8 @@ DISPOSITIONS = {"mapped", "retired", "quarantined"}
 
 
 def load_engine():
-    path = TOOL_ROOT / "bin/engine.py"
-    spec = importlib.util.spec_from_file_location("contract_modeling_engine_tests", path)
+    path = TOOL_ROOT / "bin/epoch.py"
+    spec = importlib.util.spec_from_file_location("contract_modeling_epoch_tests", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -33,7 +33,7 @@ class ContractModelingTests(unittest.TestCase):
             ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"], text=True
         ).strip()
 
-    def test_all_eight_admission_outputs_are_derived(self):
+    def test_all_eight_fixture_outputs_are_derived(self):
         policy = self.engine.read_json(TOOL_ROOT / "fixtures/accepted-policy.json")
         rows = self.engine.read_jsonl(TOOL_ROOT / "fixtures/claims.jsonl")
         graph = self.engine.validate_and_reduce(rows, policy)
@@ -62,7 +62,10 @@ class ContractModelingTests(unittest.TestCase):
             tmp_path = Path(tmp)
             shuffled_path = tmp_path / "shuffled.jsonl"
             shuffled_path.write_text(
-                "".join(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in shuffled),
+                "".join(
+                    json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
+                    for row in shuffled
+                ),
                 encoding="utf-8",
             )
             first = tmp_path / "first.json"
@@ -70,8 +73,10 @@ class ContractModelingTests(unittest.TestCase):
             base = [
                 sys.executable,
                 str(TOOL_ROOT / "bin/evaluate_exact.py"),
-                "--candidate-sha", self.candidate,
-                "--repo-root", str(REPO_ROOT),
+                "--candidate-sha",
+                self.candidate,
+                "--repo-root",
+                str(REPO_ROOT),
                 "--out",
             ]
             subprocess.run(base + [str(first)], check=True, stdout=subprocess.DEVNULL)
@@ -82,17 +87,20 @@ class ContractModelingTests(unittest.TestCase):
             )
             self.assertEqual(first.read_bytes(), second.read_bytes())
 
-    def test_exact_sha_selftest_and_model_only_package(self):
+    def test_exact_sha_selftest_model_only_and_quarantine(self):
         with tempfile.TemporaryDirectory() as tmp:
             receipt = Path(tmp) / "receipt.json"
             subprocess.run(
                 [
                     sys.executable,
                     str(TOOL_ROOT / "bin/run_selftest.py"),
-                    "--candidate-sha", self.candidate,
-                    "--repo-root", str(REPO_ROOT),
+                    "--candidate-sha",
+                    self.candidate,
+                    "--repo-root",
+                    str(REPO_ROOT),
                     "--require-duckdb",
-                    "--out", str(receipt),
+                    "--out",
+                    str(receipt),
                 ],
                 check=True,
                 stdout=subprocess.DEVNULL,
@@ -103,6 +111,11 @@ class ContractModelingTests(unittest.TestCase):
             self.assertEqual("pass", value["model_only_package"])
             self.assertFalse(value["migration_complete"])
             self.assertFalse(value["business_outcome_achieved"])
+
+        packet = self.engine.evaluate(self.candidate, REPO_ROOT)
+        self.assertEqual(
+            ["request:07-ambiguous"], packet["quarantine_preserved_subjects"]
+        )
 
 
 if __name__ == "__main__":
