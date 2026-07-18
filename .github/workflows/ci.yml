@@ -15,6 +15,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  contract-modeling:
+    name: contract-modeling admission
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout exact governance candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Verify exact checkout
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.5'
+          cache: pip
+          cache-dependency-path: tools/contract-modeling/requirements.txt
+
+      - name: Install pinned proof dependencies
+        run: python3 -m pip install --disable-pip-version-check -r tools/contract-modeling/requirements.txt
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+
+      - name: Generate deterministic proof ledgers
+        run: python3 tools/contract-modeling/fixtures/generate.py
+
+      - name: Run unit and destructive tests
+        run: python3 -m unittest discover -s tools/contract-modeling/tests -p 'test_*.py'
+
+      - name: Run exact-SHA recursive contract-modeling proof
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash tools/contract-modeling/run-proof.sh
+
   adrs-connection:
     name: adrs connection preflight
     runs-on: ubuntu-latest
