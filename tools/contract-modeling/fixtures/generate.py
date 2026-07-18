@@ -137,15 +137,15 @@ def build():
 
     rows.extend([
         row("package-contract:code-governance", "claim", "package-contract-v1",
-            "package-contract", "pkg:governance:code-governance",
+            "package-contract", "contract:pkg:governance:code-governance",
             package_payload("pkg:governance:code-governance", "receipt:code-governance",
                             "canonical-ledger.v1", "semantic-packet.v1", ["filesystem-read"])),
         row("package-contract:claim-admission", "claim", "package-contract-v1",
-            "package-contract", "pkg:governance:claim-admission",
+            "package-contract", "contract:pkg:governance:claim-admission",
             package_payload("pkg:governance:claim-admission", "receipt:claim-admission",
                             "claim-port-input.v1", "claim-port-admission.v1", ["filesystem-read"])),
         row("package-contract:model-only", "claim", "package-contract-v1",
-            "package-contract", "pkg:governance:model-only-transform",
+            "package-contract", "contract:pkg:governance:model-only-transform",
             package_payload("pkg:governance:model-only-transform", "receipt:model-only",
                             "model-only.input.v1", "model-only.output.v1", ["none"])),
     ])
@@ -162,14 +162,15 @@ def build():
                       ["customer_id", "email"], ["email-search"],
                       queries=["customer-by-email"], witnesses=["query-use"]),
         model_payload("05-destructive", "model:customer", ["customer_id"],
-                      ["customer_id"], ["customer"], coverage="total", round_trip=False),
+                      ["customer_id"], ["customer"], coverage="total", round_trip=False,
+                      witnesses=["breaking-use"]),
         model_payload("06-new", "new:risk-assessment", ["assessment_id"],
                       ["assessment_id", "customer_id", "score"], ["risk-assessment"],
                       witnesses=["multiple-assessments"], distinct=["independent-lifecycle"]),
         model_payload("07-ambiguous", "model:customer-account-link", ["customer_id"],
                       ["customer_id", "account_id"], ["customer-account-link"]),
         model_payload("08-raw", "model:customer", ["customer_id"],
-                      ["customer_id", "raw"], ["raw-customer"],
+                      ["customer_id", "name"], ["customer"],
                       queries=["raw-scan"], raw=True, witnesses=["request"]),
     ]
     for payload in claims:
