@@ -1,31 +1,41 @@
 {
   "kind": "contractModelingPolicyInput.v1",
-  "mode": "shadow",
+  "mode": "production",
   "evaluation_date": "2026-07-18",
   "decision": {
     "source": "roccho-dev/adrs#234",
-    "pr": "roccho-dev/adrs#237",
-    "candidate_head": "c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068",
+    "pr": "roccho-dev/adrs#241",
+    "accepted_merge": "458ab4267882083de0593754d1bf9766bf8d54da",
     "decision_id": "01K0E1CM000000000000000234",
     "decision_digest": "cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1",
-    "release": "recursive-contract-modeling-v1.0.0",
-    "status": "accepted-candidate"
+    "release": "recursive-contract-modeling-v1.0.1",
+    "correction_decision_id": "01K0E1CM000000000000000235",
+    "status": "accepted"
   },
   "compiler": {
-    "version": "contract-modeling-compiler.v1"
+    "version": "contract-modeling-compiler.v1",
+    "shadow_merge": "495fb26a6794155586f2b7af52e7da09285fa780"
   },
   "legacy": {
-    "source": "bounded-proof-corpus:specs/packages/jsonl-datamodeling-duckdb-ci",
+    "source": "specs/packages/jsonl-datamodeling-duckdb-ci",
     "source_digest": "cfb47ace6877dfabe7322c18448962628611d26d328b81b5689b6c184e04e76d",
+    "preservation_repository": "roccho-dev/specs",
+    "preservation_commit": "c02f243375fe42635f71f7ffa6ba9be37718dfca",
+    "source_archive": "proposal-jsonl-datamodeling-duckdb-ci-v2-260607.zip",
+    "source_archive_sha256": "459d7cfd2f7ebe1bc1e6ee2a665347c030da098b2018be9ac5b590b648d87c19",
+    "responsibility_count": 36,
     "unexplained_allowed": 0,
-    "final_frozen_inventory": false
+    "final_frozen_inventory": true
   },
   "cutover": {
     "scope": "selected-required-universe-v1",
     "production_gate": "gov-final-scope-purpose-join / gate",
-    "state": "shadow",
+    "state": "production",
     "legacy_active_consumer_count": 0,
-    "external_consumer_zero_proven": false
+    "external_consumer_zero_proven": true,
+    "anti_reintroduction_required": true,
+    "effect_readback_required": true,
+    "migration_complete_candidate": true
   },
   "claims": {
     "all_repositories_enforced": false,

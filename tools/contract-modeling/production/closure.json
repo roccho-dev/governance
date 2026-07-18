@@ -1,0 +1,66 @@
+{
+  "kind": "contractModelingProductionClosure.v1",
+  "status": "candidate",
+  "acceptedDecision": {
+    "issue": "roccho-dev/adrs#234",
+    "pr": "roccho-dev/adrs#241",
+    "merge": "458ab4267882083de0593754d1bf9766bf8d54da",
+    "decisionId": "01K0E1CM000000000000000234",
+    "correctionDecisionId": "01K0E1CM000000000000000235",
+    "digest": "cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1",
+    "release": "recursive-contract-modeling-v1.0.1"
+  },
+  "compiler": {
+    "version": "contract-modeling-compiler.v1",
+    "shadowMerge": "495fb26a6794155586f2b7af52e7da09285fa780",
+    "productionOwner": "roccho-dev/governance#153",
+    "meaningAuthority": false,
+    "effectAuthority": false
+  },
+  "legacy": {
+    "inventoryPath": "tools/contract-modeling/production/legacy-inventory.json",
+    "responsibilityUniverseDigest": "cfb47ace6877dfabe7322c18448962628611d26d328b81b5689b6c184e04e76d",
+    "responsibilityCount": 36,
+    "mapped": 36,
+    "retired": 0,
+    "quarantined": 0,
+    "unexplained": 0,
+    "activeConsumerCount": 0,
+    "externalConsumerZeroProven": true,
+    "preservationRepository": "roccho-dev/specs",
+    "preservationCommit": "c02f243375fe42635f71f7ffa6ba9be37718dfca",
+    "archive": "proposal-jsonl-datamodeling-duckdb-ci-v2-260607.zip",
+    "archiveSha256": "459d7cfd2f7ebe1bc1e6ee2a665347c030da098b2018be9ac5b590b648d87c19",
+    "authority": false
+  },
+  "proof": {
+    "requiredPackageCount": 2,
+    "modelOnlyPackageCount": 1,
+    "eightWayAdmission": true,
+    "promotionOnlyCurrent": true,
+    "replayEqual": true,
+    "compatibleVersionsShareABI": true,
+    "approvedRawDirectQueryCount": 0,
+    "effectReceiptsJoined": true,
+    "antiReintroduction": true,
+    "productionGate": "gov-final-scope-purpose-join / gate"
+  },
+  "cutover": {
+    "scope": "selected-required-universe-v1",
+    "state": "production-candidate",
+    "effect": "merge-to-governance-proposals",
+    "effectReadbackRequired": true,
+    "rollback": "previous-governance-proposals-commit-and-previous-promotion-epoch",
+    "migrationCompleteBeforeEffectReadback": false,
+    "migrationCompleteAfterEffectReadback": true
+  },
+  "claimCeiling": {
+    "allRepositoriesEnforced": false,
+    "businessOutcomeAchieved": false,
+    "corporateSaleOutcomeAchieved": false
+  },
+  "residuals": [
+    "merge exact admitted governance candidate",
+    "read back exact governance proposals merge through post-effect receipt"
+  ]
+}

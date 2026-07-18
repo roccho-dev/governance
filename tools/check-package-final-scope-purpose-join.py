@@ -5,6 +5,7 @@ import argparse
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +66,10 @@ def regression_components() -> list[dict[str, Any]]:
             "final-two-surface-role",
             [sys.executable, "tools/check-package-ci-final-role-demotion.py", "check", "--json"],
         ),
+        run_component(
+            "contract-modeling-production-migration",
+            [sys.executable, "tools/check-contract-modeling-production-migration.py", "selftest"],
+        ),
     ]
 
 
@@ -75,21 +80,22 @@ def run_selftest() -> dict[str, Any]:
         raise SystemExit(
             canonical(
                 {
-                    "kind": "governance.finalScopePurposeJoin.selftest.v3",
+                    "kind": "governance.finalScopePurposeJoin.selftest.v4",
                     "status": "fail",
                     "failedComponents": failed,
                 }
             )
         )
     return {
-        "kind": "governance.finalScopePurposeJoin.selftest.v3",
+        "kind": "governance.finalScopePurposeJoin.selftest.v4",
         "status": "pass",
         "authority": False,
         "authorityClass": "evidence-only",
         "finalCheckName": FINAL_CHECK_NAME,
         "acceptedDecisionMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
+        "contractModelingAcceptedMerge": "458ab4267882083de0593754d1bf9766bf8d54da",
         "components": components,
-        "boundary": "Selftests are evidence only. Production admission requires a freshly captured live consumer packet containing current repository heads, current claims, successful push-run identities, downloaded artifact bodies, and exact candidate SHA equality.",
+        "boundary": "Selftests are evidence only. Production admission requires fresh live consumer receipts and production contract-modeling migration closure for the exact candidate.",
     }
 
 
@@ -112,15 +118,43 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
         raise SystemExit(
             canonical(
                 {
-                    "kind": "governance.finalScopePurposeJoin.gate.v3",
+                    "kind": "governance.finalScopePurposeJoin.gate.v4",
                     "status": "fail",
                     "failedComponents": [production],
                 }
             )
         )
     parsed = json.loads(production["output"][-1])
+
+    with tempfile.TemporaryDirectory() as temporary:
+        migration = run_component(
+            "contract-modeling-production-cutover",
+            [
+                sys.executable,
+                "tools/check-contract-modeling-production-migration.py",
+                "check",
+                "--candidate-sha",
+                candidate_sha,
+                "--out",
+                temporary,
+            ],
+        )
+        if migration["status"] != "pass":
+            raise SystemExit(
+                canonical(
+                    {
+                        "kind": "governance.finalScopePurposeJoin.gate.v4",
+                        "status": "fail",
+                        "failedComponents": [migration],
+                    }
+                )
+            )
+        migration_parsed = json.loads(
+            (Path(temporary) / "production-migration-candidate.json").read_text(encoding="utf-8")
+        )
+
     return {
-        "kind": "governance.finalScopePurposeJoin.gate.v3",
+        "kind": "governance.finalScopePurposeJoin.gate.v4",
         "status": "pass",
         "decision": "allow",
         "authority": True,
@@ -135,10 +169,18 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
         "artifactBodiesVerified": parsed["artifactBodiesVerified"],
         "receiptCandidateShaBound": parsed["receiptCandidateShaBound"],
         "productionAdmission": True,
+        "contractModelingAcceptedMerge": migration_parsed["acceptedDecisionMerge"],
+        "contractModelingLegacyResponsibilityCount": migration_parsed["legacyResponsibilityCount"],
+        "contractModelingLegacyConsumerCount": migration_parsed["legacyActiveConsumerCount"],
+        "contractModelingAntiReintroduction": migration_parsed["antiReintroduction"],
+        "contractModelingProductionCutoverEligible": migration_parsed["productionCutoverEligible"],
+        "contractModelingEffectReadbackRequired": migration_parsed["effectReadbackRequired"],
+        "contractModelingMigrationCompleteCandidate": migration_parsed["migrationCompleteAfterEffectReadback"],
         "allRepositoriesEnforced": False,
         "regression": regression,
         "production": parsed,
-        "boundary": "Allows only this exact governance candidate after live UI/Ops claim and receipt artifact readback. It does not grant accepted meaning, perform effects, or prove a unique permanent GitHub merge path.",
+        "contractModelingMigration": migration_parsed,
+        "boundary": "Allows only the exact governance candidate after live UI/Ops readback and complete contract-modeling production-cutover proof. Migration completion becomes true only after merge effect readback.",
     }
 
 
