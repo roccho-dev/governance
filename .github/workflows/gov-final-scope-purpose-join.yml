@@ -161,11 +161,12 @@ jobs:
             --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
             --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" \
             2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
+          nix flake check -L "path:$PWD/evidence/candidate-adrs" \
+            2>&1 | tee "$RUNNER_TEMP/adrs-234-candidate.log"
           (
             cd evidence/candidate-adrs
-            nix flake check -L
             bash ci/check-recursive-contract-modeling-v1-static.sh
-          ) 2>&1 | tee "$RUNNER_TEMP/adrs-234-candidate.log"
+          ) 2>&1 | tee -a "$RUNNER_TEMP/adrs-234-candidate.log"
 
       - name: Run Python and contract-modeling regression
         env:
