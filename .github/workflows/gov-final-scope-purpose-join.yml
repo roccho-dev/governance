@@ -74,17 +74,17 @@ jobs:
           path: candidate-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
-      - name: Checkout exact ADRS 223 publication correction candidate
+      - name: Checkout exact ADRS 223 publication correction merge
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: 8219ad53c22b5374481954241a58268540f875c3
+          ref: b30c0750b4783f3349bc3c2d91e00853c90ab2ef
           path: publication-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
       - name: Verify and package ADRS sources
         env:
-          PUBLICATION_ADRS_SHA: 8219ad53c22b5374481954241a58268540f875c3
+          PUBLICATION_ADRS_SHA: b30c0750b4783f3349bc3c2d91e00853c90ab2ef
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
@@ -117,7 +117,7 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: company-operating-contract-v0-publication-candidate
+          name: company-operating-contract-v0-publication
           path: |
             ${{ runner.temp }}/company-contract-publication-selftest.json
             ${{ runner.temp }}/company-contract-publication-check.json
