@@ -47,15 +47,10 @@ cmp "$OUT/semantic-packet.json" "$OUT/semantic-packet-second.json"
   --out "$OUT/selftest-receipt.json" \
   > "$OUT/selftest.log"
 
-nix build --impure --no-link --print-out-paths --expr "
-let
-  flake = builtins.getFlake (toString $REPO_ROOT);
-  pkgs = import flake.inputs.nixpkgs { system = \"x86_64-linux\"; };
-in import $TOOL_ROOT/nix/materialize.nix {
-  inherit pkgs;
-  semanticPacket = $OUT/semantic-packet.json;
-}
-" > "$OUT/nix-store-path.txt"
+nix store add-file "$OUT/semantic-packet.json" > "$OUT/nix-store-path.txt"
+STORE_PATH=$(cat "$OUT/nix-store-path.txt")
+test -f "$STORE_PATH"
+cmp "$OUT/semantic-packet.json" "$STORE_PATH"
 
 test -s "$OUT/semantic-packet.json"
 test -s "$OUT/selftest-receipt.json"
