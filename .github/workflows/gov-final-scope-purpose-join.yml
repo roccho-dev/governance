@@ -86,7 +86,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: aaf6e73d73f61e1d0ad277ce5e7451a4dc0124b8
+          ref: 70b7c37c434e01b56f53a27091dab43b222d8f76
           path: promotion-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -105,7 +105,7 @@ jobs:
       - name: Verify and package ADRS sources
         env:
           PUBLICATION_ADRS_SHA: b30c0750b4783f3349bc3c2d91e00853c90ab2ef
-          PROMOTION_ADRS_SHA: aaf6e73d73f61e1d0ad277ce5e7451a4dc0124b8
+          PROMOTION_ADRS_SHA: 70b7c37c434e01b56f53a27091dab43b222d8f76
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
@@ -134,7 +134,7 @@ jobs:
             bash ci/check-signed-promotion-v1-static.sh | tee "$RUNNER_TEMP/signed-promotion-adrs-static.log"
           )
           grep -q '"productionAcceptanceReady":false' "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
-          grep -q 'publisher-public-key-unprovisioned' "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
+          grep -q '"acceptanceBlocker":"publisher-public-key-unprovisioned"' "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
           tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
           tar -C candidate-adrs --exclude=.git -czf candidate-adrs-source.tar.gz .
       - uses: actions/upload-artifact@v4
@@ -344,7 +344,7 @@ jobs:
               'signedPromotion':{
                   'status':'shadow-pass',
                   'contractDigest':'sha256:3dd313525bf80a3afefd141cc019325287f6bd8b2516ed97e1a748842fe3fb34',
-                  'adrsHead':'aaf6e73d73f61e1d0ad277ce5e7451a4dc0124b8',
+                  'adrsHead':'70b7c37c434e01b56f53a27091dab43b222d8f76',
                   'acceptedDecisionStatus':'proposed',
                   'productionKeyProvisioned':False,
                   'productionPromotionEffect':False,
