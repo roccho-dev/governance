@@ -149,7 +149,9 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
                     }
                 )
             )
-        migration_parsed = json.loads(migration["output"][-1])
+        migration_parsed = json.loads(
+            (Path(temporary) / "production-migration-candidate.json").read_text(encoding="utf-8")
+        )
 
     return {
         "kind": "governance.finalScopePurposeJoin.gate.v4",
