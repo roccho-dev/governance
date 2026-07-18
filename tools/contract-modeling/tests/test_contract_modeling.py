@@ -11,6 +11,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TOOL_ROOT = REPO_ROOT / "tools/contract-modeling"
+DISPOSITIONS = {"mapped", "retired", "quarantined"}
 
 
 def load_engine():
@@ -18,6 +19,7 @@ def load_engine():
     spec = importlib.util.spec_from_file_location("contract_modeling_engine_tests", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -49,7 +51,7 @@ class ContractModelingTests(unittest.TestCase):
         )
         legacy = self.engine._legacy_rows(graph)
         self.assertEqual(36, len(legacy))
-        self.assertTrue(all(row["disposition"] in self.engine.DISPOSITIONS for row in legacy))
+        self.assertTrue(all(row["disposition"] in DISPOSITIONS for row in legacy))
         self.assertTrue(all(row["owner"] and row["reason"] for row in legacy))
 
     def test_order_independent_exact_evaluator(self):
