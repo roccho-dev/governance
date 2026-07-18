@@ -9,9 +9,9 @@ from pathlib import Path
 
 
 def load_engine(path: Path):
-    spec = importlib.util.spec_from_file_location("contract_modeling_engine", path)
+    spec = importlib.util.spec_from_file_location("contract_modeling_epoch", path)
     if spec is None or spec.loader is None:
-        raise SystemExit("cannot load contract-modeling engine")
+        raise SystemExit("cannot load contract-modeling epoch engine")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -33,7 +33,7 @@ def main() -> int:
     if observed != args.candidate_sha:
         raise SystemExit(f"candidate SHA mismatch: expected {args.candidate_sha}, observed {observed}")
 
-    engine = load_engine(repo_root / "tools/contract-modeling/bin/engine.py")
+    engine = load_engine(repo_root / "tools/contract-modeling/bin/epoch.py")
     original_evaluate = engine.evaluate
 
     def exact_evaluate(candidate_sha, *rest, **kwargs):
@@ -44,7 +44,8 @@ def main() -> int:
         return original_evaluate(candidate_sha, *rest, **kwargs)
 
     engine.evaluate = exact_evaluate
-    engine.core.evaluate = exact_evaluate
+    engine.strict.evaluate = exact_evaluate
+    engine.strict.core.evaluate = exact_evaluate
     receipt = engine.selftest(args.candidate_sha, repo_root, args.require_duckdb)
     engine.write_json(args.out, receipt)
     print(engine.canonical_json(receipt))
