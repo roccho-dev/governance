@@ -1,0 +1,1 @@
+"""Contract-modeling command entrypoints."""

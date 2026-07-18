@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contract-modeling/envelope.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_ref",
+    "id",
+    "row_kind",
+    "semantic_family",
+    "semantic_kind",
+    "subject_key",
+    "payload",
+    "supersedes"
+  ],
+  "properties": {
+    "schema_ref": {
+      "const": "contract-modeling/envelope.v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "row_kind": {
+      "enum": [
+        "subject",
+        "edge",
+        "claim",
+        "evidence",
+        "receipt",
+        "legacy-mapping"
+      ]
+    },
+    "semantic_family": {
+      "enum": [
+        "package-contract-v1",
+        "data-model-v1",
+        "graph",
+        "purpose",
+        "effect",
+        "migration"
+      ]
+    },
+    "semantic_kind": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "subject_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/@-]*$"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "supersedes": {
+      "type": "array",
+      "maxItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    }
+  }
+}

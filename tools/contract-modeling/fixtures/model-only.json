@@ -1,0 +1,11 @@
+{
+  "expected": [
+    {"id": "a", "normalized_value": "Alpha"},
+    {"id": "b", "normalized_value": "Beta"}
+  ],
+  "input": [
+    {"id": "b", "ignored": 1, "value": "Beta"},
+    {"id": "a", "ignored": 2, "value": "Alpha"}
+  ],
+  "kind": "modelOnlyPackageFixture.v1"
+}

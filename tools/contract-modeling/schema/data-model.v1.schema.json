@@ -1,0 +1,36 @@
+{
+  "$id": "contract-modeling/data-model.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "destructive_case_ids": {"items": {"type": "string"}, "type": "array", "uniqueItems": true},
+    "distinct_evidence": {"items": {"type": "string"}, "type": "array", "uniqueItems": true},
+    "fields": {"items": {"type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
+    "identity_keys": {"items": {"type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
+    "migration_evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {"enum": ["none", "partial", "total"]},
+        "round_trip": {"type": "boolean"}
+      },
+      "required": ["coverage", "round_trip"],
+      "type": "object"
+    },
+    "owner": {"minLength": 1, "type": "string"},
+    "proposed_model_id": {"minLength": 1, "type": "string"},
+    "purpose": {
+      "additionalProperties": false,
+      "properties": {"root_id": {"type": "string"}, "start_id": {"type": "string"}},
+      "required": ["root_id", "start_id"],
+      "type": "object"
+    },
+    "raw_direct_sql": {"type": "boolean"},
+    "request_id": {"minLength": 1, "type": "string"},
+    "requested_projection": {"type": ["string", "null"]},
+    "required_queries": {"items": {"type": "string"}, "type": "array", "uniqueItems": true},
+    "terms": {"items": {"type": "string"}, "type": "array", "uniqueItems": true},
+    "witnesses": {"items": {"type": "string"}, "type": "array", "uniqueItems": true}
+  },
+  "required": ["request_id", "proposed_model_id", "owner", "identity_keys", "fields", "terms", "required_queries", "requested_projection", "raw_direct_sql", "witnesses", "distinct_evidence", "destructive_case_ids", "migration_evidence", "purpose"],
+  "type": "object"
+}

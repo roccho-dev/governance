@@ -1,0 +1,9 @@
+[
+  {
+    "current_epoch": "epoch:v0",
+    "decision": "extend_existing",
+    "generated_by": "promotion-ledger",
+    "promotion_id": "promotion:previous",
+    "subject_key": "request:07-ambiguous"
+  }
+]

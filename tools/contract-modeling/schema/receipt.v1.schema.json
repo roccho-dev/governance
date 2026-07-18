@@ -1,0 +1,19 @@
+{
+  "$id": "contract-modeling/receipt.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accepted_decision_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "candidate_sha": {"minLength": 1, "type": "string"},
+    "contract_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "effect_readback_digest": {"pattern": "^[0-9a-f]{64}$", "type": ["string", "null"]},
+    "effectful": {"type": "boolean"},
+    "expires_on": {"format": "date", "type": "string"},
+    "purpose_path_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "receipt_id": {"type": "string"},
+    "repository": {"type": "string"},
+    "status": {"const": "pass"}
+  },
+  "required": ["receipt_id", "repository", "candidate_sha", "status", "contract_digest", "accepted_decision_digest", "purpose_path_digest", "expires_on", "effectful", "effect_readback_digest"],
+  "type": "object"
+}
