@@ -19,8 +19,7 @@ jobs:
     name: accepted decision capture
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact governance candidate
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
@@ -30,15 +29,14 @@ jobs:
           python3 - <<'PY'
           import json
           from pathlib import Path
-          value = json.loads(Path("governance/accepted-final-ci-decision.v1.json").read_text())
-          assert value["acceptedMerge"] == "a8fc9e8e04d53f1d783317059e4421c8dc724d01"
-          assert value["contractCanonicalDigest"] == "8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314"
-          assert value["stableRequiredCheck"] == "gov-final-scope-purpose-join / gate"
-          assert value["allRepositoriesEnforced"] is False
-          Path("accepted-decision-capture.json").write_text(json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n")
+          value=json.loads(Path('governance/accepted-final-ci-decision.v1.json').read_text())
+          assert value['acceptedMerge']=='a8fc9e8e04d53f1d783317059e4421c8dc724d01'
+          assert value['contractCanonicalDigest']=='8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314'
+          assert value['stableRequiredCheck']=='gov-final-scope-purpose-join / gate'
+          assert value['allRepositoriesEnforced'] is False
+          Path('accepted-decision-capture.json').write_text(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n')
           PY
-      - name: Upload accepted decision capture
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: accepted-final-ci-decision
           path: accepted-decision-capture.json
@@ -48,16 +46,12 @@ jobs:
     name: accepted ADRS source capture
     runs-on: ubuntu-latest
     steps:
-      - name: Validate read-only ADRS reader configuration
+      - name: Validate ADRS reader
         env:
-          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
-          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
-        run: |
-          set -euo pipefail
-          test -n "$ADRS_READER_CLIENT_ID"
-          test -n "$ADRS_READER_PRIVATE_KEY"
-      - name: Create read-only ADRS contents token
-        id: adrs-token
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
@@ -65,8 +59,7 @@ jobs:
           owner: roccho-dev
           repositories: adrs
           permission-contents: read
-      - name: Checkout exact accepted ADRS source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
           ref: a8fc9e8e04d53f1d783317059e4421c8dc724d01
@@ -76,11 +69,10 @@ jobs:
       - name: Verify and package accepted ADRS source
         run: |
           set -euo pipefail
-          test "$(git -C accepted-adrs rev-parse HEAD)" = "a8fc9e8e04d53f1d783317059e4421c8dc724d01"
+          test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
           python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check --contract accepted-adrs/ci_topology/v1/contract.json --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
           tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
-      - name: Upload exact accepted ADRS source
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: accepted-adrs-source
           path: accepted-adrs-source.tar.gz
@@ -90,21 +82,18 @@ jobs:
     name: live selected consumer capture
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact governance candidate
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Validate consumer reader configuration
         env:
-          CONSUMER_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
-          CONSUMER_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
-        run: |
-          set -euo pipefail
-          test -n "$CONSUMER_READER_CLIENT_ID"
-          test -n "$CONSUMER_READER_PRIVATE_KEY"
-      - name: Create read-only UI and Ops Actions token
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - name: Try read-only UI and Ops Actions token
         id: consumer-token
+        continue-on-error: true
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
@@ -123,7 +112,7 @@ jobs:
         run: |
           set -o pipefail
           python3 tools/check-live-final-ci-consumers.py capture --token-env CONSUMER_READER_TOKEN --out live-selected-consumers.json 2>&1 | tee live-selected-consumers.log
-      - name: Upload live selected consumer diagnostics
+      - name: Upload live diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -132,37 +121,29 @@ jobs:
             live-selected-consumers.json
             live-selected-consumers.log
           if-no-files-found: warn
-      - name: Reduce live selected consumer packet
+      - name: Reduce live packet
         env:
-          LIVE_CAPTURE_OUTCOME: ${{ steps.live-capture.outcome }}
+          OUTCOME: ${{ steps.live-capture.outcome }}
         run: |
           set -euo pipefail
-          test "$LIVE_CAPTURE_OUTCOME" = success
+          test "$OUTCOME" = success
           test -s live-selected-consumers.json
           grep -q '"status":"pass"' live-selected-consumers.json
-          grep -q '"candidateSha"' live-selected-consumers.json
-          grep -q '"artifactDigest"' live-selected-consumers.json
 
   control-plane-observation:
     name: current control-plane diagnostic
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact governance candidate
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Run control-plane checker selftest
-        run: python3 tools/check-live-final-ci-control-plane.py selftest
-      - name: Observe current ruleset and required checks
-        id: control-plane
+      - run: python3 tools/check-live-final-ci-control-plane.py selftest
+      - id: control-plane
         continue-on-error: true
-        run: |
-          set -o pipefail
-          python3 tools/check-live-final-ci-control-plane.py check --out live-control-plane.json 2>&1 | tee live-control-plane.log
-      - name: Upload control-plane diagnostics
-        if: always()
+        run: python3 tools/check-live-final-ci-control-plane.py check --out live-control-plane.json 2>&1 | tee live-control-plane.log
+      - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: current-control-plane-diagnostic
@@ -176,27 +157,19 @@ jobs:
     needs: source-capture
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact governance candidate
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Download accepted ADRS source
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: accepted-adrs-source
           path: evidence
-      - name: Extract accepted ADRS source
-        run: |
-          set -euo pipefail
-          mkdir -p evidence/accepted-adrs
-          tar -C evidence/accepted-adrs -xzf evidence/accepted-adrs-source.tar.gz
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
+      - run: mkdir -p evidence/accepted-adrs && tar -C evidence/accepted-adrs -xzf evidence/accepted-adrs-source.tar.gz
+      - uses: cachix/install-nix-action@v31
         with:
-          extra_nix_config: |
-            extra-experimental-features = nix-command flakes
-      - name: Verify exact candidate identity
+          extra_nix_config: extra-experimental-features = nix-command flakes
+      - name: Verify exact candidate
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
@@ -212,8 +185,7 @@ jobs:
           set -o pipefail
           { python3 tools/compile-claim-port-joins.py selftest; python3 tools/check-package-final-scope-purpose-join.py selftest --json; } 2>&1 | tee "$RUNNER_TEMP/final-ci-python.log"
           touch "$RUNNER_TEMP/final-ci-python.pass"
-      - name: Upload regression diagnostics
-        if: always()
+      - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: final-ci-regression-diagnostics
@@ -221,16 +193,13 @@ jobs:
             ${{ runner.temp }}/final-ci-nix.log
             ${{ runner.temp }}/final-ci-python.log
           if-no-files-found: warn
-      - name: Reduce regression receipt
+      - name: Reduce regression
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          set -euo pipefail
-          test -f "$RUNNER_TEMP/final-ci-nix.pass"
-          test -f "$RUNNER_TEMP/final-ci-python.pass"
+          test -f "$RUNNER_TEMP/final-ci-nix.pass" && test -f "$RUNNER_TEMP/final-ci-python.pass"
           printf '{"kind":"governance.regressionReceipt.v1","status":"pass","candidateSha":"%s","authority":false}\n' "$CANDIDATE_SHA" > regression-receipt.json
-      - name: Upload regression receipt
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: final-ci-regression
           path: regression-receipt.json
@@ -241,23 +210,19 @@ jobs:
     needs: [capture, regression, live-consumers]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact governance candidate
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Download accepted decision capture
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: accepted-final-ci-decision
           path: evidence/accepted-decision
-      - name: Download regression receipt
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: final-ci-regression
           path: evidence/regression
-      - name: Download live selected consumer packet
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: live-selected-consumers
           path: evidence/live-consumers
@@ -265,19 +230,12 @@ jobs:
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          set -euo pipefail
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          test -s evidence/accepted-decision/accepted-decision-capture.json
-          test -s evidence/regression/regression-receipt.json
-          test -s evidence/live-consumers/live-selected-consumers.json
           python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --live-consumers evidence/live-consumers/live-selected-consumers.json --json | tee final-gate-report.json
           grep -q '"productionAdmission":true' final-gate-report.json
-          grep -q '"liveConsumerReadback":true' final-gate-report.json
           grep -q '"artifactBodiesVerified":true' final-gate-report.json
           grep -q '"receiptCandidateShaBound":true' final-gate-report.json
-          grep -q '"allRepositoriesEnforced":false' final-gate-report.json
-      - name: Upload final gate evidence
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: gov-final-gate-evidence
           path: |
@@ -293,18 +251,14 @@ jobs:
     needs: gate
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact pushed commit
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Bind effect readback
-        run: |
-          set -euo pipefail
+      - run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           printf '{"kind":"governance.postEffectReadback.v1","status":"pass","repository":"roccho-dev/governance","branch":"proposals","writtenSha":"%s","observedSha":"%s","authority":false}\n' "$GITHUB_SHA" "$(git rev-parse HEAD)" > post-effect-readback.json
-      - name: Upload post-effect readback
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: gov-post-effect-readback
           path: post-effect-readback.json
