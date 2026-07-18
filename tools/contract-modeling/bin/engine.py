@@ -47,26 +47,27 @@ def _strict_purpose_paths(active: dict[str, dict[str, Any]]) -> dict[str, list[s
 
 
 def _validate_legacy_bindings(policy: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+    expected_source = policy["legacy"]["source_digest"]
     expected_decision = policy["decision"]["decision_digest"]
-    source_digests: set[str] = set()
+    if not isinstance(expected_source, str) or not HEX64.fullmatch(expected_source):
+        raise core.ContractError("policy legacy source digest is invalid")
+
     count = 0
     for row in rows:
         if row.get("row_kind") != "legacy-mapping":
             continue
         count += 1
         payload = row.get("payload", {})
-        source_digest = payload.get("legacy_source_digest")
-        if not isinstance(source_digest, str) or not HEX64.fullmatch(source_digest):
-            raise core.ContractError(f"{row.get('id')}: invalid legacy source digest")
-        source_digests.add(source_digest)
+        if payload.get("legacy_source_digest") != expected_source:
+            raise core.ContractError(
+                f"{row.get('id')}: legacy row is not bound to the policy source digest"
+            )
         if payload.get("accepted_decision_digest") != expected_decision:
             raise core.ContractError(
                 f"{row.get('id')}: legacy row is not bound to the accepted decision"
             )
     if count == 0:
         raise core.ContractError("legacy migration ledger is empty")
-    if len(source_digests) != 1:
-        raise core.ContractError("legacy rows do not bind one frozen proof-corpus source")
 
 
 def evaluate(
