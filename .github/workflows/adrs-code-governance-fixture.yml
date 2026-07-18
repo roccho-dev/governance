@@ -82,3 +82,68 @@ jobs:
             tools/code-governance/out/transports/live/transport-receipt.json
             tools/code-governance/out/evaluations/live-local/
           if-no-files-found: warn
+
+  adrs-235-diagnostic:
+    name: exact ADRS 235 hosted proof
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Validate ADRS reader configuration
+        env:
+          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: |
+          set -euo pipefail
+          test -n "$ADRS_READER_CLIENT_ID"
+          test -n "$ADRS_READER_PRIVATE_KEY"
+
+      - name: Create least-privilege ADRS contents token
+        id: adrs-contents-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - name: Checkout exact ADRS candidate
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: ad98ae7d472e51ffd62e47f4098dad002098e2a8
+          path: .diagnostic/adrs
+          token: ${{ steps.adrs-contents-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+
+      - name: Run exact candidate Nix and deterministic proofs
+        working-directory: .diagnostic/adrs
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "ad98ae7d472e51ffd62e47f4098dad002098e2a8"
+          nix flake check -L
+          first="$RUNNER_TEMP/adrs-235-first"
+          second="$RUNNER_TEMP/adrs-235-second"
+          python3 tools/check-final-organization-ci-topology-v1.py check --contract ci_topology/v1/contract.json --out "$first" | tee "$RUNNER_TEMP/adrs-235-report.json"
+          python3 tools/check-final-organization-ci-topology-v1.py check --contract ci_topology/v1/contract.json --out "$second" >/dev/null
+          cmp "$first/report.json" "$second/report.json"
+          cmp "$first/selftest.json" "$second/selftest.json"
+          cmp "$first/receipt.json" "$second/receipt.json"
+          python3 tools/check-final-organization-ci-topology-v1.py selftest --contract ci_topology/v1/contract.json | tee "$RUNNER_TEMP/adrs-235-selftest.json"
+
+      - name: Upload exact ADRS 235 diagnostic proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adrs-235-exact-head-diagnostic
+          path: |
+            ${{ runner.temp }}/adrs-235-first/
+            ${{ runner.temp }}/adrs-235-report.json
+            ${{ runner.temp }}/adrs-235-selftest.json
+          if-no-files-found: error
