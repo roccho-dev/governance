@@ -1,13 +1,15 @@
 {
-  "kind": "governance.githubRulesetPlan.v1",
+  "kind": "governance.githubRulesetPlan.v2",
   "authority": false,
-  "sourceDecision": "roccho-dev/adrs#21",
+  "sourceDecision": "roccho-dev/adrs#233",
+  "acceptedDecisionMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
+  "contractDigest": "8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314",
   "target": {
     "repository": "roccho-dev/governance",
-    "branch": "main"
+    "branch": "proposals"
   },
   "requiredStatusChecks": [
-    "repo-governance / proof"
+    "gov-final-scope-purpose-join / gate"
   ],
   "requirePullRequest": true,
   "requiredApprovingReviewCount": 0,
@@ -16,6 +18,12 @@
   "allowForcePushes": false,
   "allowDeletions": false,
   "bypassActors": [],
-  "applyBoundary": "Non-authority plan only. Apply through an explicitly authorized GitHub control-plane adapter or repository administrator after the first successful workflow run confirms the exact check context.",
-  "rollback": "Remove the required check before removing or renaming the workflow/job; retain the last successful receipt and commit SHA."
+  "allRepositoriesEnforced": false,
+  "effectGate": {
+    "sameNameGreenRequired": true,
+    "exactCandidateShaRequired": true,
+    "postEffectReadbackRequired": true
+  },
+  "applyBoundary": "Non-authority exact plan. Apply only through an explicitly authorized GitHub control-plane effect after the same-name current-head gate is green; read back the resulting required check and protected-ref state.",
+  "rollback": "Restore the last accepted plan and exact required-check identity before changing or removing the final workflow; retain gate and post-effect receipts."
 }
