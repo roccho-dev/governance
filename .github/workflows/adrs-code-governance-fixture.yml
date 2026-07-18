@@ -82,3 +82,68 @@ jobs:
             tools/code-governance/out/transports/live/transport-receipt.json
             tools/code-governance/out/evaluations/live-local/
           if-no-files-found: warn
+
+  adrs-234-proof:
+    name: exact ADRS 234 hosted proof
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Validate ADRS reader configuration
+        env:
+          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: |
+          set -euo pipefail
+          test -n "$ADRS_READER_CLIENT_ID"
+          test -n "$ADRS_READER_PRIVATE_KEY"
+
+      - name: Create least-privilege ADRS contents token
+        id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - name: Checkout exact ADRS candidate
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: 2fb188b0d4f06efabb5823e60db4da92443cae84
+          path: .ci/adrs-234
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+
+      - name: Run exact ADRS candidate proof
+        run: |
+          set -euo pipefail
+          cd .ci/adrs-234
+          test "$(git rev-parse HEAD)" = "2fb188b0d4f06efabb5823e60db4da92443cae84"
+          nix flake check -L
+          bash contract_modeling/v1/static-proof.sh
+          first="$RUNNER_TEMP/adrs-234-first"
+          second="$RUNNER_TEMP/adrs-234-second"
+          python3 tools/check-recursive-contract-modeling-v1.py check --out "$first" >/dev/null
+          python3 tools/check-recursive-contract-modeling-v1.py check --out "$second" >/dev/null
+          cmp "$first/report.json" "$second/report.json"
+          cmp "$first/receipt.json" "$second/receipt.json"
+          cmp "$first/pass" "$second/pass"
+          python3 tools/check-recursive-contract-modeling-v1.py selftest > "$RUNNER_TEMP/adrs-234-selftest.json"
+          mkdir -p dist/recursive-contract-modeling-v1
+          cp "$first/report.json" "$first/receipt.json" "$first/pass" \
+             "$RUNNER_TEMP/adrs-234-selftest.json" dist/recursive-contract-modeling-v1/
+
+      - name: Upload exact ADRS 234 diagnostic proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: exact-adrs-234-proof-2fb188b
+          path: .ci/adrs-234/dist/recursive-contract-modeling-v1/*
+          if-no-files-found: error
