@@ -46,12 +46,20 @@ jobs:
           extra_nix_config: |
             extra-experimental-features = nix-command flakes
 
-      - name: Run exact candidate Nix and deterministic proofs
+      - name: Verify exact checkout
+        working-directory: .diagnostic/adrs
+        run: test "$(git rev-parse HEAD)" = "fc1866de3c113a22059cd79c0c936c9d129e2cfb"
+
+      - name: Run exact candidate Nix validation
+        working-directory: .diagnostic/adrs
+        run: |
+          set -o pipefail
+          nix flake check -L 2>&1 | tee "$RUNNER_TEMP/adrs-236-nix.log"
+
+      - name: Run deterministic recursive contract proofs
         working-directory: .diagnostic/adrs
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "fc1866de3c113a22059cd79c0c936c9d129e2cfb"
-          nix flake check -L
           first="$RUNNER_TEMP/adrs-236-first"
           second="$RUNNER_TEMP/adrs-236-second"
           selftest="$RUNNER_TEMP/adrs-236-selftest.json"
@@ -63,6 +71,11 @@ jobs:
           cmp "$first/receipt.json" "$second/receipt.json"
           cmp "$first/pass" "$second/pass"
           jq -e '.status == "pass" and .destructiveCaseCount == 34 and .requiredCategoryCount == 26 and (.destructiveReasons | length) == 34' "$selftest" >/dev/null
+
+      - name: Validate decision batch and exact digests
+        working-directory: .diagnostic/adrs
+        run: |
+          set -euo pipefail
           bash ci/decision-append.sh --validate decision/live/issue-234-recursive-contract-modeling-v1.jsonl >/dev/null
           test "$(sha256sum contract_modeling/v1/contract.json | cut -d ' ' -f1)" = "1bc8ee618113215753c3be21f1a90db1c44007feb5e0b855fb0ee4bc6ca770e0"
           test "$(sha256sum contract_modeling/v1/closure.json | cut -d ' ' -f1)" = "8366b8fe8e756142676871f299313fe622c669306ad579094297ee98d6224c82"
@@ -76,6 +89,7 @@ jobs:
         with:
           name: adrs-236-exact-head-diagnostic
           path: |
+            ${{ runner.temp }}/adrs-236-nix.log
             ${{ runner.temp }}/adrs-236-first/
             ${{ runner.temp }}/adrs-236-selftest.json
-          if-no-files-found: error
+          if-no-files-found: warn
