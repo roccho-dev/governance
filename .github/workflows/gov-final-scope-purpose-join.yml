@@ -95,14 +95,34 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Validate consumer reader configuration
+        env:
+          CONSUMER_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          CONSUMER_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: |
+          set -euo pipefail
+          test -n "$CONSUMER_READER_CLIENT_ID"
+          test -n "$CONSUMER_READER_PRIVATE_KEY"
+      - name: Create read-only UI and Ops Actions token
+        id: consumer-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: ui,ops
+          permission-actions: read
+          permission-contents: read
       - name: Run live consumer checker selftest
         run: python3 tools/check-live-final-ci-consumers.py selftest
       - name: Fetch current claims and receipt artifact bodies
         id: live-capture
         continue-on-error: true
+        env:
+          CONSUMER_READER_TOKEN: ${{ steps.consumer-token.outputs.token }}
         run: |
           set -o pipefail
-          python3 tools/check-live-final-ci-consumers.py capture --out live-selected-consumers.json 2>&1 | tee live-selected-consumers.log
+          python3 tools/check-live-final-ci-consumers.py capture --token-env CONSUMER_READER_TOKEN --out live-selected-consumers.json 2>&1 | tee live-selected-consumers.log
       - name: Upload live selected consumer diagnostics
         if: always()
         uses: actions/upload-artifact@v4
