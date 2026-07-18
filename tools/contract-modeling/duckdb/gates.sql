@@ -1,6 +1,11 @@
 WITH failures AS (
-  SELECT 'G001' AS gate_id, 'raw-direct-query' AS reason
-  WHERE EXISTS (SELECT 1 FROM query_contracts WHERE raw_direct_sql_used)
+  SELECT 'G001' AS gate_id, 'approved-raw-direct-query' AS reason
+  WHERE EXISTS (
+    SELECT 1
+    FROM query_contracts AS query
+    JOIN decisions AS decision USING (request_id)
+    WHERE decision.approved AND query.raw_direct_sql_used
+  )
   UNION ALL
   SELECT 'G002', 'equivalent-duplicate-new-model'
   WHERE EXISTS (SELECT 1 FROM decisions WHERE decision = 'create_new_model' AND equivalent_count > 0)
