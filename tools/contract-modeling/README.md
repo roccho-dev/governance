@@ -1,29 +1,26 @@
 # Recursive contract-modeling admission
 
-This directory implements the deterministic compiler tracked by
-`roccho-dev/governance#153` and specified by `roccho-dev/adrs#234`.
+This directory implements the deterministic production compiler tracked by
+`roccho-dev/governance#153` and specified by accepted `roccho-dev/adrs#234`.
 
-## Current authority pin
+## Accepted authority pin
 
 ```text
-ADRS_PR=roccho-dev/adrs#237
-ADRS_HEAD=c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
+ADRS_PR=roccho-dev/adrs#241
+ADRS_MERGE=458ab4267882083de0593754d1bf9766bf8d54da
 DECISION_ID=01K0E1CM000000000000000234
+CORRECTION_DECISION_ID=01K0E1CM000000000000000235
 DECISION_DIGEST=cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1
-RELEASE=recursive-contract-modeling-v1.0.0
+RELEASE=recursive-contract-modeling-v1.0.1
 ```
-
-The ADRS PR is still an accepted candidate, not merged authority. Therefore this
-implementation remains `authority=false`, `mode=shadow`, and
-`migration_complete=false`.
 
 ## Boundary
 
 - ADRS owns meaning, purpose, policy, waivers, and cutover decisions.
 - Owners submit claims and evidence, not trusted admission results.
-- Governance validates, reduces, derives, projects, and reports without production mutation.
-- Ops or the owning repository performs effects and returns exact-target readback.
-- Deprecated `spec`/`specs` content is historical evidence only.
+- Governance validates, reduces, derives, projects, and reports without meaning authority.
+- Ops or the owning repository performs external effects and returns exact-target readback.
+- Deprecated spec repositories remain preserved evidence only.
 
 ## Data flow
 
@@ -37,17 +34,32 @@ claims
 → responsibility closure and exact-SHA receipts
 ```
 
-The proof includes two unrelated real governance packages, one bounded model-only
-package, replay equality, expected-reason destructive cases, and immutable Nix
-store materialization.
+The production proof includes two unrelated required governance packages, one
+bounded model-only package, 36 mapped legacy responsibilities with zero unexplained,
+replay equality, query/raw-access enforcement, expected-reason destructive cases,
+and immutable Nix store materialization.
+
+## Production cutover
+
+The only blocking provider check remains:
+
+```text
+gov-final-scope-purpose-join / gate
+```
+
+That gate verifies the accepted ADRS identity, final frozen legacy inventory,
+active legacy consumer count zero in the accepted universe, anti-reintroduction,
+current package receipts, and the exact governance candidate. Migration completion
+becomes true only after the admitted merge is observed by the existing push-only
+post-effect readback.
 
 ## Run
 
 ```text
 python3 -m unittest discover -s tools/contract-modeling/tests -p 'test_*.py'
+python3 tools/check-contract-modeling-production-migration.py selftest
 CANDIDATE_SHA=$(git rev-parse HEAD) bash tools/contract-modeling/run-proof.sh
 ```
 
-The bounded 36-row legacy corpus is not the final frozen legacy inventory and does
-not prove external consumer count zero. Production cutover, external readback, and
-the final `migration_complete=true` receipt remain separate residuals.
+Technical migration closure does not claim all-repository enforcement, business
+outcome achievement, or corporate-sale achievement.
