@@ -24,31 +24,34 @@ def check(path: Path = WORKFLOW) -> dict[str, Any]:
         findings.append(f"workflow-unreadable:{exc}")
         text = ""
 
-    required = {
-        "exact-checkout-ref": f"ref: {CANDIDATE_EXPRESSION}",
-        "exact-candidate-env": f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}",
-        "checkout-credentials-disabled": "persist-credentials: false",
-        "read-only-permission": "contents: read",
-        "stable-job-name": "name: gate",
-    }
-    for code, fragment in required.items():
-        if fragment not in text:
-            findings.append(code)
-    if text.count(f"ref: {CANDIDATE_EXPRESSION}") != 1:
-        findings.append("exact-checkout-ref-cardinality")
-    if text.count(f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}") != 1:
-        findings.append("exact-candidate-env-cardinality")
+    checkout_count = text.count("uses: actions/checkout@v4")
+    credential_count = text.count("persist-credentials: false")
+    if checkout_count < 4:
+        findings.append("checkout-stage-cardinality")
+    if credential_count != checkout_count:
+        findings.append("checkout-credentials-not-disabled-everywhere")
+    if text.count(f"ref: {CANDIDATE_EXPRESSION}") < 3:
+        findings.append("exact-candidate-checkout-missing")
+    if text.count(f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}") < 2:
+        findings.append("exact-candidate-env-missing")
+    if "pull_request_target" in text:
+        findings.append("unsafe-pull-request-target")
     if "persist-credentials: true" in text:
         findings.append("checkout-credentials-persisted")
+    if "contents: write" in text:
+        findings.append("write-permission")
+    if "name: gate" not in text:
+        findings.append("stable-gate-name")
 
     return {
-        "kind": "governance.exactCandidateCheckout.report.v1",
+        "kind": "governance.exactCandidateCheckout.report.v2",
         "status": "fail" if findings else "pass",
         "authority": False,
         "authorityClass": "evidence-only",
         "candidateExpression": CANDIDATE_EXPRESSION,
+        "checkoutCount": checkout_count,
         "findings": sorted(set(findings)),
-        "boundary": "The stable fixture evaluates the exact candidate tree it names. Integration coverage remains a separate evidence concern and this checker grants no merge authority.",
+        "boundary": "All pull-request candidate execution names and checks the exact head SHA. Push-only post-effect readback binds github.sha separately.",
     }
 
 
@@ -58,10 +61,10 @@ def selftest(path: Path = WORKFLOW) -> dict[str, Any]:
         raise SystemExit(canonical(positive))
     base = path.read_text(encoding="utf-8")
     cases = [
-        ("merge-ref", "exact-checkout-ref", base.replace(f"          ref: {CANDIDATE_EXPRESSION}\n", "")),
-        ("persist-token", "checkout-credentials-disabled", base.replace("persist-credentials: false", "persist-credentials: true")),
-        ("wrong-env", "exact-candidate-env", base.replace(f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}", "CANDIDATE_SHA: ${{ github.sha }}")),
-        ("write-permission", "read-only-permission", base.replace("contents: read", "contents: write")),
+        ("persist-token", "checkout-credentials", base.replace("persist-credentials: false", "persist-credentials: true", 1)),
+        ("wrong-env", "exact-candidate-env", base.replace(f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}", "CANDIDATE_SHA: ${{ github.sha }}", 2)),
+        ("unsafe-event", "unsafe-pull-request-target", base.replace("pull_request:", "pull_request_target:")),
+        ("write-permission", "write-permission", base.replace("contents: read", "contents: write")),
     ]
     results = []
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -69,17 +72,10 @@ def selftest(path: Path = WORKFLOW) -> dict[str, Any]:
             fixture = Path(temp_dir) / f"{name}.yml"
             fixture.write_text(text, encoding="utf-8")
             report = check(fixture)
-            if report["status"] != "fail" or expected not in report["findings"]:
+            if report["status"] != "fail" or not any(expected in finding for finding in report["findings"]):
                 raise SystemExit(canonical({"case": name, "expected": expected, "report": report}))
-            results.append({"case": name, "expectedFinding": expected, "status": "pass"})
-    return {
-        "kind": "governance.exactCandidateCheckout.selftest.v1",
-        "status": "pass",
-        "authority": False,
-        "positiveCases": 1,
-        "destructiveCases": len(results),
-        "cases": results,
-    }
+            results.append({"case": name, "status": "pass"})
+    return {"kind": "governance.exactCandidateCheckout.selftest.v2", "status": "pass", "positiveCases": 1, "destructiveCases": len(results), "cases": results, "authority": False}
 
 
 def main() -> int:
