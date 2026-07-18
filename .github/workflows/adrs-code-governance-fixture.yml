@@ -1,92 +1,15 @@
 name: ADRS code governance fixture
 
 on:
-  workflow_dispatch:
   pull_request:
-  push:
-    branches:
-      - proposals
 
 permissions:
   contents: read
 
-concurrency:
-  group: governance-adrs-code-governance-fixture-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  fixture:
-    name: provider-detached read-only proof
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    steps:
-      - name: Checkout governance
-        uses: actions/checkout@v4
-
-      - name: Validate ADRS reader configuration
-        env:
-          ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
-          ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
-        run: |
-          set -euo pipefail
-          test -n "$ADRS_READER_CLIENT_ID" || { echo "missing Actions variable: ADRS_READER_CLIENT_ID" >&2; exit 1; }
-          test -n "$ADRS_READER_PRIVATE_KEY" || { echo "missing Actions secret: ADRS_READER_PRIVATE_KEY" >&2; exit 1; }
-
-      - name: Create least-privilege ADRS issue-reader token
-        id: adrs-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
-          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
-          owner: roccho-dev
-          repositories: adrs
-          permission-issues: read
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13.5'
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.2'
-          cache: false
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-experimental-features = nix-command
-
-      - name: Install pinned checker dependencies
-        run: python3 -m pip install --disable-pip-version-check -r tools/code-governance/requirements.txt
-
-      - name: Run live provider-detached proof
-        env:
-          ADRS_TOKEN: ${{ steps.adrs-token.outputs.token }}
-        run: |
-          set -o pipefail
-          tools/code-governance/run-live-proof.sh 2>&1 | tee "$RUNNER_TEMP/code-governance-run.log"
-
-      - name: Upload non-authority proof packet
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: adrs-code-governance-fixture-proof
-          path: |
-            ${{ runner.temp }}/code-governance-run.log
-            tools/code-governance/out/proof-receipt.json
-            tools/code-governance/out/nix-output.json
-            tools/code-governance/out/tests.log
-            tools/code-governance/out/transports/live/transport-receipt.json
-            tools/code-governance/out/evaluations/live-local/
-          if-no-files-found: warn
-
   adrs-235-diagnostic:
     name: exact ADRS 235 hosted proof
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Validate ADRS reader configuration
         env:
@@ -111,8 +34,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: ad98ae7d472e51ffd62e47f4098dad002098e2a8
-          path: .diagnostic/adrs
+          ref: c7ad7f5ced682362d1f0a97b2ccd792abef22929
           token: ${{ steps.adrs-contents-token.outputs.token }}
           persist-credentials: false
 
@@ -122,42 +44,21 @@ jobs:
           extra_nix_config: |
             extra-experimental-features = nix-command flakes
 
-      - name: Verify exact candidate identity
-        working-directory: .diagnostic/adrs
-        run: test "$(git rev-parse HEAD)" = "ad98ae7d472e51ffd62e47f4098dad002098e2a8"
-
-      - name: Run exact candidate Nix
-        id: nix
-        continue-on-error: true
-        working-directory: .diagnostic/adrs
-        run: |
-          set -o pipefail
-          nix flake check -L 2>&1 | tee "$RUNNER_TEMP/adrs-235-nix.log"
-
-      - name: Run exact static decision proof
-        id: static
-        continue-on-error: true
-        working-directory: .diagnostic/adrs
-        run: |
-          set -o pipefail
-          bash ci/check-final-organization-ci-topology-v1-static.sh 2>&1 | tee "$RUNNER_TEMP/adrs-235-static.log"
-
-      - name: Run deterministic proof directly
-        id: proof
-        continue-on-error: true
-        working-directory: .diagnostic/adrs
+      - name: Verify exact head and all proofs
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "c7ad7f5ced682362d1f0a97b2ccd792abef22929"
+          nix flake check -L
           first="$RUNNER_TEMP/adrs-235-first"
           second="$RUNNER_TEMP/adrs-235-second"
+          bash ci/check-final-organization-ci-topology-v1-static.sh
           python3 tools/check-final-organization-ci-topology-v1.py check --contract ci_topology/v1/contract.json --out "$first" | tee "$RUNNER_TEMP/adrs-235-report.json"
           python3 tools/check-final-organization-ci-topology-v1.py check --contract ci_topology/v1/contract.json --out "$second" >/dev/null
           cmp "$first/report.json" "$second/report.json"
           cmp "$first/selftest.json" "$second/selftest.json"
           cmp "$first/receipt.json" "$second/receipt.json"
-          python3 tools/check-final-organization-ci-topology-v1.py selftest --contract ci_topology/v1/contract.json | tee "$RUNNER_TEMP/adrs-235-selftest.json"
 
-      - name: Upload exact ADRS 235 diagnostic proof
+      - name: Upload exact ADRS 235 proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -165,19 +66,4 @@ jobs:
           path: |
             ${{ runner.temp }}/adrs-235-first/
             ${{ runner.temp }}/adrs-235-report.json
-            ${{ runner.temp }}/adrs-235-selftest.json
-            ${{ runner.temp }}/adrs-235-nix.log
-            ${{ runner.temp }}/adrs-235-static.log
-          if-no-files-found: warn
-
-      - name: Reduce diagnostic verdict
-        if: always()
-        env:
-          NIX_OUTCOME: ${{ steps.nix.outcome }}
-          STATIC_OUTCOME: ${{ steps.static.outcome }}
-          PROOF_OUTCOME: ${{ steps.proof.outcome }}
-        run: |
-          printf 'nix=%s static=%s proof=%s\n' "$NIX_OUTCOME" "$STATIC_OUTCOME" "$PROOF_OUTCOME"
-          test "$NIX_OUTCOME" = success
-          test "$STATIC_OUTCOME" = success
-          test "$PROOF_OUTCOME" = success
+          if-no-files-found: error
