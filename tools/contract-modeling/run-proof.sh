@@ -14,7 +14,6 @@ case "$CANDIDATE_SHA" in
   *)
     echo "invalid CANDIDATE_SHA: $CANDIDATE_SHA" >&2
     exit 1
-    ;;
 esac
 
 test "$(git -C "$REPO_ROOT" rev-parse HEAD)" = "$CANDIDATE_SHA"
@@ -40,6 +39,31 @@ mkdir -p "$OUT"
 
 cmp "$OUT/semantic-packet.json" "$OUT/semantic-packet-second.json"
 
+cat \
+  "$TOOL_ROOT/fixtures/claims.jsonl" \
+  "$TOOL_ROOT/fixtures/control-loop-238.jsonl" \
+  > "$OUT/control-loop-238-claims.jsonl"
+
+"$PYTHON" "$TOOL_ROOT/bin/evaluate_exact.py" \
+  --candidate-sha "$CANDIDATE_SHA" \
+  --repo-root "$REPO_ROOT" \
+  --claims "$OUT/control-loop-238-claims.jsonl" \
+  --require-duckdb \
+  --out "$OUT/control-loop-238-semantic-packet.json" \
+  > "$OUT/control-loop-238-evaluate.log"
+
+"$PYTHON" "$TOOL_ROOT/bin/evaluate_exact.py" \
+  --candidate-sha "$CANDIDATE_SHA" \
+  --repo-root "$REPO_ROOT" \
+  --claims "$OUT/control-loop-238-claims.jsonl" \
+  --require-duckdb \
+  --out "$OUT/control-loop-238-semantic-packet-second.json" \
+  > "$OUT/control-loop-238-evaluate-second.log"
+
+cmp \
+  "$OUT/control-loop-238-semantic-packet.json" \
+  "$OUT/control-loop-238-semantic-packet-second.json"
+
 "$PYTHON" "$TOOL_ROOT/bin/run_selftest.py" \
   --candidate-sha "$CANDIDATE_SHA" \
   --repo-root "$REPO_ROOT" \
@@ -53,11 +77,15 @@ test -f "$STORE_PATH"
 cmp "$OUT/semantic-packet.json" "$STORE_PATH"
 
 test -s "$OUT/semantic-packet.json"
+test -s "$OUT/control-loop-238-claims.jsonl"
+test -s "$OUT/control-loop-238-semantic-packet.json"
 test -s "$OUT/selftest-receipt.json"
 test -s "$OUT/nix-store-path.txt"
 
 sha256sum \
   "$OUT/semantic-packet.json" \
+  "$OUT/control-loop-238-claims.jsonl" \
+  "$OUT/control-loop-238-semantic-packet.json" \
   "$OUT/selftest-receipt.json" \
   "$OUT/nix-store-path.txt" \
   > "$OUT/proof-digests.txt"
