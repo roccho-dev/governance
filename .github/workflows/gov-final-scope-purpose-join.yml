@@ -4,8 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches:
-      - proposals
+    branches: [proposals]
 
 permissions:
   contents: read
@@ -15,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gate:
-    name: gate
+  capture:
+    name: accepted decision capture
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact governance candidate
@@ -25,7 +24,128 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Run current exact-SHA non-authority gate fixture
+      - name: Capture exact accepted decision projection
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("governance/accepted-final-ci-decision.v1.json")
+          value = json.loads(path.read_text())
+          assert value["acceptedMerge"] == "a8fc9e8e04d53f1d783317059e4421c8dc724d01"
+          assert value["contractCanonicalDigest"] == "8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314"
+          assert value["stableRequiredCheck"] == "gov-final-scope-purpose-join / gate"
+          assert value["allRepositoriesEnforced"] is False
+          Path("accepted-decision-capture.json").write_text(json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n")
+          PY
+
+      - name: Upload accepted decision capture
+        uses: actions/upload-artifact@v4
+        with:
+          name: accepted-final-ci-decision
+          path: accepted-decision-capture.json
+          if-no-files-found: error
+
+  regression:
+    name: exact-candidate regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact governance candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+
+      - name: Run complete deterministic regression
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --json
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          nix flake check -L
+          python3 tools/compile-claim-port-joins.py selftest
+          python3 tools/check-package-final-scope-purpose-join.py selftest --json
+          printf '{"kind":"governance.regressionReceipt.v1","status":"pass","candidateSha":"%s","authority":false}\n' "$CANDIDATE_SHA" > regression-receipt.json
+
+      - name: Upload regression receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-ci-regression
+          path: regression-receipt.json
+          if-no-files-found: error
+
+  gate:
+    name: gate
+    needs: [capture, regression]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact governance candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Download accepted decision capture
+        uses: actions/download-artifact@v4
+        with:
+          name: accepted-final-ci-decision
+          path: evidence/accepted-decision
+
+      - name: Download regression receipt
+        uses: actions/download-artifact@v4
+        with:
+          name: final-ci-regression
+          path: evidence/regression
+
+      - name: Run final exact-SHA organization admission
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -s evidence/accepted-decision/accepted-decision-capture.json
+          test -s evidence/regression/regression-receipt.json
+          python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --json | tee final-gate-report.json
+          grep -q '"productionAdmission":true' final-gate-report.json
+          grep -q '"allRepositoriesEnforced":false' final-gate-report.json
+
+      - name: Upload final gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: gov-final-gate-evidence
+          path: |
+            final-gate-report.json
+            evidence/accepted-decision/accepted-decision-capture.json
+            evidence/regression/regression-receipt.json
+          if-no-files-found: error
+
+  post-effect:
+    name: post-effect readback
+    if: github.event_name == 'push' && github.ref == 'refs/heads/proposals'
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact pushed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Bind effect readback
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf '{"kind":"governance.postEffectReadback.v1","status":"pass","repository":"roccho-dev/governance","branch":"proposals","writtenSha":"%s","observedSha":"%s","authority":false}\n' "$GITHUB_SHA" "$(git rev-parse HEAD)" > post-effect-readback.json
+
+      - name: Upload post-effect readback
+        uses: actions/upload-artifact@v4
+        with:
+          name: gov-post-effect-readback
+          path: post-effect-readback.json
+          if-no-files-found: error
