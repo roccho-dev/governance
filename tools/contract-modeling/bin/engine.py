@@ -5,10 +5,54 @@ import importlib.util
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 CORE_PATH = Path(__file__).with_name("contract_modeling.py")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+PROVIDER_ONLY_KEYS = {
+    "actor",
+    "comment_id",
+    "issue_number",
+    "pagination",
+    "timestamp",
+    "url",
+    "workflow_run_id",
+}
+
+# (semantic_family, semantic_kind) -> (row_kind, exact payload keys or None when
+# a closed JSON Schema owns the payload contract).
+KIND_CONTRACTS: dict[tuple[str, str], tuple[str, frozenset[str] | None]] = {
+    ("purpose", "purpose-node"): ("subject", frozenset({"display_name", "root"})),
+    ("purpose", "purpose-parent"): ("edge", frozenset({"child", "parent"})),
+    ("graph", "organization"): ("subject", frozenset({"display_name"})),
+    ("graph", "repo"): ("subject", frozenset({"display_name"})),
+    ("graph", "package"): ("subject", frozenset({"display_name"})),
+    ("graph", "module"): ("subject", frozenset({"display_name"})),
+    ("graph", "component"): ("subject", frozenset({"display_name"})),
+    ("graph", "operation"): ("subject", frozenset({"display_name"})),
+    ("graph", "contains"): ("edge", frozenset({"child", "parent"})),
+    ("package-contract-v1", "package-contract"): ("claim", None),
+    ("data-model-v1", "model-request"): ("claim", None),
+    ("effect", "effect-receipt"): ("receipt", None),
+    (
+        "migration",
+        "legacy-responsibility",
+    ): (
+        "legacy-mapping",
+        frozenset(
+            {
+                "accepted_decision_digest",
+                "disposition",
+                "legacy_id",
+                "legacy_source_digest",
+                "new_semantic_kind",
+                "new_subject_key",
+                "owner",
+                "reason",
+            }
+        ),
+    ),
+}
 
 
 def _load_core():
@@ -23,7 +67,96 @@ def _load_core():
 
 core = _load_core()
 _original_purpose_paths = core._purpose_paths
+_original_validate_and_reduce = core.validate_and_reduce
 _original_evaluate = core.evaluate
+
+
+def _nested_keys(value: Any) -> Iterable[str]:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield key
+            yield from _nested_keys(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _nested_keys(child)
+
+
+def _validate_row_contract(row: dict[str, Any]) -> None:
+    contract = KIND_CONTRACTS.get((row.get("semantic_family"), row.get("semantic_kind")))
+    if contract is None:
+        raise core.ContractError(
+            f"{row.get('id')}: unknown semantic family/kind "
+            f"{row.get('semantic_family')}/{row.get('semantic_kind')}"
+        )
+    expected_row_kind, payload_keys = contract
+    if row.get("row_kind") != expected_row_kind:
+        raise core.ContractError(
+            f"{row.get('id')}: {row.get('semantic_kind')} requires row_kind={expected_row_kind}"
+        )
+    payload = row.get("payload")
+    if not isinstance(payload, dict):
+        raise core.ContractError(f"{row.get('id')}: payload must be an object")
+
+    nested = set(_nested_keys(payload))
+    forbidden = sorted(core.FORBIDDEN_DERIVED_FIELDS.intersection(nested))
+    if forbidden:
+        raise core.ContractError(
+            f"{row.get('id')}: forbidden trusted derived fields: {forbidden}"
+        )
+    provider = sorted(PROVIDER_ONLY_KEYS.intersection(nested))
+    if provider:
+        raise core.ContractError(
+            f"{row.get('id')}: provider metadata is transport-only: {provider}"
+        )
+    if payload_keys is not None and set(payload) != payload_keys:
+        raise core.ContractError(
+            f"{row.get('id')}: closed payload keys required; "
+            f"expected={sorted(payload_keys)} actual={sorted(payload)}"
+        )
+
+
+def _validate_graph_tree(active: dict[str, dict[str, Any]]) -> None:
+    subjects = {
+        key: row
+        for key, row in active.items()
+        if row["semantic_family"] == "graph" and row["row_kind"] == "subject"
+    }
+    roots = [key for key, row in subjects.items() if row["semantic_kind"] == "organization"]
+    if len(roots) != 1:
+        raise core.ContractError(f"graph needs exactly one organization root, got {roots}")
+    root = roots[0]
+    parent_of: dict[str, str] = {}
+    for row in active.values():
+        if row["semantic_family"] != "graph" or row["semantic_kind"] != "contains":
+            continue
+        parent_of[row["payload"]["child"]] = row["payload"]["parent"]
+    if root in parent_of:
+        raise core.ContractError(f"graph root may not have a parent: {root}")
+    missing = sorted(subject for subject in subjects if subject != root and subject not in parent_of)
+    if missing:
+        raise core.ContractError(f"graph subjects missing containment parent: {missing}")
+    for subject in subjects:
+        current = subject
+        seen: set[str] = set()
+        while current != root:
+            if current in seen:
+                raise core.ContractError(f"containment cycle at {current}")
+            seen.add(current)
+            current = parent_of.get(current, "")
+            if not current:
+                raise core.ContractError(f"graph subject does not reach root: {subject}")
+
+
+def _strict_validate_and_reduce(
+    rows: list[dict[str, Any]], policy: dict[str, Any]
+) -> Any:
+    if core.jsonschema is None:
+        raise core.ContractError("jsonschema dependency is required for fail-closed validation")
+    for row in rows:
+        _validate_row_contract(row)
+    graph = _original_validate_and_reduce(rows, policy)
+    _validate_graph_tree(graph.active_by_subject)
+    return graph
 
 
 def _strict_purpose_paths(active: dict[str, dict[str, Any]]) -> dict[str, list[str]]:
@@ -89,6 +222,7 @@ def evaluate(
     )
 
 
+core.validate_and_reduce = _strict_validate_and_reduce
 core._purpose_paths = _strict_purpose_paths
 core.evaluate = evaluate
 
