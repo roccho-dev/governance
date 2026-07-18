@@ -1,4 +1,4 @@
-name: ADRS 236 exact-head diagnostic
+name: ADRS 237 exact-head diagnostic
 
 on:
   pull_request:
@@ -7,8 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  exact-adrs-236-proof:
-    name: exact ADRS 236 hosted proof
+  exact-adrs-237-proof:
+    name: exact ADRS 237 hosted proof
     runs-on: ubuntu-latest
     if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: fc1866de3c113a22059cd79c0c936c9d129e2cfb
+          ref: 2fb188b0d4f06efabb5823e60db4da92443cae84
           path: .diagnostic/adrs
           token: ${{ steps.adrs-contents-token.outputs.token }}
           persist-credentials: false
@@ -48,21 +48,21 @@ jobs:
 
       - name: Verify exact checkout
         working-directory: .diagnostic/adrs
-        run: test "$(git rev-parse HEAD)" = "fc1866de3c113a22059cd79c0c936c9d129e2cfb"
+        run: test "$(git rev-parse HEAD)" = "2fb188b0d4f06efabb5823e60db4da92443cae84"
 
       - name: Run exact candidate Nix validation
         working-directory: .diagnostic/adrs
         run: |
           set -o pipefail
-          nix flake check -L 2>&1 | tee "$RUNNER_TEMP/adrs-236-nix.log"
+          nix flake check -L 2>&1 | tee "$RUNNER_TEMP/adrs-237-nix.log"
 
       - name: Run deterministic recursive contract proofs
         working-directory: .diagnostic/adrs
         run: |
           set -euo pipefail
-          first="$RUNNER_TEMP/adrs-236-first"
-          second="$RUNNER_TEMP/adrs-236-second"
-          selftest="$RUNNER_TEMP/adrs-236-selftest.json"
+          first="$RUNNER_TEMP/adrs-237-first"
+          second="$RUNNER_TEMP/adrs-237-second"
+          selftest="$RUNNER_TEMP/adrs-237-selftest.json"
           rm -rf "$first" "$second"
           python3 tools/check-recursive-contract-modeling-v1.py check --out "$first" >/dev/null
           python3 tools/check-recursive-contract-modeling-v1.py check --out "$second" >/dev/null
@@ -83,13 +83,13 @@ jobs:
           test "$(sha256sum decision/live/issue-234-recursive-contract-modeling-v1.jsonl | cut -d ' ' -f1)" = "319a0808bfe1a30376ed47efbe73b31e9cca59924cf7b737e7de64889c110573"
           test "$(sha256sum tools/check-recursive-contract-modeling-v1.py | cut -d ' ' -f1)" = "0d74b9f144b3611c2000b7892dcc1a3c5bc0cf1d005387acd8bcea95052e15cf"
 
-      - name: Upload exact ADRS 236 diagnostic proof
+      - name: Upload exact ADRS 237 diagnostic proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: adrs-236-exact-head-diagnostic
+          name: adrs-237-exact-head-diagnostic
           path: |
-            ${{ runner.temp }}/adrs-236-nix.log
-            ${{ runner.temp }}/adrs-236-first/
-            ${{ runner.temp }}/adrs-236-selftest.json
+            ${{ runner.temp }}/adrs-237-nix.log
+            ${{ runner.temp }}/adrs-237-first/
+            ${{ runner.temp }}/adrs-237-selftest.json
           if-no-files-found: warn
