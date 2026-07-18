@@ -131,7 +131,7 @@ jobs:
 
       - name: Run exact ADRS static proof
         working-directory: .ci/adrs-234
-        run: bash contract_modeling/v1/static-proof.sh
+        run: bash ci/check-recursive-contract-modeling-v1-static.sh
 
       - name: Run exact ADRS deterministic checker
         working-directory: .ci/adrs-234
