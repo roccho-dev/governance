@@ -1,43 +1,55 @@
 # Recursive contract-modeling implementation for #153
 
-## Current dependency
+## Accepted dependency
 
-- ADRS PR: `roccho-dev/adrs#237`
-- exact candidate head: `c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068`
+- ADRS Issue: `roccho-dev/adrs#234` — completed
+- ADRS PR: `roccho-dev/adrs#241`
+- accepted merge: `458ab4267882083de0593754d1bf9766bf8d54da`
 - decision ID: `01K0E1CM000000000000000234`
+- publication correction ID: `01K0E1CM000000000000000235`
 - decision digest: `cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1`
-- release: `recursive-contract-modeling-v1.0.0`
+- release: `recursive-contract-modeling-v1.0.1`
+- compiler shadow merge: `495fb26a6794155586f2b7af52e7da09285fa780`
 
-The decision is not merged authority yet. The compiler is therefore a mergeable
-shadow implementation and must not claim cutover or migration completion.
+## Implemented
 
-## Implemented here
-
-- closed recursive envelope and two closed profiles;
+- closed recursive envelope and package/data-model profiles;
 - evidence-derived eight-way admission;
 - typed containment, purpose closure, and explicit supersession;
 - quarantine with previous-current preservation;
-- promotion-only current and real incremental/full replay equality;
+- promotion-only current and incremental/full replay equality;
 - DuckDB gate catalog and version-normalizing ABI;
-- exact-SHA package receipts for two unrelated real packages;
+- exact-SHA receipts for two unrelated required packages;
 - bounded model-only package;
-- 36-row bounded legacy responsibility ledger;
 - responsibility-closure projection;
 - expected-reason destructive proof;
 - content-addressed Nix store readback.
 
-## CI placement
+## Final legacy inventory
 
-The implementation is connected to the accepted two-workflow topology:
+The preserved historical capability is represented by 36 semantic responsibilities:
+11 contracts/ledgers, 24 DuckDB gates, and one package-contract ABI. The inventory
+is frozen at `tools/contract-modeling/production/legacy-inventory.json`; all 36 are
+mapped and unexplained count is zero. The original archive and specs repository
+commit remain provenance evidence, not runtime inputs or authority.
 
-- `gov-final-scope-purpose-join` runs exact-candidate blocking regression;
-- `gov-canary` performs evidence-only observation after merge.
+## Production CI placement
 
-No deleted legacy workflow is restored.
+The accepted two-workflow topology is preserved:
 
-## Remaining migration closure
+- `gov-final-scope-purpose-join` is the only blocking merge-admission surface;
+- `gov-canary` remains evidence-only observation.
 
-The bounded legacy corpus does not replace the final frozen legacy snapshot.
-ADRS merge/release/replay, final inventory, external consumer count zero,
-production cutover, effect readback, anti-reintroduction guard, and the final
-`migration_complete=true` receipt remain open.
+The blocking gate verifies the accepted ADRS merge/digest, production policy,
+final inventory, current package receipts, active legacy consumer count zero,
+anti-reintroduction, and exact candidate identity.
+
+## Closure
+
+Before merge, the production receipt must retain `migrationComplete=false` and
+require effect readback. After the admitted merge reaches `proposals`, the existing
+push-only post-effect job binds written and observed SHA. That readback closes
+Governance #153 with `migration_complete=true`.
+
+The closure remains scoped to `selected-required-universe-v1`; it does not claim
+all-repository enforcement, causal business support, or corporate-sale outcome.
