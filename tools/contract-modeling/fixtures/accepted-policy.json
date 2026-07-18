@@ -1,0 +1,56 @@
+{
+  "claims": {
+    "all_repositories_enforced": false,
+    "business_outcome_closed": false
+  },
+  "compiler": {
+    "version": "contract-modeling-compiler.v1"
+  },
+  "cutover": {
+    "legacy_active_consumer_count": 0,
+    "production_gate": "contract-modeling / admission",
+    "scope": "selected-required-universe-v1",
+    "state": "shadow"
+  },
+  "decision": {
+    "decision_digest": "b72502f7845ead05f61d0640ef8b3f50789c7db0afafd3764b4c19d39a9fd4e0",
+    "decision_id": "01K0E1CM000000000000000234",
+    "release": "recursive-contract-modeling-v1.0.0",
+    "source": "roccho-dev/adrs#234",
+    "status": "accepted-candidate"
+  },
+  "kind": "contractModelingPolicyInput.v1",
+  "legacy": {
+    "source": "specs/packages/jsonl-datamodeling-duckdb-ci",
+    "source_digest": "4e8705de7895e0f46b21f3e0b19aa9072b958adf386bbf3826cf75cd689d615f",
+    "unexplained_allowed": 0
+  },
+  "mode": "shadow",
+  "organization_package_policy": {
+    "forbidden_effects": ["provider-mutation"],
+    "required_lifecycle": "active",
+    "required_surfaces": ["input", "output", "error", "effect", "dependency", "lifecycle", "evidence", "purpose"]
+  },
+  "policy": {
+    "max_active_abi": 64,
+    "max_bytes": 5000000,
+    "max_edges": 20000,
+    "max_new_model_ratio": 0.15,
+    "max_nodes": 10000,
+    "version": "contract-modeling-policy.v1"
+  },
+  "required_package_universe": [
+    {
+      "packageId": "pkg:governance:code-governance",
+      "path": "tools/code-governance",
+      "reason": "provider-detached canonical ledger and reducer consumer",
+      "repository": "roccho-dev/governance"
+    },
+    {
+      "packageId": "pkg:governance:claim-admission",
+      "path": "tools/claim-admission-check.py",
+      "reason": "independent package assertion and exact-SHA admission consumer",
+      "repository": "roccho-dev/governance"
+    }
+  ]
+}
