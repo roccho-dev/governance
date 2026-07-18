@@ -82,14 +82,36 @@ jobs:
           path: publication-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
+      - name: Checkout exact signed-promotion ADRS candidate
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: aaf6e73d73f61e1d0ad277ce5e7451a4dc0124b8
+          path: promotion-adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.5'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+          cache: false
+      - name: Install signed-promotion proof dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check cryptography==46.0.4
+          go install cuelang.org/go/cmd/cue@v0.9.2
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
       - name: Verify and package ADRS sources
         env:
           PUBLICATION_ADRS_SHA: b30c0750b4783f3349bc3c2d91e00853c90ab2ef
+          PROMOTION_ADRS_SHA: aaf6e73d73f61e1d0ad277ce5e7451a4dc0124b8
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
           test "$(git -C candidate-adrs rev-parse HEAD)" = c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
           test "$(git -C publication-adrs rev-parse HEAD)" = "$PUBLICATION_ADRS_SHA"
+          test "$(git -C promotion-adrs rev-parse HEAD)" = "$PROMOTION_ADRS_SHA"
           python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check \
             --contract accepted-adrs/ci_topology/v1/contract.json \
             --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
@@ -103,6 +125,16 @@ jobs:
           test -s "$RUNNER_TEMP/company-contract-publication/publication-receipt.json"
           grep -q '"doubleRunByteIdentical":true' "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
           grep -q '"corporateSaleOutcomeAchieved":false' "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
+          (
+            cd promotion-adrs
+            cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-signed-promotion.cue
+            cue vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-signed-promotion-topology.cue
+            python3 tools/check-signed-promotion-v1.py candidate --out "$RUNNER_TEMP/signed-promotion-adrs-candidate.json"
+            python3 tools/check-signed-promotion-v1.py selftest --out "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
+            bash ci/check-signed-promotion-v1-static.sh | tee "$RUNNER_TEMP/signed-promotion-adrs-static.log"
+          )
+          grep -q '"productionAcceptanceReady":false' "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
+          grep -q 'publisher-public-key-unprovisioned' "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
           tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
           tar -C candidate-adrs --exclude=.git -czf candidate-adrs-source.tar.gz .
       - uses: actions/upload-artifact@v4
@@ -124,6 +156,14 @@ jobs:
             ${{ runner.temp }}/company-contract-publication/publication-manifest.json
             ${{ runner.temp }}/company-contract-publication/publication-receipt.json
             ${{ runner.temp }}/company-contract-publication/publication-pass
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-promotion-adrs-candidate
+          path: |
+            ${{ runner.temp }}/signed-promotion-adrs-candidate.json
+            ${{ runner.temp }}/signed-promotion-adrs-selftest.json
+            ${{ runner.temp }}/signed-promotion-adrs-static.log
           if-no-files-found: error
 
   live-consumers:
@@ -231,7 +271,7 @@ jobs:
           python-version: '3.13.5'
           cache: pip
           cache-dependency-path: tools/contract-modeling/requirements.txt
-      - name: Install pinned contract-modeling dependencies
+      - name: Install pinned dependencies
         run: python3 -m pip install --disable-pip-version-check -r tools/contract-modeling/requirements.txt
       - uses: cachix/install-nix-action@v31
         with:
@@ -253,7 +293,7 @@ jobs:
             cd evidence/candidate-adrs
             bash ci/check-recursive-contract-modeling-v1-static.sh
           ) 2>&1 | tee -a "$RUNNER_TEMP/adrs-234-candidate.log"
-      - name: Run Python and contract-modeling regression
+      - name: Run Python, contract-modeling, and promotion shadow regression
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
@@ -263,6 +303,7 @@ jobs:
             python3 tools/check-package-final-scope-purpose-join.py selftest --json
             python3 -m unittest discover -s tools/contract-modeling/tests -p 'test_*.py'
             CANDIDATE_SHA="$CANDIDATE_SHA" bash tools/contract-modeling/run-proof.sh
+            bash tools/promotion/run-proof.sh | tee "$RUNNER_TEMP/promotion-shadow-proof.json"
             cd evidence/candidate-adrs
             first="$RUNNER_TEMP/adrs-234-first"
             second="$RUNNER_TEMP/adrs-234-second"
@@ -278,14 +319,18 @@ jobs:
         run: |
           set -euo pipefail
           test -s tools/contract-modeling/out/selftest-receipt.json
+          test -s "$RUNNER_TEMP/promotion-shadow-proof.json"
           python3 - <<'PY'
           import json, os
           from pathlib import Path
           selftest=json.loads(Path('tools/contract-modeling/out/selftest-receipt.json').read_text())
           assert selftest['status']=='pass'
           assert selftest['migration_complete'] is False
+          promotion=json.loads(Path(os.environ['RUNNER_TEMP'] + '/promotion-shadow-proof.json').read_text().splitlines()[-1])
+          assert promotion['status']=='pass'
+          assert promotion['productionPromotionEffect'] is False
           receipt={
-              'kind':'governance.regressionReceipt.v2',
+              'kind':'governance.regressionReceipt.v3',
               'status':'pass',
               'candidateSha':os.environ['CANDIDATE_SHA'],
               'authority':False,
@@ -295,6 +340,14 @@ jobs:
                   'decisionDigest':'cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1',
                   'adrsHead':'c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068',
                   'migrationComplete':False,
+              },
+              'signedPromotion':{
+                  'status':'shadow-pass',
+                  'contractDigest':'sha256:3dd313525bf80a3afefd141cc019325287f6bd8b2516ed97e1a748842fe3fb34',
+                  'adrsHead':'aaf6e73d73f61e1d0ad277ce5e7451a4dc0124b8',
+                  'acceptedDecisionStatus':'proposed',
+                  'productionKeyProvisioned':False,
+                  'productionPromotionEffect':False,
               },
           }
           Path('regression-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
@@ -308,6 +361,7 @@ jobs:
             ${{ runner.temp }}/final-ci-python.log
             ${{ runner.temp }}/adrs-234-candidate.log
             ${{ runner.temp }}/adrs-234-selftest.json
+            ${{ runner.temp }}/promotion-shadow-proof.json
             tools/contract-modeling/out/
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
@@ -337,7 +391,7 @@ jobs:
         with:
           name: live-selected-consumers
           path: evidence/live-consumers
-      - name: Run final exact-SHA organization admission
+      - name: Run final exact-SHA organization admission and promotion shadow projection
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
@@ -351,10 +405,8 @@ jobs:
           from pathlib import Path
           value=json.loads(Path('evidence/regression/regression-receipt.json').read_text())
           assert value['status']=='pass'
-          assert value['contractModeling']['status']=='shadow-pass'
-          assert value['contractModeling']['decisionDigest']=='cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1'
-          assert value['contractModeling']['adrsHead']=='c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068'
-          assert value['contractModeling']['migrationComplete'] is False
+          assert value['signedPromotion']['status']=='shadow-pass'
+          assert value['signedPromotion']['productionPromotionEffect'] is False
           PY
           python3 tools/check-package-final-scope-purpose-join.py check \
             --candidate-sha "$CANDIDATE_SHA" \
@@ -364,6 +416,10 @@ jobs:
           grep -q '"artifactBodiesVerified":true' final-gate-report.json
           grep -q '"receiptCandidateShaBound":true' final-gate-report.json
           grep -q '"allRepositoriesEnforced":false' final-gate-report.json
+          grep -q '"githubMergeHasCompanyAuthority":false' final-gate-report.json
+          grep -q '"promotionAdmission":false' final-gate-report.json
+          grep -q '"productionPromotionEffect":false' final-gate-report.json
+          grep -q '"githubMergeHasAuthority":false' final-gate-report.json
       - uses: actions/upload-artifact@v4
         with:
           name: gov-final-gate-evidence
@@ -385,8 +441,9 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - run: |
+          set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          printf '{"kind":"governance.postEffectReadback.v1","status":"pass","repository":"roccho-dev/governance","branch":"proposals","writtenSha":"%s","observedSha":"%s","authority":false}\n' "$GITHUB_SHA" "$(git rev-parse HEAD)" > post-effect-readback.json
+          printf '{"kind":"governance.transportReadback.v1","status":"pass","repository":"roccho-dev/governance","branch":"proposals","writtenSha":"%s","observedSha":"%s","companyAdoptionEffect":false,"unpromotedCommitHasEffect":false,"authority":false}\n' "$GITHUB_SHA" "$(git rev-parse HEAD)" > post-effect-readback.json
       - uses: actions/upload-artifact@v4
         with:
           name: gov-post-effect-readback
