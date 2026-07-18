@@ -8,29 +8,11 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 CI_INTENT = ROOT / "ci.intent.v1.jsonl"
-WORKFLOWS = ROOT / ".github" / "workflows"
-GATE_WORKFLOW = ".github/workflows/gov-final-scope-purpose-join.yml"
-FINAL_CHECK_NAME = "gov-final-scope-purpose-join / gate"
-FINAL_ROLE = "primary_required_surface_after_accepted_cutover"
-CUTOVER_STATE = "pre-acceptance-current-sha-fixture"
+WORKFLOWS = ROOT / ".github/workflows"
+GATE = ".github/workflows/gov-final-scope-purpose-join.yml"
+CANARY = ".github/workflows/gov-canary.yml"
+CHECK_NAME = "gov-final-scope-purpose-join / gate"
 CANDIDATE_SHA_SOURCE = "github.event.pull_request.head.sha || github.sha"
-
-EXPECTED_FINAL_ROLES = {
-    GATE_WORKFLOW: FINAL_ROLE,
-    ".github/workflows/ci.yml": "receipt_producer_and_tool_selftest_after_cutover",
-    ".github/workflows/manual-ci.yml": "manual_observation_only",
-    ".github/workflows/adrs-shadow-monitor.yml": "artifact_or_shadow_observer",
-    ".github/workflows/repo-explain-artifact-minimal.yml": "artifact_producer_not_merge_authority",
-    ".github/workflows/repo-governance.yml": "tool_selftest_not_merge_authority",
-    ".github/workflows/readme-artifact.yml": "artifact_producer_not_merge_authority",
-    ".github/workflows/claim-port-join.yml": "final_join_internal_step_or_tool_selftest",
-    ".github/workflows/claim-port-org-admission.yml": "final_join_admission_step",
-    ".github/workflows/log-route-join.yml": "final_join_internal_step_or_tool_selftest",
-    ".github/workflows/intent-reality-gap.yml": "final_join_internal_step_or_tool_selftest",
-    ".github/workflows/adrs-code-governance-fixture.yml": "artifact_or_shadow_observer",
-}
-NON_AUTHORITY_FINAL_ROLES = set(EXPECTED_FINAL_ROLES.values()) - {FINAL_ROLE}
-REQUIRED_EXCEPTION_FIELDS = {"owner", "reason", "expiry", "return_condition", "blocking_residual"}
 
 
 def canonical(value: Any) -> str:
@@ -38,122 +20,70 @@ def canonical(value: Any) -> str:
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
-    rows = []
-    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        if not line.strip():
-            continue
-        try:
-            row = json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise SystemExit(canonical({"status": "fail", "path": str(path), "line": line_no, "reason": str(exc)})) from exc
-        if not isinstance(row, dict):
-            raise SystemExit(canonical({"status": "fail", "path": str(path), "line": line_no, "reason": "row-not-object"}))
-        rows.append(row)
-    return rows
-
-
-def workflow_files() -> set[str]:
-    if not WORKFLOWS.exists():
-        return set()
-    return {
-        path.relative_to(ROOT).as_posix()
-        for path in WORKFLOWS.iterdir()
-        if path.is_file() and path.suffix in {".yml", ".yaml"}
-    }
-
-
-def finding(code: str, message: str, **extra: Any) -> dict[str, Any]:
-    row = {"code": code, "message": message}
-    row.update(extra)
-    return row
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def check(path: Path = CI_INTENT) -> dict[str, Any]:
     rows = read_jsonl(path)
-    by_path = {row.get("path"): row for row in rows if isinstance(row.get("path"), str)}
+    by_path = {row.get("path"): row for row in rows}
+    actual = {
+        item.relative_to(ROOT).as_posix()
+        for item in WORKFLOWS.iterdir()
+        if item.is_file() and item.suffix in {".yml", ".yaml"}
+    }
     findings: list[dict[str, Any]] = []
-
-    actual = workflow_files()
-    expected = set(EXPECTED_FINAL_ROLES)
-    for workflow_path in sorted(actual - set(by_path)):
-        findings.append(finding("workflow-undemoted", "workflow exists without ci.intent row", path=workflow_path))
-    for workflow_path in sorted(set(by_path) - actual):
-        findings.append(finding("intent-without-workflow", "ci.intent row has no workflow", path=workflow_path))
+    expected = {GATE, CANARY}
     if actual != expected:
-        findings.append(finding("workflow-universe-mismatch", "workflow universe differs from the bounded 12-surface inventory", expected=sorted(expected), actual=sorted(actual)))
+        findings.append({"code": "workflow-universe", "expected": sorted(expected), "actual": sorted(actual)})
+    if set(by_path) != expected or len(rows) != 2:
+        findings.append({"code": "intent-universe", "expected": sorted(expected), "actual": sorted(by_path)})
 
-    for workflow_path, expected_role in sorted(EXPECTED_FINAL_ROLES.items()):
-        row = by_path.get(workflow_path)
-        if row is None:
-            findings.append(finding("final-role-row-missing", "expected workflow row is missing", path=workflow_path))
-            continue
-        if row.get("authority") is not False:
-            findings.append(finding("workflow-authority-invalid", "workflow authority must remain false before accepted cutover", path=workflow_path))
-        actual_role = row.get("final_role")
-        if actual_role != expected_role:
-            findings.append(finding("final-role-mismatch", "workflow final_role does not match the bounded migration plan", path=workflow_path, expected=expected_role, actual=actual_role))
-        if expected_role in NON_AUTHORITY_FINAL_ROLES and row.get("required_check_name"):
-            findings.append(finding("old-ci-required-check-name", "non-final CI surface must not declare a required final check name", path=workflow_path))
-
-    gate = by_path.get(GATE_WORKFLOW, {})
-    if gate.get("required_check_name") != FINAL_CHECK_NAME:
-        findings.append(finding("final-check-name-mismatch", "final gate must preserve the exact check name", expected=FINAL_CHECK_NAME, actual=gate.get("required_check_name")))
-    if gate.get("cutover_state") != CUTOVER_STATE:
-        findings.append(finding("cutover-state-mismatch", "final gate must remain in the accepted pre-cutover fixture state", expected=CUTOVER_STATE, actual=gate.get("cutover_state")))
-    if gate.get("authority_class") != "evidence-only":
-        findings.append(finding("gate-authority-class-invalid", "pre-acceptance gate must be evidence-only", actual=gate.get("authority_class")))
+    gate = by_path.get(GATE, {})
+    canary = by_path.get(CANARY, {})
+    if gate.get("role") != "primary_nix_check":
+        findings.append({"code": "gate-role", "actual": gate.get("role")})
+    if gate.get("authority") is not False or gate.get("authority_class") != "merge-admission":
+        findings.append({"code": "gate-authority-boundary"})
+    if gate.get("required_check_name") != CHECK_NAME:
+        findings.append({"code": "check-name", "actual": gate.get("required_check_name")})
     if gate.get("candidate_sha_source") != CANDIDATE_SHA_SOURCE:
-        findings.append(finding("candidate-sha-source-mismatch", "gate intent must bind the actual PR head or pushed SHA", expected=CANDIDATE_SHA_SOURCE, actual=gate.get("candidate_sha_source")))
-    gate_text = (ROOT / GATE_WORKFLOW).read_text(encoding="utf-8") if (ROOT / GATE_WORKFLOW).is_file() else ""
-    if CANDIDATE_SHA_SOURCE not in gate_text:
-        findings.append(finding("candidate-sha-workflow-drift", "provider workflow does not use the declared exact candidate SHA source", expected=CANDIDATE_SHA_SOURCE))
-    exception = gate.get("exception")
-    if not isinstance(exception, dict):
-        findings.append(finding("gate-exception-missing", "pre-acceptance gate requires a bounded exception contract"))
-    else:
-        missing = sorted(field for field in REQUIRED_EXCEPTION_FIELDS if not exception.get(field))
-        if missing:
-            findings.append(finding("gate-exception-incomplete", "pre-acceptance gate exception is incomplete", missing=missing))
+        findings.append({"code": "candidate-sha-source"})
+    if gate.get("cutover_state") != "accepted-final-topology":
+        findings.append({"code": "cutover-state"})
+    if gate.get("accepted_decision_merge") != "a8fc9e8e04d53f1d783317059e4421c8dc724d01":
+        findings.append({"code": "accepted-decision"})
+    if canary.get("role") != "bootstrap_exception" or canary.get("authority_class") != "evidence-only" or canary.get("authority") is not False:
+        findings.append({"code": "canary-boundary"})
+    exception = canary.get("exception")
+    required_exception = {"owner", "reason", "expiry", "return_condition", "blocking_residual"}
+    if not isinstance(exception, dict) or any(not exception.get(key) for key in required_exception):
+        findings.append({"code": "canary-exception"})
+    if gate.get("all_repositories_enforced") is not False or canary.get("all_repositories_enforced") is not False:
+        findings.append({"code": "all-repository-overclaim"})
 
     return {
-        "kind": "governance.ciFinalRoleDemotion.report.v1",
+        "kind": "governance.ciFinalRoleDemotion.report.v2",
         "status": "pass" if not findings else "fail",
         "authority": False,
         "authorityClass": "evidence-only",
-        "finalCheckName": FINAL_CHECK_NAME,
-        "cutoverState": CUTOVER_STATE,
-        "candidateShaSource": CANDIDATE_SHA_SOURCE,
-        "checkedIntentPath": path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path),
-        "expectedWorkflowCount": len(EXPECTED_FINAL_ROLES),
+        "acceptedDecisionMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
+        "finalCheckName": CHECK_NAME,
+        "expectedWorkflowCount": 2,
         "actualWorkflowCount": len(actual),
         "findings": findings,
-        "boundary": "This validates the bounded 12-surface inventory, non-authority demotion, exact candidate identity, stable check identity, and pre-acceptance fixture state. It performs no ruleset cutover, effect, or workflow deletion.",
-    }
-
-
-def selftest() -> dict[str, Any]:
-    report = check()
-    if report["status"] != "pass":
-        raise SystemExit(canonical(report))
-    return {
-        "kind": "governance.ciFinalRoleDemotion.selftest.v1",
-        "status": "pass",
-        "authority": False,
-        "authorityClass": "evidence-only",
-        "finalCheckName": FINAL_CHECK_NAME,
-        "coveredIssues": ["governance#117", "governance#118", "governance#150"],
-        "report": report,
+        "boundary": "Provider workflow files remain adapters; accepted ADRS #233 grants the sole merge-admission class to gov-gate. gov-canary remains evidence-only.",
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate final-role demotion for old CI surfaces.")
+    parser = argparse.ArgumentParser()
     parser.add_argument("command", nargs="?", choices=["check", "selftest"], default="check")
     parser.add_argument("--ci-intent", type=Path, default=CI_INTENT)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
-
-    report = selftest() if args.command == "selftest" else check(args.ci_intent)
+    report = check(args.ci_intent)
+    if args.command == "selftest" and report["status"] != "pass":
+        raise SystemExit(canonical(report))
     print(canonical(report) if args.json else f"ci-final-role-demotion:{report['status']}")
     return 0 if report["status"] == "pass" else 1
 

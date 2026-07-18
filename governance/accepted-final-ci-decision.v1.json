@@ -1,0 +1,35 @@
+{
+  "acceptedMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
+  "allRepositoriesEnforced": false,
+  "authorityClasses": [
+    "accepted-meaning",
+    "merge-admission",
+    "effect",
+    "evidence-only"
+  ],
+  "contractCanonicalDigest": "8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314",
+  "decisionId": "01K0D7C3A00000000000000233",
+  "issue": "roccho-dev/adrs#233",
+  "kind": "governance.acceptedFinalCiDecisionProjection.v1",
+  "releaseId": "final-organization-ci-topology-v1.0.0",
+  "selectedRollout": [
+    {
+      "repository": "roccho-dev/governance",
+      "role": "self"
+    },
+    {
+      "repository": "roccho-dev/ui",
+      "role": "positive-feature-consumer"
+    },
+    {
+      "repository": "roccho-dev/ops",
+      "role": "migration-consumer-known-mismatch"
+    }
+  ],
+  "sourcePath": "ci_topology/v1/contract.json",
+  "stableRequiredCheck": "gov-final-scope-purpose-join / gate",
+  "targetWorkflows": [
+    "gov-gate",
+    "gov-canary"
+  ]
+}

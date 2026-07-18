@@ -1,27 +1,52 @@
-name: ADRS code governance fixture
+name: gov-canary
 
 on:
   workflow_dispatch:
-  pull_request:
-  push:
-    branches:
-      - proposals
+  schedule:
+    - cron: '17 3 * * *'
 
 permissions:
   contents: read
 
 concurrency:
-  group: governance-adrs-code-governance-fixture-${{ github.ref }}
+  group: governance-final-canary
   cancel-in-progress: true
 
 jobs:
-  fixture:
-    name: provider-detached read-only proof
+  topology:
+    name: final topology observer
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Checkout governance
         uses: actions/checkout@v4
+        with:
+          ref: proposals
+          persist-credentials: false
+
+      - name: Run evidence-only topology selftests
+        run: |
+          set -euo pipefail
+          python3 tools/check-package-final-ci-production.py selftest --json | tee "$RUNNER_TEMP/final-ci-topology-selftest.json"
+          python3 tools/check-package-ci-final-role-demotion.py check --json | tee "$RUNNER_TEMP/final-ci-role-report.json"
+
+      - name: Upload topology observation
+        uses: actions/upload-artifact@v4
+        with:
+          name: gov-canary-topology-observation
+          path: |
+            ${{ runner.temp }}/final-ci-topology-selftest.json
+            ${{ runner.temp }}/final-ci-role-report.json
+          if-no-files-found: error
+
+  adrs-observer:
+    name: read-only ADRS observer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout governance
+        uses: actions/checkout@v4
+        with:
+          ref: proposals
+          persist-credentials: false
 
       - name: Validate ADRS reader configuration
         env:
@@ -29,10 +54,10 @@ jobs:
           ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
         run: |
           set -euo pipefail
-          test -n "$ADRS_READER_CLIENT_ID" || { echo "missing Actions variable: ADRS_READER_CLIENT_ID" >&2; exit 1; }
-          test -n "$ADRS_READER_PRIVATE_KEY" || { echo "missing Actions secret: ADRS_READER_PRIVATE_KEY" >&2; exit 1; }
+          test -n "$ADRS_READER_CLIENT_ID"
+          test -n "$ADRS_READER_PRIVATE_KEY"
 
-      - name: Create least-privilege ADRS issue-reader token
+      - name: Create least-privilege ADRS observer token
         id: adrs-token
         uses: actions/create-github-app-token@v3
         with:
@@ -40,6 +65,7 @@ jobs:
           private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
           owner: roccho-dev
           repositories: adrs
+          permission-contents: read
           permission-issues: read
 
       - name: Set up Python
@@ -62,23 +88,21 @@ jobs:
       - name: Install pinned checker dependencies
         run: python3 -m pip install --disable-pip-version-check -r tools/code-governance/requirements.txt
 
-      - name: Run live provider-detached proof
+      - name: Run live read-only ADRS observation
         env:
           ADRS_TOKEN: ${{ steps.adrs-token.outputs.token }}
         run: |
           set -o pipefail
-          tools/code-governance/run-live-proof.sh 2>&1 | tee "$RUNNER_TEMP/code-governance-run.log"
+          tools/code-governance/run-live-proof.sh 2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs.log"
 
-      - name: Upload non-authority proof packet
+      - name: Upload ADRS observation
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: adrs-code-governance-fixture-proof
+          name: gov-canary-adrs-observation
           path: |
-            ${{ runner.temp }}/code-governance-run.log
+            ${{ runner.temp }}/gov-canary-adrs.log
             tools/code-governance/out/proof-receipt.json
-            tools/code-governance/out/nix-output.json
-            tools/code-governance/out/tests.log
             tools/code-governance/out/transports/live/transport-receipt.json
             tools/code-governance/out/evaluations/live-local/
           if-no-files-found: warn

@@ -1,0 +1,35 @@
+{
+  "allRepositoriesEnforced": false,
+  "decisionMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
+  "kind": "governance.selectedFinalCiRollout.v1",
+  "repositories": [
+    {
+      "acceptedBundleDigest": "sha256:8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314",
+      "assertionId": "ui.final-ci-consumer.v1",
+      "authority": false,
+      "candidateHead": "6f3f009f663fa999221dc2a32004fe7a37ef7a63",
+      "lifecycle": "active",
+      "mergeCommit": "362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579",
+      "receiptArtifactDigest": "sha256:6b491eb9e6d6502e132909be07b0e020d06f1c7582ec18ffe8cac20c212cbd54",
+      "receiptRunId": 29626820234,
+      "receiptStatus": "pass",
+      "repository": "roccho-dev/ui",
+      "role": "positive-feature-consumer",
+      "sourceClosureDigest": "sha256:a8fc9e8e04d53f1d783317059e4421c8dc724d01"
+    },
+    {
+      "acceptedBundleDigest": "sha256:8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314",
+      "assertionId": "ops.final-ci-migration-consumer.v1",
+      "authority": false,
+      "candidateHead": "722312ed57283414075936f0c62fd41bac52cab2",
+      "lifecycle": "active",
+      "mergeCommit": "23ca124814fbc2f597e95059b3c3701864c2b8b9",
+      "receiptArtifactDigest": "sha256:da1889fa47c2936d9b9a205bc66ebefc54d264a0a96b0429ca9f114c5c72ae25",
+      "receiptRunId": 29626206815,
+      "receiptStatus": "pass",
+      "repository": "roccho-dev/ops",
+      "role": "migration-consumer-known-mismatch",
+      "sourceClosureDigest": "sha256:a8fc9e8e04d53f1d783317059e4421c8dc724d01"
+    }
+  ]
+}
