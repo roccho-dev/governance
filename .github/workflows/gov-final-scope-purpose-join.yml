@@ -74,12 +74,35 @@ jobs:
           path: candidate-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
+      - name: Checkout exact ADRS 223 publication correction merge
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: b30c0750b4783f3349bc3c2d91e00853c90ab2ef
+          path: publication-adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
       - name: Verify and package ADRS sources
+        env:
+          PUBLICATION_ADRS_SHA: b30c0750b4783f3349bc3c2d91e00853c90ab2ef
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
           test "$(git -C candidate-adrs rev-parse HEAD)" = c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
-          python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check --contract accepted-adrs/ci_topology/v1/contract.json --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
+          test "$(git -C publication-adrs rev-parse HEAD)" = "$PUBLICATION_ADRS_SHA"
+          python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check \
+            --contract accepted-adrs/ci_topology/v1/contract.json \
+            --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
+          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py selftest \
+            > "$RUNNER_TEMP/company-contract-publication-selftest.json"
+          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py check \
+            --source-sha "$PUBLICATION_ADRS_SHA" \
+            --out "$RUNNER_TEMP/company-contract-publication" \
+            > "$RUNNER_TEMP/company-contract-publication-check.json"
+          test -s "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
+          test -s "$RUNNER_TEMP/company-contract-publication/publication-receipt.json"
+          grep -q '"doubleRunByteIdentical":true' "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
+          grep -q '"corporateSaleOutcomeAchieved":false' "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
           tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
           tar -C candidate-adrs --exclude=.git -czf candidate-adrs-source.tar.gz .
       - uses: actions/upload-artifact@v4
@@ -91,6 +114,16 @@ jobs:
         with:
           name: candidate-adrs-234-source
           path: candidate-adrs-source.tar.gz
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: company-operating-contract-v0-publication
+          path: |
+            ${{ runner.temp }}/company-contract-publication-selftest.json
+            ${{ runner.temp }}/company-contract-publication-check.json
+            ${{ runner.temp }}/company-contract-publication/publication-manifest.json
+            ${{ runner.temp }}/company-contract-publication/publication-receipt.json
+            ${{ runner.temp }}/company-contract-publication/publication-pass
           if-no-files-found: error
 
   live-consumers:
@@ -126,7 +159,10 @@ jobs:
           CONSUMER_READER_TOKEN: ${{ steps.consumer-token.outputs.token }}
         run: |
           set -o pipefail
-          python3 tools/check-live-final-ci-consumers.py capture --token-env CONSUMER_READER_TOKEN --out live-selected-consumers.json 2>&1 | tee live-selected-consumers.log
+          python3 tools/check-live-final-ci-consumers.py capture \
+            --token-env CONSUMER_READER_TOKEN \
+            --out live-selected-consumers.json \
+            2>&1 | tee live-selected-consumers.log
       - name: Upload live diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -207,8 +243,12 @@ jobs:
       - name: Run Nix and ADRS candidate regression
         run: |
           set -euo pipefail
-          nix flake check -L --no-write-lock-file --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" 2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
-          nix flake check -L "path:$PWD/evidence/candidate-adrs" 2>&1 | tee "$RUNNER_TEMP/adrs-234-candidate.log"
+          nix flake check -L --no-write-lock-file \
+            --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
+            --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" \
+            2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
+          nix flake check -L "path:$PWD/evidence/candidate-adrs" \
+            2>&1 | tee "$RUNNER_TEMP/adrs-234-candidate.log"
           (
             cd evidence/candidate-adrs
             bash ci/check-recursive-contract-modeling-v1-static.sh
@@ -316,7 +356,10 @@ jobs:
           assert value['contractModeling']['adrsHead']=='c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068'
           assert value['contractModeling']['migrationComplete'] is False
           PY
-          python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --live-consumers evidence/live-consumers/live-selected-consumers.json --json | tee final-gate-report.json
+          python3 tools/check-package-final-scope-purpose-join.py check \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --live-consumers evidence/live-consumers/live-selected-consumers.json \
+            --json | tee final-gate-report.json
           grep -q '"productionAdmission":true' final-gate-report.json
           grep -q '"artifactBodiesVerified":true' final-gate-report.json
           grep -q '"receiptCandidateShaBound":true' final-gate-report.json
