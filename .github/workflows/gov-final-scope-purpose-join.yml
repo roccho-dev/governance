@@ -36,7 +36,9 @@ jobs:
           assert value["contractCanonicalDigest"] == "8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314"
           assert value["stableRequiredCheck"] == "gov-final-scope-purpose-join / gate"
           assert value["allRepositoriesEnforced"] is False
-          Path("accepted-decision-capture.json").write_text(json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n")
+          Path("accepted-decision-capture.json").write_text(
+              json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n"
+          )
           PY
 
       - name: Upload accepted decision capture
@@ -47,7 +49,7 @@ jobs:
           if-no-files-found: error
 
   source-capture:
-    name: accepted ADRS source capture
+    name: accepted and candidate ADRS source capture
     runs-on: ubuntu-latest
     steps:
       - name: Validate read-only ADRS reader configuration
@@ -78,20 +80,33 @@ jobs:
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
 
-      - name: Verify and package accepted ADRS source
+      - name: Checkout exact ADRS 234 candidate
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
+          path: candidate-adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Verify and package ADRS sources
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = "a8fc9e8e04d53f1d783317059e4421c8dc724d01"
+          test "$(git -C candidate-adrs rev-parse HEAD)" = "c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068"
           python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check \
             --contract accepted-adrs/ci_topology/v1/contract.json \
             --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
           tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
+          tar -C candidate-adrs --exclude=.git -czf candidate-adrs-source.tar.gz .
 
-      - name: Upload exact accepted ADRS source
+      - name: Upload exact ADRS sources
         uses: actions/upload-artifact@v4
         with:
-          name: accepted-adrs-source
-          path: accepted-adrs-source.tar.gz
+          name: adrs-source-bundles
+          path: |
+            accepted-adrs-source.tar.gz
+            candidate-adrs-source.tar.gz
           if-no-files-found: error
 
   regression:
@@ -105,17 +120,28 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Download accepted ADRS source
+      - name: Download ADRS sources
         uses: actions/download-artifact@v4
         with:
-          name: accepted-adrs-source
+          name: adrs-source-bundles
           path: evidence
 
-      - name: Extract accepted ADRS source
+      - name: Extract ADRS sources
         run: |
           set -euo pipefail
-          mkdir -p evidence/accepted-adrs
+          mkdir -p evidence/accepted-adrs evidence/candidate-adrs
           tar -C evidence/accepted-adrs -xzf evidence/accepted-adrs-source.tar.gz
+          tar -C evidence/candidate-adrs -xzf evidence/candidate-adrs-source.tar.gz
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.5'
+          cache: pip
+          cache-dependency-path: tools/contract-modeling/requirements.txt
+
+      - name: Install pinned contract-modeling dependencies
+        run: python3 -m pip install --disable-pip-version-check -r tools/contract-modeling/requirements.txt
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
@@ -128,25 +154,69 @@ jobs:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
 
-      - name: Run Nix regression
-        continue-on-error: true
+      - name: Run Nix and ADRS candidate regression
         run: |
-          set -o pipefail
+          set -euo pipefail
           nix flake check -L --no-write-lock-file \
             --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
             --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" \
             2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
-          touch "$RUNNER_TEMP/final-ci-nix.pass"
+          (
+            cd evidence/candidate-adrs
+            nix flake check -L
+            bash ci/check-recursive-contract-modeling-v1-static.sh
+          ) 2>&1 | tee "$RUNNER_TEMP/adrs-234-candidate.log"
 
-      - name: Run Python regression
-        continue-on-error: true
+      - name: Run Python and contract-modeling regression
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          set -o pipefail
+          set -euo pipefail
           {
             python3 tools/compile-claim-port-joins.py selftest
             python3 tools/check-package-final-scope-purpose-join.py selftest --json
+            python3 -m unittest discover -s tools/contract-modeling/tests -p 'test_*.py'
+            CANDIDATE_SHA="$CANDIDATE_SHA" bash tools/contract-modeling/run-proof.sh
+            cd evidence/candidate-adrs
+            first="$RUNNER_TEMP/adrs-234-first"
+            second="$RUNNER_TEMP/adrs-234-second"
+            python3 tools/check-recursive-contract-modeling-v1.py check --out "$first" >/dev/null
+            python3 tools/check-recursive-contract-modeling-v1.py check --out "$second" >/dev/null
+            cmp "$first/report.json" "$second/report.json"
+            cmp "$first/receipt.json" "$second/receipt.json"
+            python3 tools/check-recursive-contract-modeling-v1.py selftest \
+              | tee "$RUNNER_TEMP/adrs-234-selftest.json"
           } 2>&1 | tee "$RUNNER_TEMP/final-ci-python.log"
-          touch "$RUNNER_TEMP/final-ci-python.pass"
+
+      - name: Write regression receipt
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test -s tools/contract-modeling/out/selftest-receipt.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          selftest = json.loads(Path("tools/contract-modeling/out/selftest-receipt.json").read_text())
+          assert selftest["status"] == "pass"
+          assert selftest["migration_complete"] is False
+          receipt = {
+              "kind": "governance.regressionReceipt.v2",
+              "status": "pass",
+              "candidateSha": os.environ["CANDIDATE_SHA"],
+              "authority": False,
+              "contractModeling": {
+                  "status": "shadow-pass",
+                  "decisionId": "01K0E1CM000000000000000234",
+                  "decisionDigest": "cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1",
+                  "adrsHead": "c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068",
+                  "migrationComplete": False,
+              },
+          }
+          Path("regression-receipt.json").write_text(
+              json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n"
+          )
+          PY
 
       - name: Upload regression diagnostics
         if: always()
@@ -156,16 +226,10 @@ jobs:
           path: |
             ${{ runner.temp }}/final-ci-nix.log
             ${{ runner.temp }}/final-ci-python.log
+            ${{ runner.temp }}/adrs-234-candidate.log
+            ${{ runner.temp }}/adrs-234-selftest.json
+            tools/contract-modeling/out/
           if-no-files-found: warn
-
-      - name: Reduce regression receipt
-        env:
-          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          set -euo pipefail
-          test -f "$RUNNER_TEMP/final-ci-nix.pass"
-          test -f "$RUNNER_TEMP/final-ci-python.pass"
-          printf '{"kind":"governance.regressionReceipt.v1","status":"pass","candidateSha":"%s","authority":false}\n' "$CANDIDATE_SHA" > regression-receipt.json
 
       - name: Upload regression receipt
         uses: actions/upload-artifact@v4
@@ -205,7 +269,17 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           test -s evidence/accepted-decision/accepted-decision-capture.json
           test -s evidence/regression/regression-receipt.json
-          python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --json | tee final-gate-report.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          value = json.loads(Path("evidence/regression/regression-receipt.json").read_text())
+          assert value["status"] == "pass"
+          assert value["contractModeling"]["status"] == "shadow-pass"
+          assert value["contractModeling"]["decisionDigest"] == "cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1"
+          assert value["contractModeling"]["migrationComplete"] is False
+          PY
+          python3 tools/check-package-final-scope-purpose-join.py check \
+            --candidate-sha "$CANDIDATE_SHA" --json | tee final-gate-report.json
           grep -q '"productionAdmission":true' final-gate-report.json
           grep -q '"allRepositoriesEnforced":false' final-gate-report.json
 
@@ -235,7 +309,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          printf '{"kind":"governance.postEffectReadback.v1","status":"pass","repository":"roccho-dev/governance","branch":"proposals","writtenSha":"%s","observedSha":"%s","authority":false}\n' "$GITHUB_SHA" "$(git rev-parse HEAD)" > post-effect-readback.json
+          printf '{"kind":"governance.postEffectReadback.v1","status":"pass","repository":"roccho-dev/governance","branch":"proposals","writtenSha":"%s","observedSha":"%s","authority":false}\n' \
+            "$GITHUB_SHA" "$(git rev-parse HEAD)" > post-effect-readback.json
 
       - name: Upload post-effect readback
         uses: actions/upload-artifact@v4
