@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-go test ./tools/promotion-keygen
+(
+  cd tools/promotion-keygen
+  go test ./...
+)
 python3 -m unittest discover -s tools/promotion/tests -p 'test_*.py'
 python3 - <<'PY'
 import json
