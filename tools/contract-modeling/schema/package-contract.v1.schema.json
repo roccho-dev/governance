@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "port": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "schema": {"type": "string"},
+        "version": {"type": "string"}
+      },
+      "required": ["name", "schema", "version"],
+      "type": "object"
+    },
+    "purpose": {
+      "additionalProperties": false,
+      "properties": {
+        "root_id": {"type": "string"},
+        "start_id": {"type": "string"}
+      },
+      "required": ["root_id", "start_id"],
+      "type": "object"
+    }
+  },
+  "$id": "contract-modeling/package-contract.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dependency": {"items": {"type": "string"}, "type": "array", "uniqueItems": true},
+    "effect": {
+      "items": {"enum": ["none", "filesystem-read", "filesystem-write", "network-read", "network-write", "process-spawn", "provider-mutation"]},
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "error": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {"kind": {"type": "string"}, "retryable": {"type": "boolean"}},
+        "required": ["kind", "retryable"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_sha": {"minLength": 1, "type": "string"},
+        "expires_on": {"format": "date", "type": "string"},
+        "receipt_id": {"minLength": 1, "type": "string"}
+      },
+      "required": ["candidate_sha", "receipt_id", "expires_on"],
+      "type": "object"
+    },
+    "input": {"items": {"$ref": "#/$defs/port"}, "minItems": 1, "type": "array"},
+    "lifecycle": {"enum": ["planned", "active", "deprecated", "retired"]},
+    "output": {"items": {"$ref": "#/$defs/port"}, "minItems": 1, "type": "array"},
+    "owner": {"minLength": 1, "type": "string"},
+    "package_id": {"minLength": 1, "type": "string"},
+    "purpose": {"$ref": "#/$defs/purpose"},
+    "waiver": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "additionalProperties": false,
+          "properties": {
+            "accepted_decision_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+            "expires_on": {"format": "date", "type": "string"},
+            "owner": {"minLength": 1, "type": "string"},
+            "reason": {"minLength": 1, "type": "string"}
+          },
+          "required": ["accepted_decision_digest", "expires_on", "owner", "reason"],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": ["package_id", "owner", "input", "output", "error", "effect", "dependency", "lifecycle", "evidence", "purpose", "waiver"],
+  "type": "object"
+}
