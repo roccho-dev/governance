@@ -184,7 +184,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: 70b7c37c434e01b56f53a27091dab43b222d8f76
+          ref: e960e378b1c07002cbd8d9fbba35e94f4d6c37b5
           path: promotion-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -218,15 +218,11 @@ jobs:
           set -euo pipefail
           test "$(git -C candidate-adrs rev-parse HEAD)" = "c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068"
           nix flake check -L "path:$PWD/candidate-adrs" 2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs-234.log"
-          (
-            cd candidate-adrs
-            bash ci/check-recursive-contract-modeling-v1-static.sh
-            python3 tools/check-recursive-contract-modeling-v1.py selftest
-          ) 2>&1 | tee -a "$RUNNER_TEMP/gov-canary-adrs-234.log"
+          (cd candidate-adrs && bash ci/check-recursive-contract-modeling-v1-static.sh && python3 tools/check-recursive-contract-modeling-v1.py selftest) 2>&1 | tee -a "$RUNNER_TEMP/gov-canary-adrs-234.log"
       - name: Run exact signed-promotion ADRS candidate observation
         run: |
           set -euo pipefail
-          test "$(git -C promotion-adrs rev-parse HEAD)" = "70b7c37c434e01b56f53a27091dab43b222d8f76"
+          test "$(git -C promotion-adrs rev-parse HEAD)" = "e960e378b1c07002cbd8d9fbba35e94f4d6c37b5"
           (
             cd promotion-adrs
             cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-signed-promotion.cue
