@@ -16,19 +16,19 @@ executor.
 - DuckDB gates and version-normalizing ABI;
 - purpose and responsibility closure;
 - exact candidate SHA receipts;
-- 36-row legacy responsibility migration proof;
+- 36-row bounded legacy responsibility migration proof;
 - two unrelated real governance package admissions;
 - bounded model-only package proof;
 - at least 26 destructive cases;
-- byte-identical replay and Nix materialization;
-- same-name shadow workflow `contract-modeling / admission`.
+- byte-identical replay and direct content-addressed Nix store materialization;
+- exact-SHA `contract-modeling admission` job inside the accepted 12-workflow CI topology.
 
 ## Merge boundary
 
 The implementation is mergeable as a non-authority shadow compiler. It does not
-close governance #153 while the accepted ADRS merge/release, selected-scope
-production cutover, external legacy-consumer readback, and final effect receipts
-remain absent.
+close governance #153 while the accepted ADRS merge/release, final frozen legacy
+source digest, selected-scope production cutover, external legacy-consumer
+readback, and final effect receipts remain absent.
 
 ## Claim ceiling
 
