@@ -8,7 +8,7 @@
   },
   "cutover": {
     "legacy_active_consumer_count": 0,
-    "production_gate": "contract-modeling / admission",
+    "production_gate": "contract-modeling admission",
     "scope": "selected-required-universe-v1",
     "state": "shadow"
   },
@@ -21,8 +21,8 @@
   },
   "kind": "contractModelingPolicyInput.v1",
   "legacy": {
-    "source": "specs/packages/jsonl-datamodeling-duckdb-ci",
-    "source_digest": "4e8705de7895e0f46b21f3e0b19aa9072b958adf386bbf3826cf75cd689d615f",
+    "source": "bounded-proof-corpus:specs/packages/jsonl-datamodeling-duckdb-ci",
+    "source_digest": "be736567e5fb4751dfd53a272aeede308c38f9da9d51d18a60bcc2d74f946b07",
     "unexplained_allowed": 0
   },
   "mode": "shadow",
