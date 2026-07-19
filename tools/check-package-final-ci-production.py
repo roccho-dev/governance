@@ -20,8 +20,9 @@ GATE = ".github/workflows/gov-final-scope-purpose-join.yml"
 CANARY = ".github/workflows/gov-canary.yml"
 RELEASE = ".github/workflows/gov-release.yml"
 CHECK_NAME = "gov-final-scope-purpose-join / gate"
-RELEASE_DECISION_DIGEST = "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"
-RELEASE_ADRS_HEAD = "60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326"
+RELEASE_CONTRACT_DIGEST = "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"
+RELEASE_DECISION_DIGEST = "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
+RELEASE_ADRS_HEAD = "5a8a6d9968178144b2e547f28bb9977a7b65c755"
 SHA = re.compile(r"^[0-9a-f]{40}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 EXPECTED_REPOS = {
@@ -90,8 +91,10 @@ def validate_release_candidate(value: dict[str, Any]) -> None:
     need(value.get("status") == "candidate", "release-baseline-status")
     need(value.get("closureModel") == "gov-release-publication", "release-closure-model")
     need(value.get("supersedesClosureModels") == ["github-merge-protection", "signed-promotion"], "release-supersedes")
-    need(value["adrsCandidate"]["head"] == RELEASE_ADRS_HEAD, "release-adrs-head")
-    need(value["adrsCandidate"]["contractDigest"] == RELEASE_DECISION_DIGEST, "release-decision-digest")
+    candidate = value["adrsCandidate"]
+    need(candidate["head"] == RELEASE_ADRS_HEAD, "release-adrs-head")
+    need(candidate["contractDigest"] == RELEASE_CONTRACT_DIGEST, "release-contract-digest")
+    need(candidate["acceptedDecisionDigest"] == RELEASE_DECISION_DIGEST, "release-decision-digest")
     need(value["governance"]["workflowCount"] == 3, "release-workflow-count")
     need(value["currentOperationalAdoption"]["releasePublished"] is False, "release-not-published")
     need(value["currentOperationalAdoption"]["releaseReadback"] is False, "release-not-read-back")
@@ -171,11 +174,7 @@ def validate_live_packet(packet: dict[str, Any], expected: dict[str, dict[str, A
 
 def validate_provider_files() -> None:
     expected = {GATE, CANARY, RELEASE}
-    actual = {
-        path.relative_to(ROOT).as_posix()
-        for path in WORKFLOWS.iterdir()
-        if path.is_file() and path.suffix in {".yml", ".yaml"}
-    }
+    actual = {path.relative_to(ROOT).as_posix() for path in WORKFLOWS.iterdir() if path.is_file() and path.suffix in {".yml", ".yaml"}}
     need(actual == expected, "workflow-universe")
     rows = read_jsonl(CI_INTENT)
     need(len(rows) == 3, "ci-intent-cardinality")
@@ -195,6 +194,7 @@ def validate_provider_files() -> None:
     need("workflow_dispatch" in release_text, "release-dispatch")
     need("gh release create" in release_text, "release-publish")
     need("gov-release-manifest.json" in release_text, "release-manifest")
+    need("accepted-decision.json" in release_text, "release-decision-source")
     need("contents: write" in release_text, "release-write-boundary")
     need("pull_request_target" not in gate_text + canary_text + release_text, "pull-request-target")
     need("persist-credentials: false" in gate_text, "gate-credentials")
@@ -235,13 +235,14 @@ def check(candidate_sha: str, live_path: Path, decision_path: Path = DECISION, r
     validate_provider_files()
     admissions = compile_selected_admissions(live, candidate_sha)
     return {
-        "kind": "governance.finalCiProductionEvidence.v3",
+        "kind": "governance.finalCiProductionEvidence.v4",
         "status": "pass",
         "decision": "allow",
         "candidateSha": candidate_sha,
         "currentlyAcceptedDecisionMerge": decision["acceptedMerge"],
         "govReleaseDecisionCandidateHead": RELEASE_ADRS_HEAD,
-        "govReleaseContractDigest": RELEASE_DECISION_DIGEST,
+        "govReleaseContractDigest": RELEASE_CONTRACT_DIGEST,
+        "govReleaseAcceptedDecisionDigest": RELEASE_DECISION_DIGEST,
         "finalCheckName": CHECK_NAME,
         "workflowCount": 3,
         "selectedRepositoryCount": 3,
@@ -307,7 +308,7 @@ def selftest() -> dict[str, Any]:
                 rejected.append({"case": name, "status": "rejected", "finding": str(error)})
             else:
                 raise GateError(f"destructive case passed:{name}")
-    return {"kind": "governance.finalCiProductionEvidence.selftest.v3", "status": "pass", "positiveCases": 1, "destructiveCases": len(rejected), "cases": rejected, "signatureRequired": False, "operationalAdoptionEffect": False, "allRepositoriesEnforced": False, "authority": False}
+    return {"kind": "governance.finalCiProductionEvidence.selftest.v4", "status": "pass", "positiveCases": 1, "destructiveCases": len(rejected), "cases": rejected, "signatureRequired": False, "operationalAdoptionEffect": False, "allRepositoriesEnforced": False, "authority": False}
 
 
 def main() -> int:
