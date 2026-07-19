@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 IDENTITY_PATH = ROOT / "governance/gov-release-identity.v1.json"
 SHA = re.compile(r"^[0-9a-f]{40}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+GENERATED_PARTS = {".git", "__pycache__", "evidence", "out"}
 
 
 class IdentityError(ValueError):
@@ -83,7 +84,10 @@ def duplicate_identity_literals(root: Path = ROOT) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     allowed = {IDENTITY_PATH.resolve()}
     for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.resolve() in allowed or ".git" in path.parts:
+        if not path.is_file() or path.resolve() in allowed:
+            continue
+        relative = path.relative_to(root)
+        if any(part in GENERATED_PARTS for part in relative.parts):
             continue
         if path.suffix not in {".py", ".json", ".jsonl", ".yml", ".yaml", ".md", ".sh"}:
             continue
@@ -93,7 +97,7 @@ def duplicate_identity_literals(root: Path = ROOT) -> list[dict[str, str]]:
             continue
         for code, literal in values.items():
             if literal in text:
-                findings.append({"code": code, "path": path.relative_to(root).as_posix()})
+                findings.append({"code": code, "path": relative.as_posix()})
     return findings
 
 
