@@ -3,10 +3,10 @@
   "source": {
     "repository": "roccho-dev/adrs",
     "pullRequest": 242,
-    "head": "5a8a6d9968178144b2e547f28bb9977a7b65c755",
+    "head": "4a1b006075573dfc0c02479c6fd12e49672ba63a",
     "decisionPath": "release/v1/accepted-decision.json",
     "contractPath": "release/v1/contract.json",
-    "status": "accepted-in-candidate"
+    "status": "accepted"
   },
   "acceptedDecision": {
     "canonicalDigest": "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
