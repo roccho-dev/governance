@@ -6,7 +6,7 @@ on:
       - proposals
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apply:
@@ -16,7 +16,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-      - name: Apply deterministic issue 171 patch
+      - name: Apply deterministic patch and create Git blobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
           python3 tools/gov_release/patch_issue_171.py
@@ -24,13 +27,42 @@ jobs:
           test ! -e .github/workflows/tmp-apply-issue-171.yml
           test ! -e tools/gov_release/patch_issue_171.py
           test "$(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l)" -eq 3
-          mkdir -p patched/workflows patched/tools
-          cp .github/workflows/gov-release.yml patched/workflows/gov-release.yml
-          cp .github/workflows/gov-canary.yml patched/workflows/gov-canary.yml
-          cp tools/check-package-final-ci-production.py patched/tools/check-package-final-ci-production.py
-          cp tools/check-package-ci-final-role-demotion.py patched/tools/check-package-ci-final-role-demotion.py
+
+          create_blob() {
+            path="$1"
+            python3 - "$path" > blob-request.json <<'PY'
+          import base64,json,sys
+          path=sys.argv[1]
+          print(json.dumps({'content':base64.b64encode(open(path,'rb').read()).decode(),'encoding':'base64'},separators=(',',':')))
+          PY
+            gh api --method POST "repos/$REPOSITORY/git/blobs" --input blob-request.json --jq .sha
+          }
+
+          release_blob=$(create_blob .github/workflows/gov-release.yml)
+          canary_blob=$(create_blob .github/workflows/gov-canary.yml)
+          production_blob=$(create_blob tools/check-package-final-ci-production.py)
+          roles_blob=$(create_blob tools/check-package-ci-final-role-demotion.py)
+          base_tree=$(gh api "repos/$REPOSITORY/git/commits/$GITHUB_SHA" --jq .tree.sha)
+
+          python3 - <<PY
+          import json
+          value={
+            'kind':'issue171GitData.v1',
+            'parentSha':'$GITHUB_SHA',
+            'baseTreeSha':'$base_tree',
+            'blobs':{
+              '.github/workflows/gov-release.yml':'$release_blob',
+              '.github/workflows/gov-canary.yml':'$canary_blob',
+              'tools/check-package-final-ci-production.py':'$production_blob',
+              'tools/check-package-ci-final-role-demotion.py':'$roles_blob',
+            },
+            'deletePaths':['.github/workflows/tmp-apply-issue-171.yml','tools/gov_release/patch_issue_171.py'],
+          }
+          open('issue-171-git-data.json','w').write(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n')
+          print(json.dumps(value,sort_keys=True,separators=(',',':')))
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: issue-171-patched-files
-          path: patched/
+          name: issue-171-git-data
+          path: issue-171-git-data.json
           if-no-files-found: error
