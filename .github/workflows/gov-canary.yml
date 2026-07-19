@@ -24,18 +24,26 @@ jobs:
       - name: Run evidence-only topology and release selftests
         run: |
           set -euo pipefail
+          python3 tools/gov_release/identity.py selftest | tee "$RUNNER_TEMP/gov-release-identity-selftest.json"
           python3 tools/check-package-final-ci-production.py selftest --json | tee "$RUNNER_TEMP/final-ci-topology-selftest.json"
           python3 tools/check-package-ci-final-role-demotion.py check --json | tee "$RUNNER_TEMP/final-ci-role-report.json"
           python3 tools/check-live-final-ci-consumers.py selftest | tee "$RUNNER_TEMP/live-consumer-selftest.json"
           python3 tools/check-live-final-ci-control-plane.py selftest | tee "$RUNNER_TEMP/control-plane-selftest.json"
           python3 tools/check-gov-release-integration.py selftest --json | tee "$RUNNER_TEMP/gov-release-selftest.json"
           python3 tools/check-gov-release-integration.py canary --json | tee "$RUNNER_TEMP/gov-release-canary.json"
-          grep -q '"acceptedDecisionDigest":"sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"' "$RUNNER_TEMP/gov-release-canary.json"
-          grep -q '"rulesetAffectsReleaseClosure":false' "$RUNNER_TEMP/gov-release-canary.json"
+          python3 - <<'PY'
+          import json,os
+          identity=json.load(open('governance/gov-release-identity.v1.json'))
+          canary=json.load(open(os.environ['RUNNER_TEMP']+'/gov-release-canary.json'))
+          assert canary['acceptedDecisionDigest']==identity['acceptedDecision']['canonicalDigest']
+          assert canary['contractDigest']==identity['contract']['canonicalDigest']
+          assert canary['rulesetAffectsReleaseClosure'] is False
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: gov-canary-topology-observation
           path: |
+            ${{ runner.temp }}/gov-release-identity-selftest.json
             ${{ runner.temp }}/final-ci-topology-selftest.json
             ${{ runner.temp }}/final-ci-role-report.json
             ${{ runner.temp }}/live-consumer-selftest.json
@@ -108,11 +116,14 @@ jobs:
           import hashlib,json,os
           from pathlib import Path
           root=Path(os.environ['RUNNER_TEMP'])/'releases'
+          identity=json.load(open('governance/gov-release-identity.v1.json'))
+          expected_decision=identity['acceptedDecision']['canonicalDigest']
+          expected_contract=identity['contract']['canonicalDigest']
           def load(path):
               value=json.loads(path.read_text()); assert isinstance(value,dict); return value
           def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
           def digest(value): return 'sha256:'+hashlib.sha256(canonical(value)).hexdigest()
-          by_sequence={}; by_digest={}; release_ids=set(); locations={}
+          by_sequence={}; by_digest={}; release_ids=set()
           for directory in sorted(root.iterdir() if root.exists() else []):
               decision=load(directory/'accepted-decision.json')
               manifest=load(directory/'gov-release-manifest.json')
@@ -120,8 +131,9 @@ jobs:
               nix=load(directory/'gov-nix-output-descriptor.json')
               receipt=load(directory/'gov-release-readback-receipt.json')
               assert decision['kind']=='govReleaseAcceptedDecision.v1'
-              decision_digest=digest(decision)
-              assert manifest['acceptedDecisionDigest']==decision_digest
+              assert digest(decision)==expected_decision
+              assert decision['govReleaseContractDigest']==expected_contract
+              assert manifest['acceptedDecisionDigest']==expected_decision
               assert manifest['govEngineDigest']==digest(engine)
               assert manifest['nixOutputDigest']==digest(nix)
               assert set(manifest)=={'kind','releaseId','sequence','previousReleaseDigest','supersedesReleaseDigest','acceptedDecisionDigest','govEngineDigest','nixOutputDigest','status'}
@@ -132,18 +144,19 @@ jobs:
               assert receipt['releaseId']==manifest['releaseId'] and receipt['releaseDigest']==receipt['observedManifestDigest']==release_digest
               assert receipt['adopted'] is True and receipt['authority'] is False
               assert manifest['sequence'] not in by_sequence and manifest['releaseId'] not in release_ids
-              by_sequence[manifest['sequence']]=(release_digest,manifest); by_digest[release_digest]=manifest; release_ids.add(manifest['releaseId']); locations[release_digest]=directory
+              by_sequence[manifest['sequence']]=(release_digest,manifest); by_digest[release_digest]=manifest; release_ids.add(manifest['releaseId'])
           sequences=sorted(by_sequence); assert sequences==list(range(len(sequences)))
           for sequence in sequences:
               release_digest,manifest=by_sequence[sequence]
-              assert manifest['previousReleaseDigest'] is None if sequence==0 else manifest['previousReleaseDigest']==by_sequence[sequence-1][0]
+              if sequence==0: assert manifest['previousReleaseDigest'] is None
+              else: assert manifest['previousReleaseDigest']==by_sequence[sequence-1][0]
               supersedes=manifest['supersedesReleaseDigest']
               if supersedes is not None: assert supersedes in by_digest and by_digest[supersedes]['sequence']<sequence
           if not sequences:
-              report={'kind':'governance.govReleaseLiveObservation.v2','status':'absent','releaseCount':0,'selectedReleaseId':None,'selectedReleaseDigest':None,'operationalAdoptionEffect':False,'authority':False}
+              report={'kind':'governance.govReleaseLiveObservation.v3','status':'absent','releaseCount':0,'selectedReleaseId':None,'selectedReleaseDigest':None,'operationalAdoptionEffect':False,'authority':False}
           else:
               selected_digest,selected=by_sequence[sequences[-1]]
-              report={'kind':'governance.govReleaseLiveObservation.v2','status':'pass','releaseCount':len(sequences),'selectedReleaseId':selected['releaseId'],'selectedReleaseDigest':selected_digest,'sequence':selected['sequence'],'acceptedDecisionDigest':selected['acceptedDecisionDigest'],'govEngineDigest':selected['govEngineDigest'],'nixOutputDigest':selected['nixOutputDigest'],'selectedReadback':True,'operationalAdoptionEffect':True,'authority':False}
+              report={'kind':'governance.govReleaseLiveObservation.v3','status':'pass','releaseCount':len(sequences),'selectedReleaseId':selected['releaseId'],'selectedReleaseDigest':selected_digest,'sequence':selected['sequence'],'acceptedDecisionDigest':selected['acceptedDecisionDigest'],'govEngineDigest':selected['govEngineDigest'],'nixOutputDigest':selected['nixOutputDigest'],'selectedReadback':True,'operationalAdoptionEffect':True,'authority':False}
           Path(os.environ['RUNNER_TEMP']+'/gov-release-live-observation.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
           if sequences:
               with Path(os.environ['RUNNER_TEMP']+'/gov-release-manifests.jsonl').open('w') as file:
@@ -223,13 +236,16 @@ jobs:
           if-no-files-found: error
 
   adrs-observer:
-    name: read-only ADRS and gov release candidate observer
+    name: read-only ADRS and gov release identity observer
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: proposals
           persist-credentials: false
+      - name: Load the single exact identity projection
+        id: identity
+        run: python3 tools/gov_release/identity.py github-output >> "$GITHUB_OUTPUT"
       - name: Validate ADRS reader configuration
         env:
           ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
@@ -244,11 +260,11 @@ jobs:
           repositories: adrs
           permission-contents: read
           permission-issues: read
-      - name: Checkout exact gov release ADRS candidate
+      - name: Checkout exact gov release ADRS source
         uses: actions/checkout@v4
         with:
-          repository: roccho-dev/adrs
-          ref: 5a8a6d9968178144b2e547f28bb9977a7b65c755
+          repository: ${{ steps.identity.outputs.adrs_repository }}
+          ref: ${{ steps.identity.outputs.adrs_head }}
           path: release-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -260,22 +276,32 @@ jobs:
         run: |
           go install cuelang.org/go/cmd/cue@v0.9.2
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
-      - name: Run live ADRS observation and exact gov release candidate proof
+      - name: Run live ADRS observation and exact gov release proof
         env:
           ADRS_TOKEN: ${{ steps.adrs-token.outputs.token }}
+          ADRS_HEAD: ${{ steps.identity.outputs.adrs_head }}
+          ACCEPTED_DECISION_DIGEST: ${{ steps.identity.outputs.accepted_decision_digest }}
+          CONTRACT_DIGEST: ${{ steps.identity.outputs.contract_digest }}
         run: |
           set -euo pipefail
           tools/code-governance/run-live-proof.sh 2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs.log"
-          test "$(git -C release-adrs rev-parse HEAD)" = 5a8a6d9968178144b2e547f28bb9977a7b65c755
+          test "$(git -C release-adrs rev-parse HEAD)" = "$ADRS_HEAD"
           (
             cd release-adrs
             cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-gov-release.cue
             cue vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-gov-release-topology.cue
-            python3 tools/check-gov-release-v1.py contract
-            python3 tools/check-gov-release-v1.py decision
+            python3 tools/check-gov-release-v1.py contract --out "$RUNNER_TEMP/gov-canary-contract.json"
+            python3 tools/check-gov-release-v1.py decision --out "$RUNNER_TEMP/gov-canary-decision.json"
             python3 tools/check-gov-release-v1.py selftest
             bash ci/check-gov-release-v1-static.sh
           ) 2>&1 | tee "$RUNNER_TEMP/gov-canary-gov-release.log"
+          python3 - <<'PY'
+          import json,os
+          contract=json.load(open(os.environ['RUNNER_TEMP']+'/gov-canary-contract.json'))
+          decision=json.load(open(os.environ['RUNNER_TEMP']+'/gov-canary-decision.json'))
+          assert contract['contractDigest']==os.environ['CONTRACT_DIGEST']
+          assert decision['acceptedDecisionDigest']==os.environ['ACCEPTED_DECISION_DIGEST']
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -283,6 +309,8 @@ jobs:
           path: |
             ${{ runner.temp }}/gov-canary-adrs.log
             ${{ runner.temp }}/gov-canary-gov-release.log
+            ${{ runner.temp }}/gov-canary-contract.json
+            ${{ runner.temp }}/gov-canary-decision.json
             tools/code-governance/out/proof-receipt.json
             tools/code-governance/out/transports/live/transport-receipt.json
           if-no-files-found: warn

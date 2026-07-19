@@ -3,20 +3,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools.gov_release.identity import IDENTITY_PATH, load_identity  # noqa: E402
+
 CI_INTENT = ROOT / "ci.intent.v1.jsonl"
 WORKFLOWS = ROOT / ".github/workflows"
 GATE = ".github/workflows/gov-final-scope-purpose-join.yml"
 CANARY = ".github/workflows/gov-canary.yml"
 RELEASE = ".github/workflows/gov-release.yml"
-CHECK_NAME = "gov-final-scope-purpose-join / gate"
 CANDIDATE_SHA_SOURCE = "github.event.pull_request.head.sha || github.sha"
 CUTOVER_STATE = "accepted-gov-release-topology-candidate"
-RELEASE_ADRS_HEAD = "5a8a6d9968178144b2e547f28bb9977a7b65c755"
-RELEASE_DECISION_DIGEST = "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
 
 
 def canonical(value: Any) -> str:
@@ -28,13 +31,11 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def check(path: Path = CI_INTENT) -> dict[str, Any]:
+    identity = load_identity()
+    identity_path = IDENTITY_PATH.relative_to(ROOT).as_posix()
     rows = read_jsonl(path)
     by_path = {row.get("path"): row for row in rows}
-    actual = {
-        item.relative_to(ROOT).as_posix()
-        for item in WORKFLOWS.iterdir()
-        if item.is_file() and item.suffix in {".yml", ".yaml"}
-    }
+    actual = {item.relative_to(ROOT).as_posix() for item in WORKFLOWS.iterdir() if item.is_file() and item.suffix in {".yml", ".yaml"}}
     findings: list[dict[str, Any]] = []
     expected = {GATE, CANARY, RELEASE}
     if actual != expected:
@@ -49,16 +50,17 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         findings.append({"code": "gate-role", "actual": gate.get("role")})
     if gate.get("authority") is not False or gate.get("authority_class") != "release-eligibility-evidence":
         findings.append({"code": "gate-authority-boundary"})
-    if gate.get("required_check_name") != CHECK_NAME:
+    if gate.get("required_check_name") != identity["currentTopology"]["stableCheckName"]:
         findings.append({"code": "check-name", "actual": gate.get("required_check_name")})
     if gate.get("candidate_sha_source") != CANDIDATE_SHA_SOURCE:
         findings.append({"code": "candidate-sha-source"})
     if gate.get("cutover_state") != CUTOVER_STATE:
         findings.append({"code": "cutover-state", "expected": CUTOVER_STATE, "actual": gate.get("cutover_state")})
-    if gate.get("adrs_candidate_head") != RELEASE_ADRS_HEAD:
-        findings.append({"code": "adrs-candidate-head"})
-    if gate.get("accepted_decision_digest") != RELEASE_DECISION_DIGEST:
-        findings.append({"code": "accepted-decision-digest"})
+    if gate.get("identity_projection") != identity_path:
+        findings.append({"code": "identity-projection"})
+    for stale in ("adrs_candidate_head", "accepted_decision_digest", "gov_release_contract_digest"):
+        if stale in gate:
+            findings.append({"code": "duplicated-identity", "field": stale})
     if canary.get("role") != "bootstrap_exception" or canary.get("authority_class") != "evidence-only" or canary.get("authority") is not False:
         findings.append({"code": "canary-boundary"})
     if release.get("role") != "bootstrap_exception" or release.get("authority_class") != "release-adoption" or release.get("authority") is not False:
@@ -88,8 +90,8 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         findings.append({"code": "release-publication"})
     if "contents: write" not in release_text:
         findings.append({"code": "release-write-boundary"})
-    if "accepted-decision.json" not in release_text:
-        findings.append({"code": "release-accepted-decision"})
+    if "gov-release-identity.v1.json" not in gate_text + canary_text + release_text:
+        findings.append({"code": "workflow-identity-projection"})
     publish_section = release_text.split("  publish:", 1)[1] if "  publish:" in release_text else ""
     if "actions/checkout" in publish_section:
         findings.append({"code": "publisher-checkout"})
@@ -97,14 +99,15 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         findings.append({"code": "publisher-executes-repository-code"})
 
     return {
-        "kind": "governance.ciFinalRoleDemotion.report.v5",
+        "kind": "governance.ciFinalRoleDemotion.report.v6",
         "status": "pass" if not findings else "fail",
         "authority": False,
         "authorityClass": "evidence-only",
-        "currentlyAcceptedDecisionMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
-        "govReleaseDecisionCandidateHead": RELEASE_ADRS_HEAD,
-        "govReleaseAcceptedDecisionDigest": RELEASE_DECISION_DIGEST,
-        "finalCheckName": CHECK_NAME,
+        "identityProjection": identity_path,
+        "currentlyAcceptedDecisionMerge": identity["currentTopology"]["acceptedMerge"],
+        "govReleaseDecisionCandidateHead": identity["source"]["head"],
+        "govReleaseAcceptedDecisionDigest": identity["acceptedDecision"]["canonicalDigest"],
+        "finalCheckName": identity["currentTopology"]["stableCheckName"],
         "cutoverState": CUTOVER_STATE,
         "expectedWorkflowCount": 3,
         "actualWorkflowCount": len(actual),
