@@ -23,7 +23,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Capture current accepted projection and release correction candidate
+      - name: Capture current projection and exact gov-release candidate
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -33,8 +33,9 @@ jobs:
           candidate=json.loads(Path('governance/gov-release-baseline.v1.json').read_text())
           assert current['acceptedMerge']=='a8fc9e8e04d53f1d783317059e4421c8dc724d01'
           assert current['stableRequiredCheck']=='gov-final-scope-purpose-join / gate'
-          assert candidate['adrsCandidate']['head']=='60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326'
+          assert candidate['adrsCandidate']['head']=='5a8a6d9968178144b2e547f28bb9977a7b65c755'
           assert candidate['adrsCandidate']['contractDigest']=='sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b'
+          assert candidate['adrsCandidate']['acceptedDecisionDigest']=='sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f'
           assert candidate['currentOperationalAdoption']['releasePublished'] is False
           assert candidate['invariants']['signatureRequired'] is False
           assert candidate['invariants']['allRepositoriesEnforced'] is False
@@ -90,7 +91,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: 60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326
+          ref: 5a8a6d9968178144b2e547f28bb9977a7b65c755
           path: release-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -102,13 +103,13 @@ jobs:
         run: |
           go install cuelang.org/go/cmd/cue@v0.9.2
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
-      - name: Verify existing accepted ADRS and publication proof
+      - name: Verify exact ADRS sources
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
           test "$(git -C candidate-adrs rev-parse HEAD)" = c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
           test "$(git -C publication-adrs rev-parse HEAD)" = b30c0750b4783f3349bc3c2d91e00853c90ab2ef
-          test "$(git -C release-adrs rev-parse HEAD)" = 60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326
+          test "$(git -C release-adrs rev-parse HEAD)" = 5a8a6d9968178144b2e547f28bb9977a7b65c755
           python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check \
             --contract accepted-adrs/ci_topology/v1/contract.json \
             --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
@@ -118,93 +119,21 @@ jobs:
             --source-sha b30c0750b4783f3349bc3c2d91e00853c90ab2ef \
             --out "$RUNNER_TEMP/company-contract-publication" \
             > "$RUNNER_TEMP/company-contract-publication-check.json"
-      - id: cue223
-        continue-on-error: true
-        name: Validate gov release #223 CUE
-        working-directory: release-adrs
-        run: cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-gov-release.cue 2>&1 | tee "$RUNNER_TEMP/gov-release-cue223.log"
-      - id: cue233
-        continue-on-error: true
-        name: Validate gov release #233 CUE
-        working-directory: release-adrs
-        run: cue vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-gov-release-topology.cue 2>&1 | tee "$RUNNER_TEMP/gov-release-cue233.log"
-      - id: contract
-        continue-on-error: true
-        name: Validate gov release contract
-        working-directory: release-adrs
-        run: python3 tools/check-gov-release-v1.py contract --out "$RUNNER_TEMP/gov-release-adrs-contract.json" 2>&1 | tee "$RUNNER_TEMP/gov-release-contract.log"
-      - id: selftest
-        continue-on-error: true
-        name: Run gov release destructive selftest
-        working-directory: release-adrs
-        run: python3 tools/check-gov-release-v1.py selftest --out "$RUNNER_TEMP/gov-release-adrs-selftest.json" 2>&1 | tee "$RUNNER_TEMP/gov-release-selftest.log"
-      - id: static
-        continue-on-error: true
-        name: Run gov release static identity proof
-        working-directory: release-adrs
-        run: bash ci/check-gov-release-v1-static.sh 2>&1 | tee "$RUNNER_TEMP/gov-release-static.log"
-      - name: Write exact gov release diagnostic
-        if: always()
-        env:
-          CUE223: ${{ steps.cue223.outcome }}
-          CUE233: ${{ steps.cue233.outcome }}
-          CONTRACT: ${{ steps.contract.outcome }}
-          SELFTEST: ${{ steps.selftest.outcome }}
-          STATIC: ${{ steps.static.outcome }}
-        run: |
-          python3 - <<'PY'
-          import hashlib,json,os
-          from pathlib import Path
-          root=Path('release-adrs')
-          report={
-            'kind':'governance.govReleaseAdrsDiagnostic.v1',
-            'adrsHead':'60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326',
-            'outcomes':{
-              'cue223':os.environ['CUE223'],
-              'cue233':os.environ['CUE233'],
-              'contract':os.environ['CONTRACT'],
-              'selftest':os.environ['SELFTEST'],
-              'static':os.environ['STATIC'],
-            },
-            'actualContractSha256':hashlib.sha256((root/'release/v1/contract.json').read_bytes()).hexdigest(),
-            'actualCheckerSha256':hashlib.sha256((root/'tools/check-gov-release-v1.py').read_bytes()).hexdigest(),
-            'authority':False,
-          }
-          Path('gov-release-adrs-diagnostic.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
-          PY
-      - name: Upload exact gov release diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gov-release-adrs-diagnostic
-          path: |
-            gov-release-adrs-diagnostic.json
-            ${{ runner.temp }}/gov-release-cue223.log
-            ${{ runner.temp }}/gov-release-cue233.log
-            ${{ runner.temp }}/gov-release-contract.log
-            ${{ runner.temp }}/gov-release-selftest.log
-            ${{ runner.temp }}/gov-release-static.log
-            ${{ runner.temp }}/gov-release-adrs-contract.json
-            ${{ runner.temp }}/gov-release-adrs-selftest.json
-          if-no-files-found: warn
-      - name: Reduce gov release ADRS proof
-        env:
-          CUE223: ${{ steps.cue223.outcome }}
-          CUE233: ${{ steps.cue233.outcome }}
-          CONTRACT: ${{ steps.contract.outcome }}
-          SELFTEST: ${{ steps.selftest.outcome }}
-          STATIC: ${{ steps.static.outcome }}
-        run: |
-          set -euo pipefail
-          test "$CUE223" = success
-          test "$CUE233" = success
-          test "$CONTRACT" = success
-          test "$SELFTEST" = success
-          test "$STATIC" = success
+          (
+            cd release-adrs
+            cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-gov-release.cue
+            cue vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-gov-release-topology.cue
+            python3 tools/check-gov-release-v1.py contract --out "$RUNNER_TEMP/gov-release-adrs-contract.json"
+            python3 tools/check-gov-release-v1.py decision --out "$RUNNER_TEMP/gov-release-adrs-decision.json"
+            python3 tools/check-gov-release-v1.py selftest --out "$RUNNER_TEMP/gov-release-adrs-selftest.json"
+            bash ci/check-gov-release-v1-static.sh | tee "$RUNNER_TEMP/gov-release-adrs-static.log"
+          )
+          grep -q '"acceptedDecisionDigest":"sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"' "$RUNNER_TEMP/gov-release-adrs-decision.json"
           grep -q '"destructiveCases":18' "$RUNNER_TEMP/gov-release-adrs-selftest.json"
           grep -q '"signatureRequired":false' "$RUNNER_TEMP/gov-release-adrs-selftest.json"
           tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
           tar -C candidate-adrs --exclude=.git -czf candidate-adrs-source.tar.gz .
+          tar -C release-adrs --exclude=.git -czf release-adrs-source.tar.gz .
       - uses: actions/upload-artifact@v4
         with:
           name: accepted-adrs-source
@@ -219,9 +148,11 @@ jobs:
         with:
           name: gov-release-adrs-candidate
           path: |
+            release-adrs-source.tar.gz
             ${{ runner.temp }}/gov-release-adrs-contract.json
+            ${{ runner.temp }}/gov-release-adrs-decision.json
             ${{ runner.temp }}/gov-release-adrs-selftest.json
-            ${{ runner.temp }}/gov-release-static.log
+            ${{ runner.temp }}/gov-release-adrs-static.log
           if-no-files-found: error
 
   live-consumers:
@@ -383,7 +314,7 @@ jobs:
           lines=Path(os.environ['RUNNER_TEMP'] + '/gov-release-proof.json').read_text().splitlines()
           release=[json.loads(line) for line in lines if line.startswith('{')][-1]
           assert release['status'] in {'pass','candidate-pass'}
-          receipt={'kind':'governance.regressionReceipt.v4','status':'pass','candidateSha':os.environ['CANDIDATE_SHA'],'authority':False,'contractModeling':{'status':'pass','migrationComplete':selftest['migration_complete']},'govRelease':{'status':'candidate-pass','contractDigest':'sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b','adrsHead':'60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326','releasePublished':False,'operationalAdoptionEffect':False,'signatureRequired':False}}
+          receipt={'kind':'governance.regressionReceipt.v5','status':'pass','candidateSha':os.environ['CANDIDATE_SHA'],'authority':False,'contractModeling':{'status':'pass','migrationComplete':selftest['migration_complete']},'govRelease':{'status':'candidate-pass','contractDigest':'sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b','acceptedDecisionDigest':'sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f','adrsHead':'5a8a6d9968178144b2e547f28bb9977a7b65c755','releasePublished':False,'operationalAdoptionEffect':False,'signatureRequired':False}}
           Path('regression-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
           PY
       - if: always()
@@ -442,6 +373,7 @@ jobs:
           grep -q '"releaseEligible":true' final-gate-report.json
           grep -q '"releasePublished":false' final-gate-report.json
           grep -q '"operationalAdoptionEffect":false' final-gate-report.json
+          grep -q '"govReleaseAcceptedDecisionDigest":"sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"' final-gate-report.json
           grep -q '"githubMergeHasCompanyAuthority":false' final-gate-report.json
           grep -q '"signatureRequired":false' final-gate-report.json
           grep -q '"allRepositoriesEnforced":false' final-gate-report.json
