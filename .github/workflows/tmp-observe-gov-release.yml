@@ -13,29 +13,11 @@ jobs:
   observe:
     runs-on: ubuntu-latest
     steps:
-      - name: Print exact gate, release, canary and release object states
+      - name: Read failed canary ADRS observer tail
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          ENGINE_SHA: 42d0bf9de25161fb5f6c2a1538fc61ec1f55650b
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json,os,subprocess
-          repo=os.environ['REPOSITORY']; sha=os.environ['ENGINE_SHA']
-          def gh(path):
-              return json.loads(subprocess.check_output(['gh','api',path],text=True))
-          result={}
-          for name,file,event in [('gate','gov-final-scope-purpose-join.yml','push'),('release','gov-release.yml','workflow_dispatch'),('canary','gov-canary.yml','workflow_dispatch')]:
-              data=gh(f'repos/{repo}/actions/workflows/{file}/runs?event={event}&branch=proposals&per_page=100')
-              matches=[r for r in data.get('workflow_runs',[]) if r.get('head_sha')==sha]
-              if matches:
-                  run=max(matches,key=lambda r:int(r['id']))
-                  jobs=gh(f'repos/{repo}/actions/runs/{run["id"]}/jobs?per_page=100').get('jobs',[])
-                  result[name]={'id':run['id'],'status':run['status'],'conclusion':run.get('conclusion'),'jobs':[{'id':j['id'],'name':j['name'],'status':j['status'],'conclusion':j.get('conclusion')} for j in jobs]}
-              else:
-                  result[name]=None
-          releases=gh(f'repos/{repo}/releases?per_page=100')
-          result['releases']=[{'id':r['id'],'draft':r['draft'],'prerelease':r['prerelease'],'tag':r.get('tag_name'),'name':r.get('name'),'published_at':r.get('published_at')} for r in releases if r.get('name')=='company-operating-contract-v0.2.0' or r.get('tag_name','').startswith('gov-release/company-operating-contract-v0.2.0/')]
-          print(json.dumps(result,sort_keys=True,separators=(',',':')))
-          PY
+          gh api "repos/$REPOSITORY/actions/jobs/88171395531/logs" > failed.log
+          tail -n 25 failed.log
