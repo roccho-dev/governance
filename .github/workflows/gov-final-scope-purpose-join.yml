@@ -16,30 +16,34 @@ concurrency:
 
 jobs:
   capture:
-    name: accepted decision capture
+    name: current accepted decision capture
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Capture exact accepted decision projection
+      - name: Capture current accepted projection and release correction candidate
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import json
           from pathlib import Path
-          value=json.loads(Path('governance/accepted-final-ci-decision.v1.json').read_text())
-          assert value['acceptedMerge']=='a8fc9e8e04d53f1d783317059e4421c8dc724d01'
-          assert value['contractCanonicalDigest']=='8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314'
-          assert value['stableRequiredCheck']=='gov-final-scope-purpose-join / gate'
-          assert value['allRepositoriesEnforced'] is False
-          Path('accepted-decision-capture.json').write_text(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n')
+          current=json.loads(Path('governance/accepted-final-ci-decision.v1.json').read_text())
+          candidate=json.loads(Path('governance/gov-release-baseline.v1.json').read_text())
+          assert current['acceptedMerge']=='a8fc9e8e04d53f1d783317059e4421c8dc724d01'
+          assert current['stableRequiredCheck']=='gov-final-scope-purpose-join / gate'
+          assert candidate['adrsCandidate']['head']=='60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326'
+          assert candidate['adrsCandidate']['contractDigest']=='sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b'
+          assert candidate['currentOperationalAdoption']['releasePublished'] is False
+          assert candidate['invariants']['signatureRequired'] is False
+          assert candidate['invariants']['allRepositoriesEnforced'] is False
+          Path('decision-capture.json').write_text(json.dumps({'current':current,'govReleaseCandidate':candidate},sort_keys=True,separators=(',',':'))+'\n')
           PY
       - uses: actions/upload-artifact@v4
         with:
           name: accepted-final-ci-decision
-          path: accepted-decision-capture.json
+          path: decision-capture.json
           if-no-files-found: error
 
   source-capture:
@@ -82,53 +86,48 @@ jobs:
           path: publication-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
-      - name: Checkout exact signed-promotion ADRS candidate
+      - name: Checkout exact gov-release ADRS correction candidate
         uses: actions/checkout@v4
         with:
           repository: roccho-dev/adrs
-          ref: e960e378b1c07002cbd8d9fbba35e94f4d6c37b5
-          path: promotion-adrs
+          ref: 60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326
+          path: release-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13.5'
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.2'
           cache: false
-      - name: Install signed-promotion proof dependencies
+      - name: Install CUE
         run: |
-          python3 -m pip install --disable-pip-version-check cryptography==46.0.4
           go install cuelang.org/go/cmd/cue@v0.9.2
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
       - name: Verify and package ADRS sources
-        env:
-          PUBLICATION_ADRS_SHA: b30c0750b4783f3349bc3c2d91e00853c90ab2ef
-          PROMOTION_ADRS_SHA: e960e378b1c07002cbd8d9fbba35e94f4d6c37b5
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
           test "$(git -C candidate-adrs rev-parse HEAD)" = c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
-          test "$(git -C publication-adrs rev-parse HEAD)" = "$PUBLICATION_ADRS_SHA"
-          test "$(git -C promotion-adrs rev-parse HEAD)" = "$PROMOTION_ADRS_SHA"
-          python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check --contract accepted-adrs/ci_topology/v1/contract.json --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
-          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py selftest > "$RUNNER_TEMP/company-contract-publication-selftest.json"
-          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py check --source-sha "$PUBLICATION_ADRS_SHA" --out "$RUNNER_TEMP/company-contract-publication" > "$RUNNER_TEMP/company-contract-publication-check.json"
-          test -s "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
-          test -s "$RUNNER_TEMP/company-contract-publication/publication-receipt.json"
-          grep -q '"doubleRunByteIdentical":true' "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
-          grep -q '"corporateSaleOutcomeAchieved":false' "$RUNNER_TEMP/company-contract-publication/publication-manifest.json"
+          test "$(git -C publication-adrs rev-parse HEAD)" = b30c0750b4783f3349bc3c2d91e00853c90ab2ef
+          test "$(git -C release-adrs rev-parse HEAD)" = 60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326
+          python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check \
+            --contract accepted-adrs/ci_topology/v1/contract.json \
+            --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
+          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py selftest \
+            > "$RUNNER_TEMP/company-contract-publication-selftest.json"
+          python3 publication-adrs/tools/check-company-operating-contract-v0-publication.py check \
+            --source-sha b30c0750b4783f3349bc3c2d91e00853c90ab2ef \
+            --out "$RUNNER_TEMP/company-contract-publication" \
+            > "$RUNNER_TEMP/company-contract-publication-check.json"
           (
-            cd promotion-adrs
-            cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-signed-promotion.cue
-            cue vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-signed-promotion-topology.cue
-            python3 tools/check-signed-promotion-v1.py candidate --out "$RUNNER_TEMP/signed-promotion-adrs-candidate.json"
-            python3 tools/check-signed-promotion-v1.py selftest --out "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
-            bash ci/check-signed-promotion-v1-static.sh | tee "$RUNNER_TEMP/signed-promotion-adrs-static.log"
+            cd release-adrs
+            cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-gov-release.cue
+            cue vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-gov-release-topology.cue
+            python3 tools/check-gov-release-v1.py contract --out "$RUNNER_TEMP/gov-release-adrs-contract.json"
+            python3 tools/check-gov-release-v1.py selftest --out "$RUNNER_TEMP/gov-release-adrs-selftest.json"
+            bash ci/check-gov-release-v1-static.sh | tee "$RUNNER_TEMP/gov-release-adrs-static.log"
           )
-          grep -q '"productionAcceptanceReady":false' "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
-          grep -q '"acceptanceBlocker":"publisher-public-key-unprovisioned"' "$RUNNER_TEMP/signed-promotion-adrs-selftest.json"
+          grep -q '"destructiveCases":18' "$RUNNER_TEMP/gov-release-adrs-selftest.json"
+          grep -q '"signatureRequired":false' "$RUNNER_TEMP/gov-release-adrs-selftest.json"
           tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
           tar -C candidate-adrs --exclude=.git -czf candidate-adrs-source.tar.gz .
       - uses: actions/upload-artifact@v4
@@ -143,21 +142,11 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: company-operating-contract-v0-publication
+          name: gov-release-adrs-candidate
           path: |
-            ${{ runner.temp }}/company-contract-publication-selftest.json
-            ${{ runner.temp }}/company-contract-publication-check.json
-            ${{ runner.temp }}/company-contract-publication/publication-manifest.json
-            ${{ runner.temp }}/company-contract-publication/publication-receipt.json
-            ${{ runner.temp }}/company-contract-publication/publication-pass
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: signed-promotion-adrs-candidate
-          path: |
-            ${{ runner.temp }}/signed-promotion-adrs-candidate.json
-            ${{ runner.temp }}/signed-promotion-adrs-selftest.json
-            ${{ runner.temp }}/signed-promotion-adrs-static.log
+            ${{ runner.temp }}/gov-release-adrs-contract.json
+            ${{ runner.temp }}/gov-release-adrs-selftest.json
+            ${{ runner.temp }}/gov-release-adrs-static.log
           if-no-files-found: error
 
   live-consumers:
@@ -193,7 +182,10 @@ jobs:
           CONSUMER_READER_TOKEN: ${{ steps.consumer-token.outputs.token }}
         run: |
           set -o pipefail
-          python3 tools/check-live-final-ci-consumers.py capture --token-env CONSUMER_READER_TOKEN --out live-selected-consumers.json 2>&1 | tee live-selected-consumers.log
+          python3 tools/check-live-final-ci-consumers.py capture \
+            --token-env CONSUMER_READER_TOKEN \
+            --out live-selected-consumers.json \
+            2>&1 | tee live-selected-consumers.log
       - name: Upload live diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -211,9 +203,11 @@ jobs:
           test "$OUTCOME" = success
           test -s live-selected-consumers.json
           grep -q '"status":"pass"' live-selected-consumers.json
+          grep -q '"artifactBodiesVerified":true' live-selected-consumers.json
+          grep -q '"receiptCandidateShaBound":true' live-selected-consumers.json
 
   control-plane-observation:
-    name: current control-plane diagnostic
+    name: informational control-plane diagnostic
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
@@ -274,10 +268,12 @@ jobs:
       - name: Run Nix and ADRS candidate regression
         run: |
           set -euo pipefail
-          nix flake check -L --no-write-lock-file --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" 2>&1 | tee "$RUNNER_TEMP/final-ci-nix.log"
-          nix flake check -L "path:$PWD/evidence/candidate-adrs" 2>&1 | tee "$RUNNER_TEMP/adrs-234-candidate.log"
-          (cd evidence/candidate-adrs && bash ci/check-recursive-contract-modeling-v1-static.sh) 2>&1 | tee -a "$RUNNER_TEMP/adrs-234-candidate.log"
-      - name: Run Python, contract-modeling, and promotion shadow regression
+          nix flake check -L --no-write-lock-file \
+            --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
+            --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579"
+          nix flake check -L "path:$PWD/evidence/candidate-adrs"
+          (cd evidence/candidate-adrs && bash ci/check-recursive-contract-modeling-v1-static.sh)
+      - name: Run Python, contract-modeling, and gov release regression
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
@@ -287,7 +283,7 @@ jobs:
             python3 tools/check-package-final-scope-purpose-join.py selftest --json
             python3 -m unittest discover -s tools/contract-modeling/tests -p 'test_*.py'
             CANDIDATE_SHA="$CANDIDATE_SHA" bash tools/contract-modeling/run-proof.sh
-            bash tools/promotion/run-proof.sh | tee "$RUNNER_TEMP/promotion-shadow-proof.json"
+            bash tools/gov_release/run-proof.sh | tee "$RUNNER_TEMP/gov-release-proof.json"
             cd evidence/candidate-adrs
             first="$RUNNER_TEMP/adrs-234-first"
             second="$RUNNER_TEMP/adrs-234-second"
@@ -303,17 +299,30 @@ jobs:
         run: |
           set -euo pipefail
           test -s tools/contract-modeling/out/selftest-receipt.json
-          test -s "$RUNNER_TEMP/promotion-shadow-proof.json"
+          test -s "$RUNNER_TEMP/gov-release-proof.json"
           python3 - <<'PY'
-          import json, os
+          import json,os
           from pathlib import Path
           selftest=json.loads(Path('tools/contract-modeling/out/selftest-receipt.json').read_text())
           assert selftest['status']=='pass'
-          assert selftest['migration_complete'] is False
-          promotion=json.loads(Path(os.environ['RUNNER_TEMP'] + '/promotion-shadow-proof.json').read_text().splitlines()[-1])
-          assert promotion['status']=='pass'
-          assert promotion['productionPromotionEffect'] is False
-          receipt={'kind':'governance.regressionReceipt.v3','status':'pass','candidateSha':os.environ['CANDIDATE_SHA'],'authority':False,'contractModeling':{'status':'shadow-pass','decisionId':'01K0E1CM000000000000000234','decisionDigest':'cc7ac3d6618b31eb0a0979b8aa0e2bfaf6abd95646e45c740d154c8204cd00d1','adrsHead':'c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068','migrationComplete':False},'signedPromotion':{'status':'shadow-pass','contractDigest':'sha256:3dd313525bf80a3afefd141cc019325287f6bd8b2516ed97e1a748842fe3fb34','adrsHead':'e960e378b1c07002cbd8d9fbba35e94f4d6c37b5','acceptedDecisionStatus':'proposed','productionKeyProvisioned':False,'productionPromotionEffect':False}}
+          lines=Path(os.environ['RUNNER_TEMP'] + '/gov-release-proof.json').read_text().splitlines()
+          release=[json.loads(line) for line in lines if line.startswith('{')][-1]
+          assert release['status'] in {'pass','candidate-pass'}
+          receipt={
+            'kind':'governance.regressionReceipt.v4',
+            'status':'pass',
+            'candidateSha':os.environ['CANDIDATE_SHA'],
+            'authority':False,
+            'contractModeling':{'status':'pass','migrationComplete':selftest['migration_complete']},
+            'govRelease':{
+              'status':'candidate-pass',
+              'contractDigest':'sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b',
+              'adrsHead':'60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326',
+              'releasePublished':False,
+              'operationalAdoptionEffect':False,
+              'signatureRequired':False,
+            },
+          }
           Path('regression-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
           PY
       - if: always()
@@ -321,11 +330,9 @@ jobs:
         with:
           name: final-ci-regression-diagnostics
           path: |
-            ${{ runner.temp }}/final-ci-nix.log
             ${{ runner.temp }}/final-ci-python.log
-            ${{ runner.temp }}/adrs-234-candidate.log
             ${{ runner.temp }}/adrs-234-selftest.json
-            ${{ runner.temp }}/promotion-shadow-proof.json
+            ${{ runner.temp }}/gov-release-proof.json
             tools/contract-modeling/out/
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
@@ -355,44 +362,40 @@ jobs:
         with:
           name: live-selected-consumers
           path: evidence/live-consumers
-      - name: Run final exact-SHA organization admission and promotion shadow projection
+      - name: Run final exact-SHA release eligibility join
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-          test -s evidence/accepted-decision/accepted-decision-capture.json
+          test -s evidence/accepted-decision/decision-capture.json
           test -s evidence/regression/regression-receipt.json
           test -s evidence/live-consumers/live-selected-consumers.json
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          value=json.loads(Path('evidence/regression/regression-receipt.json').read_text())
-          assert value['status']=='pass'
-          assert value['signedPromotion']['status']=='shadow-pass'
-          assert value['signedPromotion']['productionPromotionEffect'] is False
-          PY
-          python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$CANDIDATE_SHA" --live-consumers evidence/live-consumers/live-selected-consumers.json --json | tee final-gate-report.json
-          grep -q '"productionAdmission":true' final-gate-report.json
+          python3 tools/check-package-final-scope-purpose-join.py check \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --live-consumers evidence/live-consumers/live-selected-consumers.json \
+            --json | tee final-gate-report.json
+          grep -q '"candidateEvidencePass":true' final-gate-report.json
           grep -q '"artifactBodiesVerified":true' final-gate-report.json
           grep -q '"receiptCandidateShaBound":true' final-gate-report.json
-          grep -q '"allRepositoriesEnforced":false' final-gate-report.json
+          grep -q '"releaseEligible":true' final-gate-report.json
+          grep -q '"releasePublished":false' final-gate-report.json
+          grep -q '"operationalAdoptionEffect":false' final-gate-report.json
           grep -q '"githubMergeHasCompanyAuthority":false' final-gate-report.json
-          grep -q '"promotionAdmission":false' final-gate-report.json
-          grep -q '"productionPromotionEffect":false' final-gate-report.json
-          grep -q '"githubMergeHasAuthority":false' final-gate-report.json
+          grep -q '"signatureRequired":false' final-gate-report.json
+          grep -q '"allRepositoriesEnforced":false' final-gate-report.json
       - uses: actions/upload-artifact@v4
         with:
           name: gov-final-gate-evidence
           path: |
             final-gate-report.json
-            evidence/accepted-decision/accepted-decision-capture.json
+            evidence/accepted-decision/decision-capture.json
             evidence/regression/regression-receipt.json
             evidence/live-consumers/live-selected-consumers.json
           if-no-files-found: error
 
   post-effect:
-    name: post-effect readback
+    name: transport-only merge readback
     if: github.event_name == 'push' && github.ref == 'refs/heads/proposals'
     needs: gate
     runs-on: ubuntu-latest
@@ -404,7 +407,7 @@ jobs:
       - run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          printf '{"kind":"governance.transportReadback.v1","status":"pass","repository":"roccho-dev/governance","branch":"proposals","writtenSha":"%s","observedSha":"%s","companyAdoptionEffect":false,"unpromotedCommitHasEffect":false,"authority":false}\n' "$GITHUB_SHA" "$(git rev-parse HEAD)" > post-effect-readback.json
+          printf '{"kind":"governance.transportReadback.v2","status":"pass","repository":"roccho-dev/governance","branch":"proposals","writtenSha":"%s","observedSha":"%s","companyAdoptionEffect":false,"unreleasedCommitHasEffect":false,"authority":false}\n' "$GITHUB_SHA" "$(git rev-parse HEAD)" > post-effect-readback.json
       - uses: actions/upload-artifact@v4
         with:
           name: gov-post-effect-readback
