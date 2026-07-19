@@ -1,0 +1,53 @@
+name: temporary apply issue 171 draft transaction
+
+on:
+  pull_request:
+    branches:
+      - proposals
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor == github.repository_owner }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Patch, test, and create exact Git blobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          parent_sha=$(git rev-parse HEAD)
+          base_tree=$(git rev-parse HEAD^{tree})
+          python3 tools/gov_release/patch_issue_171_draft.py
+          python3 tools/check-package-final-ci-production.py selftest --json >/dev/null
+          python3 tools/check-package-ci-final-role-demotion.py check --json >/dev/null
+          test ! -e .github/workflows/tmp-apply-issue-171-draft.yml
+          test ! -e tools/gov_release/patch_issue_171_draft.py
+          create_blob() {
+            path="$1"
+            python3 - "$path" > blob-request.json <<'PY'
+          import base64,json,sys
+          print(json.dumps({'content':base64.b64encode(open(sys.argv[1],'rb').read()).decode(),'encoding':'base64'},separators=(',',':')))
+          PY
+            gh api --method POST "repos/$REPOSITORY/git/blobs" --input blob-request.json --jq .sha
+          }
+          release_blob=$(create_blob .github/workflows/gov-release.yml)
+          production_blob=$(create_blob tools/check-package-final-ci-production.py)
+          roles_blob=$(create_blob tools/check-package-ci-final-role-demotion.py)
+          python3 - <<PY
+          import json
+          value={'parentSha':'$parent_sha','baseTreeSha':'$base_tree','blobs':{'.github/workflows/gov-release.yml':'$release_blob','tools/check-package-final-ci-production.py':'$production_blob','tools/check-package-ci-final-role-demotion.py':'$roles_blob'}}
+          open('git-data.json','w').write(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n')
+          print(json.dumps(value,sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue-171-draft-git-data
+          path: git-data.json
+          if-no-files-found: error
