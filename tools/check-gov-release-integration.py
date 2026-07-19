@@ -13,11 +13,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tools.gov_release.core import ReleaseError, digest, make_eligibility  # noqa: E402
+from tools.gov_release.identity import IDENTITY_PATH, load_identity, selftest as identity_selftest  # noqa: E402
 
 BASELINE = ROOT / "governance/gov-release-baseline.v1.json"
-CONTRACT_DIGEST = "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"
-DECISION_DIGEST = "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
-ADRS_HEAD = "5a8a6d9968178144b2e547f28bb9977a7b65c755"
 
 
 def need(ok: bool, code: str) -> None:
@@ -31,15 +29,13 @@ def read(path: Path) -> dict[str, Any]:
     return value
 
 
-def validate_baseline(value: dict[str, Any]) -> None:
+def validate_baseline(value: dict[str, Any], identity: dict[str, Any]) -> None:
     need(value.get("kind") == "governance.govReleaseBaseline.v1", "baseline-kind")
     need(value.get("closureModel") == "gov-release-publication", "baseline-closure-model")
     need(value.get("supersedesClosureModels") == ["github-merge-protection", "signed-promotion"], "baseline-supersedes")
     need(value.get("historicalClosureReceipts") == {"adrs223": "superseded", "adrs233": "superseded", "governance150": "superseded"}, "baseline-old-closure")
-    candidate = value["adrsCandidate"]
-    need(candidate["head"] == ADRS_HEAD, "baseline-adrs-head")
-    need(candidate["contractDigest"] == CONTRACT_DIGEST, "baseline-contract-digest")
-    need(candidate["acceptedDecisionDigest"] == DECISION_DIGEST, "baseline-decision-digest")
+    need(value.get("identityProjection") == IDENTITY_PATH.relative_to(ROOT).as_posix(), "baseline-identity-projection")
+    need(identity["source"]["status"] in {"accepted-in-candidate", "accepted"}, "baseline-identity-status")
     need(value["governance"]["workflowCount"] == 3, "baseline-workflow-count")
     need(value["currentOperationalAdoption"]["releasePublished"] is False, "baseline-release-published")
     need(value["currentOperationalAdoption"]["releaseReadback"] is False, "baseline-release-readback")
@@ -70,21 +66,23 @@ def live_digests(value: dict[str, Any]) -> tuple[str, str]:
 
 def eligibility(gate: dict[str, Any], live: dict[str, Any], candidate_sha: str) -> dict[str, Any]:
     baseline = read(BASELINE)
-    validate_baseline(baseline)
+    identity = load_identity()
+    validate_baseline(baseline, identity)
     claim_set_digest, receipt_set_digest = live_digests(live)
     value = make_eligibility(
         candidate_sha=candidate_sha,
-        accepted_decision_digest=DECISION_DIGEST,
+        accepted_decision_digest=identity["acceptedDecision"]["canonicalDigest"],
         gate_report=gate,
         claim_set_digest=claim_set_digest,
         receipt_set_digest=receipt_set_digest,
     )
     value.update(
         {
-            "adrsPullRequest": 242,
-            "adrsHead": baseline["adrsCandidate"]["head"],
-            "decisionStatus": baseline["adrsCandidate"]["status"],
-            "govReleaseContractDigest": CONTRACT_DIGEST,
+            "identityProjection": IDENTITY_PATH.relative_to(ROOT).as_posix(),
+            "adrsPullRequest": identity["source"]["pullRequest"],
+            "adrsHead": identity["source"]["head"],
+            "decisionStatus": identity["source"]["status"],
+            "govReleaseContractDigest": identity["contract"]["canonicalDigest"],
             "releaseWorkflow": "gov-release",
             "signatureRequired": False,
             "githubRulesetRequired": False,
@@ -128,30 +126,36 @@ def fixture() -> tuple[dict[str, Any], dict[str, Any]]:
 
 
 def selftest() -> dict[str, Any]:
+    identity_report = identity_selftest()
     gate, live = fixture()
     value = eligibility(gate, live, "a" * 40)
     cases = []
-    bad = copy.deepcopy(gate); bad["candidateSha"] = "b" * 40
+    bad = copy.deepcopy(gate)
+    bad["candidateSha"] = "b" * 40
     cases.append(rejected("gate-other-candidate", lambda: eligibility(bad, live, "a" * 40)))
-    bad = copy.deepcopy(live); bad["artifactBodiesVerified"] = False
+    bad = copy.deepcopy(live)
+    bad["artifactBodiesVerified"] = False
     cases.append(rejected("artifact-body-unverified", lambda: eligibility(gate, bad, "a" * 40)))
-    bad = copy.deepcopy(live); bad["repositories"][0]["receipt"]["candidateSha"] = "9" * 40
+    bad = copy.deepcopy(live)
+    bad["repositories"][0]["receipt"]["candidateSha"] = "9" * 40
     cases.append(rejected("receipt-other-candidate", lambda: eligibility(gate, bad, "a" * 40)))
-    bad = read(BASELINE); bad["historicalClosureReceipts"]["governance150"] = "completed"
-    cases.append(rejected("old-closure-active", lambda: validate_baseline(bad)))
+    bad = read(BASELINE)
+    bad["historicalClosureReceipts"]["governance150"] = "completed"
+    cases.append(rejected("old-closure-active", lambda: validate_baseline(bad, load_identity())))
     workflows = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / ".github/workflows").glob("*.yml"))
     need("promotion-keygen" not in workflows, "keygen-workflow")
     need("--private-key-file" not in workflows, "private-key-workflow")
     need("cryptography" not in workflows, "signature-dependency")
     need("gov-release-manifest.json" in workflows, "release-manifest-workflow")
     need("gh release create" in workflows, "release-publish-workflow")
-    need("accepted-decision.json" in workflows, "accepted-decision-workflow")
+    need("gov-release-identity.v1.json" in workflows, "identity-projection-workflow")
     return {
-        "kind": "governance.govReleaseIntegration.selftest.v2",
+        "kind": "governance.govReleaseIntegration.selftest.v3",
         "status": "pass",
-        "positiveCases": 1,
+        "positiveCases": 2,
         "destructiveCases": len(cases),
         "cases": cases,
+        "identity": identity_report,
         "eligibility": value,
         "releasePublished": False,
         "operationalAdoptionEffect": False,
@@ -180,12 +184,14 @@ def main() -> int:
         report = selftest()
     else:
         baseline = read(BASELINE)
-        validate_baseline(baseline)
+        identity = load_identity()
+        validate_baseline(baseline, identity)
         report = {
-            "kind": "governance.govReleaseCanary.v2",
+            "kind": "governance.govReleaseCanary.v3",
             "status": "candidate-pass",
-            "contractDigest": CONTRACT_DIGEST,
-            "acceptedDecisionDigest": DECISION_DIGEST,
+            "identityProjection": IDENTITY_PATH.relative_to(ROOT).as_posix(),
+            "contractDigest": identity["contract"]["canonicalDigest"],
+            "acceptedDecisionDigest": identity["acceptedDecision"]["canonicalDigest"],
             "releasePublished": baseline["currentOperationalAdoption"]["releasePublished"],
             "releaseReadback": baseline["currentOperationalAdoption"]["releaseReadback"],
             "rulesetSeverity": "information",
