@@ -17,4 +17,4 @@ jobs:
         run: |
           set -euo pipefail
           gh api repos/roccho-dev/governance/actions/jobs/88162411913/logs > gate-job.log
-          tail -n 100 gate-job.log
+          tail -n 25 gate-job.log
