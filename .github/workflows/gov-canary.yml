@@ -105,7 +105,7 @@ jobs:
               parts=tag.split('/')
               assert len(parts)==3 and len(parts[2])==64 and all(c in '0123456789abcdef' for c in parts[2]), 'non-content-addressed-release-tag'
               target=Path(os.environ['RUNNER_TEMP'])/'releases'/(parts[1]+'__'+parts[2]); target.mkdir(parents=True,exist_ok=True)
-              for pattern in ['accepted-decision.json','gov-release-manifest.json','gov-engine-descriptor.json','gov-nix-output-descriptor.json','gov-release-readback-receipt.json']:
+              for pattern in ['accepted-decision.json','gov-release-manifest.json','gov-engine-descriptor.json','gov-nix-output-descriptor.json','gov-release-owner-authorization-transport.json','gov-release-readback-receipt.json']:
                   subprocess.run(['gh','release','download',tag,'--repo',os.environ['REPOSITORY'],'--pattern',pattern,'--dir',str(target)],check=True)
               (target/'tag.txt').write_text(tag+'\n')
           PY
@@ -129,6 +129,7 @@ jobs:
               manifest=load(directory/'gov-release-manifest.json')
               engine=load(directory/'gov-engine-descriptor.json')
               nix=load(directory/'gov-nix-output-descriptor.json')
+              authorization=load(directory/'gov-release-owner-authorization-transport.json')
               receipt=load(directory/'gov-release-readback-receipt.json')
               assert decision['kind']=='govReleaseAcceptedDecision.v1'
               assert digest(decision)==expected_decision
@@ -143,6 +144,14 @@ jobs:
               assert receipt['kind']=='govReleaseReadbackReceipt.v1' and receipt['status']=='pass'
               assert receipt['releaseId']==manifest['releaseId'] and receipt['releaseDigest']==receipt['observedManifestDigest']==release_digest
               assert receipt['adopted'] is True and receipt['authority'] is False
+              assert authorization['kind']=='govReleaseOwnerAuthorizationTransport.v1' and authorization['status']=='pass' and authorization['ownerAuthorized'] is True
+              command=authorization['command']
+              assert command['releaseId']==manifest['releaseId'] and command['sequence']==manifest['sequence']
+              assert command['previousReleaseDigest']==manifest['previousReleaseDigest'] and command['supersedesReleaseDigest']==manifest['supersedesReleaseDigest']
+              assert command['engineSha']==engine['commitSha'] and command['acceptedDecisionDigest']==manifest['acceptedDecisionDigest']
+              assert receipt['transport']['ownerAuthorizationTransportDigest']==digest(authorization)
+              assert receipt['transport']['ownerAuthorizationMode']==authorization['mode']
+              assert receipt['transport']['ownerAuthorizationCommentId']==authorization['commentId']
               assert manifest['sequence'] not in by_sequence and manifest['releaseId'] not in release_ids
               by_sequence[manifest['sequence']]=(release_digest,manifest); by_digest[release_digest]=manifest; release_ids.add(manifest['releaseId'])
           sequences=sorted(by_sequence); assert sequences==list(range(len(sequences)))

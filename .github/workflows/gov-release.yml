@@ -21,9 +21,15 @@ on:
         required: true
         default: null
         type: string
+      owner_authorization_comment_id:
+        description: Exact owner authorization comment ID for bot-transported dispatch, empty for direct owner dispatch
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
+  issues: read
 
 concurrency:
   group: governance-release-publication
@@ -39,14 +45,11 @@ jobs:
       accepted_decision_digest: ${{ steps.identity.outputs.accepted_decision_digest }}
       contract_digest: ${{ steps.identity.outputs.contract_digest }}
     steps:
-      - name: Require owner-controlled dispatch on proposals
+      - name: Require proposals release target
         env:
-          ACTOR: ${{ github.actor }}
-          OWNER: ${{ github.repository_owner }}
           REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          test "$ACTOR" = "$OWNER"
           test "$REF" = refs/heads/proposals
       - name: Checkout the selected governance engine
         uses: actions/checkout@v4
@@ -58,6 +61,42 @@ jobs:
         run: |
           python3 tools/gov_release/identity.py selftest
           python3 tools/gov_release/identity.py github-output >> "$GITHUB_OUTPUT"
+      - name: Validate exact owner authorization transport
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.repository }}
+          COMMENT_ID: ${{ inputs.owner_authorization_comment_id }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          SEQUENCE: ${{ inputs.sequence }}
+          PREVIOUS_RELEASE_DIGEST: ${{ inputs.previous_release_digest }}
+          SUPERSEDES_RELEASE_DIGEST: ${{ inputs.supersedes_release_digest }}
+          ENGINE_SHA: ${{ github.sha }}
+          ACCEPTED_DECISION_DIGEST: ${{ steps.identity.outputs.accepted_decision_digest }}
+        run: |
+          set -euo pipefail
+          common=(
+            --owner "$OWNER"
+            --actor "$ACTOR"
+            --repository "$REPOSITORY"
+            --release-id "$RELEASE_ID"
+            --sequence "$SEQUENCE"
+            --previous-release-digest "$PREVIOUS_RELEASE_DIGEST"
+            --supersedes-release-digest "$SUPERSEDES_RELEASE_DIGEST"
+            --engine-sha "$ENGINE_SHA"
+            --accepted-decision-digest "$ACCEPTED_DECISION_DIGEST"
+            --out gov-release-owner-authorization-transport.json
+          )
+          if test "$ACTOR" = "$OWNER"; then
+            test -z "$COMMENT_ID"
+            python3 tools/gov_release/owner_authorization.py direct "${common[@]}"
+          else
+            test "$ACTOR" = github-actions[bot]
+            case "$COMMENT_ID" in ''|*[!0-9]*) echo invalid-owner-authorization-comment-id >&2; exit 1 ;; esac
+            gh api "repos/$REPOSITORY/issues/comments/$COMMENT_ID" > owner-authorization-comment.json
+            python3 tools/gov_release/owner_authorization.py comment "${common[@]}" --comment-json owner-authorization-comment.json
+          fi
       - name: Validate ADRS reader
         env:
           CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
@@ -111,6 +150,7 @@ jobs:
             accepted-adrs-source.tar.gz
             accepted-decision.json
             gov-release-identity.v1.json
+            gov-release-owner-authorization-transport.json
             gov-release-contract-validation.json
             accepted-decision-validation.json
             accepted-decision-selftest.json
@@ -208,6 +248,7 @@ jobs:
           cp evidence/accepted-decision.json accepted-decision.json
           cp evidence/gov-release-identity.v1.json gov-release-identity.v1.json
           cp evidence/accepted-decision-validation.json accepted-decision-validation.json
+          cp evidence/gov-release-owner-authorization-transport.json gov-release-owner-authorization-transport.json
       - uses: actions/upload-artifact@v4
         with:
           name: gov-release-evaluated-bundle
@@ -215,6 +256,7 @@ jobs:
             accepted-decision.json
             accepted-decision-validation.json
             gov-release-identity.v1.json
+            gov-release-owner-authorization-transport.json
             gov-release-manifest.json
             gov-release-manifest.digest
             gov-release-manifest.bytes.sha256
@@ -268,6 +310,18 @@ jobs:
           assert (root/'gov-release-manifest.bytes.sha256').read_text().strip()==hashlib.sha256((root/'gov-release-manifest.json').read_bytes()).hexdigest()
           validation=load('gov-release-manifest-validation.json')
           assert validation['releaseDigest']==manifest_digest and validation['status']=='pass'
+          authorization=load('gov-release-owner-authorization-transport.json')
+          assert authorization['kind']=='govReleaseOwnerAuthorizationTransport.v1'
+          assert authorization['status']=='pass' and authorization['ownerAuthorized'] is True
+          assert authorization['meaningAuthority'] is False and authorization['adoptionRecord'] is False and authorization['authority'] is False
+          command=authorization['command']
+          assert command['releaseId']==manifest['releaseId']
+          assert command['sequence']==manifest['sequence']
+          assert command['previousReleaseDigest']==manifest['previousReleaseDigest']
+          assert command['supersedesReleaseDigest']==manifest['supersedesReleaseDigest']
+          assert command['engineSha']==engine['commitSha']
+          assert command['acceptedDecisionDigest']==manifest['acceptedDecisionDigest']
+          assert authorization['commandDigest']==digest(command)
           PY
       - name: Fetch and validate all published predecessor releases
         env:
@@ -293,7 +347,7 @@ jobs:
               parts=tag.split('/')
               assert len(parts)==3 and len(parts[2])==64 and all(c in '0123456789abcdef' for c in parts[2]), 'non-content-addressed-release-tag'
               target=Path('previous-releases')/(parts[1]+'__'+parts[2]); target.mkdir(parents=True,exist_ok=True)
-              for pattern in ['gov-release-manifest.json','gov-release-readback-receipt.json']:
+              for pattern in ['gov-release-manifest.json','gov-release-owner-authorization-transport.json','gov-release-readback-receipt.json']:
                   subprocess.run(['gh','release','download',tag,'--repo',os.environ['REPOSITORY'],'--pattern',pattern,'--dir',str(target)],check=True)
               (target/'tag.txt').write_text(tag+'\n')
           PY
@@ -306,12 +360,17 @@ jobs:
           existing=[]
           for directory in sorted(Path('previous-releases').iterdir()) if Path('previous-releases').exists() else []:
               manifest=json.loads((directory/'gov-release-manifest.json').read_text())
+              authorization=json.loads((directory/'gov-release-owner-authorization-transport.json').read_text())
               receipt=json.loads((directory/'gov-release-readback-receipt.json').read_text())
               release_digest=digest(manifest)
               assert (directory/'tag.txt').read_text().strip()==f"gov-release/{manifest['releaseId']}/{release_digest[7:]}"
               assert receipt['status']=='pass' and receipt['adopted'] is True
               assert receipt['releaseId']==manifest['releaseId']
               assert receipt['releaseDigest']==release_digest==receipt['observedManifestDigest']
+              assert authorization['status']=='pass' and authorization['ownerAuthorized'] is True
+              assert receipt['transport']['ownerAuthorizationTransportDigest']==digest(authorization)
+              assert receipt['transport']['ownerAuthorizationMode']==authorization['mode']
+              assert receipt['transport']['ownerAuthorizationCommentId']==authorization['commentId']
               existing.append(manifest)
           by_sequence={value['sequence']:value for value in existing}
           by_digest={digest(value):value for value in existing}
@@ -352,13 +411,16 @@ jobs:
             release-bundle/gov-release-manifest.json \
             release-bundle/accepted-decision.json \
             release-bundle/gov-engine-descriptor.json \
-            release-bundle/gov-nix-output-descriptor.json
+            release-bundle/gov-nix-output-descriptor.json             release-bundle/gov-release-owner-authorization-transport.json
           mkdir draft-readback
           gh release download "$tag" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir draft-readback
           cmp release-bundle/gov-release-manifest.json draft-readback/gov-release-manifest.json
           python3 - <<'PY'
-          import json,os
+          import hashlib,json,os
           from pathlib import Path
+          authorization=json.loads(Path('release-bundle/gov-release-owner-authorization-transport.json').read_text())
+          canonical=lambda value: json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          authorization_digest='sha256:'+hashlib.sha256(canonical(authorization)).hexdigest()
           receipt={
             'kind':'govReleaseReadbackReceipt.v1',
             'status':'pass',
@@ -367,7 +429,7 @@ jobs:
             'observedManifestDigest':os.environ['RELEASE_DIGEST'],
             'adopted':True,
             'authority':False,
-            'transport':{'provider':'github-release','repository':os.environ['GITHUB_REPOSITORY'],'runId':int(os.environ['GITHUB_RUN_ID']),'actor':os.environ['GITHUB_ACTOR']},
+            'transport':{'provider':'github-release','repository':os.environ['GITHUB_REPOSITORY'],'runId':int(os.environ['GITHUB_RUN_ID']),'actor':os.environ['GITHUB_ACTOR'],'ownerAuthorizationMode':authorization['mode'],'ownerAuthorizationCommentId':authorization['commentId'],'ownerAuthorizationTransportDigest':authorization_digest},
           }
           Path('gov-release-readback-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
           PY
@@ -381,19 +443,26 @@ jobs:
           gh release edit "$RELEASE_TAG" --repo "$REPOSITORY" --draft=false --latest=false
           mkdir published-readback
           gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir published-readback
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-release-owner-authorization-transport.json --dir published-readback
           gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-release-readback-receipt.json --dir published-readback
           cmp release-bundle/gov-release-manifest.json published-readback/gov-release-manifest.json
+          cmp release-bundle/gov-release-owner-authorization-transport.json published-readback/gov-release-owner-authorization-transport.json
           cmp gov-release-readback-receipt.json published-readback/gov-release-readback-receipt.json
           python3 - <<'PY'
           import hashlib,json,os
           from pathlib import Path
           def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
           manifest=json.loads(Path('published-readback/gov-release-manifest.json').read_text())
+          authorization=json.loads(Path('published-readback/gov-release-owner-authorization-transport.json').read_text())
           receipt=json.loads(Path('published-readback/gov-release-readback-receipt.json').read_text())
           observed='sha256:'+hashlib.sha256(canonical(manifest)).hexdigest()
           assert observed==os.environ['RELEASE_DIGEST']
           assert receipt['releaseDigest']==observed==receipt['observedManifestDigest']
           assert receipt['status']=='pass' and receipt['adopted'] is True and receipt['authority'] is False
+          authorization_digest='sha256:'+hashlib.sha256(canonical(authorization)).hexdigest()
+          assert receipt['transport']['ownerAuthorizationTransportDigest']==authorization_digest
+          assert receipt['transport']['ownerAuthorizationMode']==authorization['mode']
+          assert receipt['transport']['ownerAuthorizationCommentId']==authorization['commentId']
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -401,5 +470,6 @@ jobs:
           path: |
             release-bundle/gov-release-manifest.json
             release-bundle/gov-release-identity.v1.json
+            release-bundle/gov-release-owner-authorization-transport.json
             gov-release-readback-receipt.json
           if-no-files-found: error
