@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   diagnostic:
@@ -30,13 +31,62 @@ jobs:
           cache: false
       - name: install CUE
         run: go install cuelang.org/go/cmd/cue@v0.9.2
-      - name: CUE decision 223
+      - id: cue223
+        continue-on-error: true
+        name: CUE decision 223
         run: "$HOME/go/bin/cue" vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-gov-release.cue
-      - name: CUE decision 233
+      - id: cue233
+        continue-on-error: true
+        name: CUE decision 233
         run: "$HOME/go/bin/cue" vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-gov-release-topology.cue
-      - name: contract
+      - id: contract
+        continue-on-error: true
+        name: contract
         run: python3 tools/check-gov-release-v1.py contract
-      - name: selftest
+      - id: selftest
+        continue-on-error: true
+        name: selftest
         run: python3 tools/check-gov-release-v1.py selftest
-      - name: static
+      - id: static
+        continue-on-error: true
+        name: static
         run: bash ci/check-gov-release-v1-static.sh
+      - name: Post exact diagnostic
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONTRACT_SHA: ${{ steps.contract.outcome }}
+          SELFTEST: ${{ steps.selftest.outcome }}
+          STATIC: ${{ steps.static.outcome }}
+          CUE223: ${{ steps.cue223.outcome }}
+          CUE233: ${{ steps.cue233.outcome }}
+        run: |
+          actual_contract=$(sha256sum release/v1/contract.json | cut -d' ' -f1)
+          actual_checker=$(sha256sum tools/check-gov-release-v1.py | cut -d' ' -f1)
+          body=$(cat <<EOF
+          <!-- GOV-RELEASE-ADRS-DIAGNOSTIC -->
+          exact ADRS head: 60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326
+
+          - cue223: $CUE223
+          - cue233: $CUE233
+          - contract: $CONTRACT_SHA
+          - selftest: $SELFTEST
+          - static: $STATIC
+          - actual contract sha256: $actual_contract
+          - actual checker sha256: $actual_checker
+          EOF
+          )
+          gh pr comment 166 --repo "$GITHUB_REPOSITORY" --body "$body"
+      - name: Reduce diagnostic
+        env:
+          CUE223: ${{ steps.cue223.outcome }}
+          CUE233: ${{ steps.cue233.outcome }}
+          CONTRACT: ${{ steps.contract.outcome }}
+          SELFTEST: ${{ steps.selftest.outcome }}
+          STATIC: ${{ steps.static.outcome }}
+        run: |
+          test "$CUE223" = success
+          test "$CUE233" = success
+          test "$CONTRACT" = success
+          test "$SELFTEST" = success
+          test "$STATIC" = success
