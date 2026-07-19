@@ -1,0 +1,37 @@
+name: temporary apply issue 171
+
+on:
+  pull_request:
+    branches:
+      - proposals
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor == github.repository_owner }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Apply deterministic issue 171 patch
+        run: |
+          set -euo pipefail
+          python3 tools/gov_release/patch_issue_171.py
+          python3 -m unittest discover -s tools/gov_release/tests -p 'test_*.py'
+          test ! -e .github/workflows/tmp-apply-issue-171.yml
+          test ! -e tools/gov_release/patch_issue_171.py
+          test "$(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l)" -eq 3
+      - name: Commit exact integration
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'Integrate exact owner authorization transport for #171'
+          git push origin "HEAD:$BRANCH"
