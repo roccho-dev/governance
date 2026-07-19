@@ -210,7 +210,10 @@ jobs:
             ''|*[!0-9]*) echo invalid-sequence >&2; exit 1 ;;
           esac
           decision_digest=$(python3 -c "import json;print(json.load(open('governance/gov-release-identity.v1.json'))['acceptedDecision']['canonicalDigest'])")
-          out_path=$(nix build --no-link --print-out-paths .#gov-package-output)
+          out_path=$(nix build --no-link --print-out-paths \
+            --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
+            --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" \
+            .#gov-package-output)
           nix path-info --json "$out_path" > nix-path-info.json
           nar_hash=$(python3 - <<'PY'
           import json
