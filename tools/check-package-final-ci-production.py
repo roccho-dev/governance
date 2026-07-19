@@ -200,6 +200,8 @@ def validate_provider_files(identity: dict[str, Any]) -> None:
     need("issues: read" in release_text, "release-owner-authorization-read")
     need("owner_authorization.py" in release_text, "release-owner-authorization-validator")
     need("gov-release-owner-authorization-transport.json" in release_text + canary_text, "release-owner-authorization-asset")
+    need('export RELEASE_ID="$release_id" RELEASE_DIGEST="$release_digest" RELEASE_TAG="$tag"' in release_text, "release-same-step-environment")
+    need("Remove incomplete draft on failure" in release_text and "gh release delete" in release_text, "release-draft-cleanup")
     need("contents: write" in release_text, "release-write-boundary")
     need("pull_request_target" not in gate_text + canary_text + release_text, "pull-request-target")
     need("persist-credentials: false" in gate_text, "gate-credentials")
