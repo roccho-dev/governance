@@ -1,0 +1,58 @@
+{
+  "kind": "governance.govReleaseBaseline.v1",
+  "status": "candidate",
+  "closureModel": "gov-release-publication",
+  "supersedesClosureModels": [
+    "github-merge-protection",
+    "signed-promotion"
+  ],
+  "adrsCandidate": {
+    "pullRequest": 242,
+    "head": "60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326",
+    "contractDigest": "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b",
+    "status": "accepted-in-candidate"
+  },
+  "acceptedMeaning": {
+    "companyContractDigest": "sha256:ad77198b3ca12abfa350676971a90fce1d3f72397d2add6c4749c90e663111c8",
+    "companyClosureDigest": "sha256:b2ce0bbac5a8584be0fb6df9e00fbfb48c889bfa5c3909ef5612970cdb7dcbfa"
+  },
+  "governance": {
+    "stableCheckName": "gov-final-scope-purpose-join / gate",
+    "workflowCount": 3,
+    "workflows": [
+      ".github/workflows/gov-final-scope-purpose-join.yml",
+      ".github/workflows/gov-canary.yml",
+      ".github/workflows/gov-release.yml"
+    ]
+  },
+  "selectedConsumers": [
+    {
+      "repository": "roccho-dev/ui",
+      "role": "positive-feature-consumer"
+    },
+    {
+      "repository": "roccho-dev/ops",
+      "role": "migration-consumer-known-mismatch"
+    }
+  ],
+  "historicalClosureReceipts": {
+    "adrs223": "superseded",
+    "adrs233": "superseded",
+    "governance150": "superseded"
+  },
+  "currentOperationalAdoption": {
+    "releasePublished": false,
+    "releaseReadback": false,
+    "selectedReleaseId": null,
+    "selectedReleaseDigest": null
+  },
+  "invariants": {
+    "githubMergeHasAuthority": false,
+    "githubRulesetRequired": false,
+    "unreleasedCommitHasEffect": false,
+    "signatureRequired": false,
+    "allRepositoriesEnforced": false,
+    "businessOutcomeAchieved": false
+  },
+  "authority": false
+}
