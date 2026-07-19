@@ -6,19 +6,12 @@
     "github-merge-protection",
     "signed-promotion"
   ],
-  "adrsCandidate": {
-    "pullRequest": 242,
-    "head": "5a8a6d9968178144b2e547f28bb9977a7b65c755",
-    "contractDigest": "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b",
-    "acceptedDecisionDigest": "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f",
-    "status": "accepted-in-candidate"
-  },
+  "identityProjection": "governance/gov-release-identity.v1.json",
   "acceptedMeaning": {
     "companyContractDigest": "sha256:ad77198b3ca12abfa350676971a90fce1d3f72397d2add6c4749c90e663111c8",
     "companyClosureDigest": "sha256:b2ce0bbac5a8584be0fb6df9e00fbfb48c889bfa5c3909ef5612970cdb7dcbfa"
   },
   "governance": {
-    "stableCheckName": "gov-final-scope-purpose-join / gate",
     "workflowCount": 3,
     "workflows": [
       ".github/workflows/gov-final-scope-purpose-join.yml",
