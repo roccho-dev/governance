@@ -53,7 +53,17 @@ class GovReleaseTest(unittest.TestCase):
         with self.assertRaises((ReleaseError, KeyError, TypeError, ValueError)):
             fn()
 
+    def validate_expected(self, value) -> str:
+        return validate_manifest(
+            value,
+            expected_decision_digest=self.decision,
+            expected_engine_digest=self.engine,
+            expected_nix_output_digest=self.nix,
+        )
+
     def test_positive_reduce_and_readback(self) -> None:
+        self.validate_expected(self.genesis)
+        self.validate_expected(self.next_release)
         selected = reduce_manifests([self.next_release, self.genesis])
         self.assertEqual(selected["selectedReleaseId"], "gov-release-0001")
         release_digest = digest(self.next_release)
@@ -106,7 +116,7 @@ class GovReleaseTest(unittest.TestCase):
         del bad["nixOutputDigest"]
         cases.append(bad)
         for value in cases:
-            self.rejected(lambda value=value: validate_manifest(value))
+            self.rejected(lambda value=value: self.validate_expected(value))
 
     def test_chain_mutations_rejected(self) -> None:
         self.rejected(lambda: reduce_manifests([self.next_release]))
