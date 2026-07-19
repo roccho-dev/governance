@@ -58,7 +58,7 @@ replace_once(
     need("contents: write" in release_text, "release-write-boundary")
 ''',
     '''    need("gov-release-owner-authorization-transport.json" in release_text + canary_text, "release-owner-authorization-asset")
-    need("export RELEASE_ID=\"$release_id\" RELEASE_DIGEST=\"$release_digest\" RELEASE_TAG=\"$tag\"" in release_text, "release-same-step-environment")
+    need('export RELEASE_ID="$release_id" RELEASE_DIGEST="$release_digest" RELEASE_TAG="$tag"' in release_text, "release-same-step-environment")
     need("Remove incomplete draft on failure" in release_text and "gh release delete" in release_text, "release-draft-cleanup")
     need("contents: write" in release_text, "release-write-boundary")
 ''',
