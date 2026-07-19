@@ -10,10 +10,10 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-FINAL_CHECK_NAME = "gov-final-scope-purpose-join / gate"
-RELEASE_CONTRACT_DIGEST = "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"
-RELEASE_DECISION_DIGEST = "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
-RELEASE_ADRS_HEAD = "5a8a6d9968178144b2e547f28bb9977a7b65c755"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools.gov_release.identity import IDENTITY_PATH, load_identity  # noqa: E402
 
 
 def canonical(value: Any) -> str:
@@ -21,13 +21,7 @@ def canonical(value: Any) -> str:
 
 
 def run_component(name: str, args: list[str]) -> dict[str, Any]:
-    process = subprocess.run(
-        args,
-        cwd=ROOT,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
+    process = subprocess.run(args, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return {
         "name": name,
         "status": "pass" if process.returncode == 0 else "fail",
@@ -54,21 +48,23 @@ def regression_components() -> list[dict[str, Any]]:
 
 
 def run_selftest() -> dict[str, Any]:
+    identity = load_identity()
     components = regression_components()
     failed = [row for row in components if row["status"] != "pass"]
     if failed:
-        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.selftest.v7", "status": "fail", "failedComponents": failed}))
+        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.selftest.v8", "status": "fail", "failedComponents": failed}))
     return {
-        "kind": "governance.finalScopePurposeJoin.selftest.v7",
+        "kind": "governance.finalScopePurposeJoin.selftest.v8",
         "status": "pass",
         "authority": False,
         "authorityClass": "release-eligibility-evidence",
-        "finalCheckName": FINAL_CHECK_NAME,
-        "currentlyAcceptedDecisionMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
-        "govReleaseDecisionCandidateHead": RELEASE_ADRS_HEAD,
-        "govReleaseContractDigest": RELEASE_CONTRACT_DIGEST,
-        "govReleaseAcceptedDecisionDigest": RELEASE_DECISION_DIGEST,
-        "govReleaseDecisionStatus": "accepted-in-candidate",
+        "identityProjection": IDENTITY_PATH.relative_to(ROOT).as_posix(),
+        "finalCheckName": identity["currentTopology"]["stableCheckName"],
+        "currentlyAcceptedDecisionMerge": identity["currentTopology"]["acceptedMerge"],
+        "govReleaseDecisionCandidateHead": identity["source"]["head"],
+        "govReleaseContractDigest": identity["contract"]["canonicalDigest"],
+        "govReleaseAcceptedDecisionDigest": identity["acceptedDecision"]["canonicalDigest"],
+        "govReleaseDecisionStatus": identity["source"]["status"],
         "releasePublicationEffect": False,
         "signatureRequired": False,
         "components": components,
@@ -77,13 +73,14 @@ def run_selftest() -> dict[str, Any]:
 
 
 def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
+    identity = load_identity()
     regression = run_selftest()
     production = run_component(
         "current-exact-sha-production-evidence",
         [sys.executable, "tools/check-package-final-ci-production.py", "check", "--candidate-sha", candidate_sha, "--live-consumers", str(live_consumers), "--json"],
     )
     if production["status"] != "pass":
-        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v7", "status": "fail", "failedComponents": [production]}))
+        raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v8", "status": "fail", "failedComponents": [production]}))
     parsed = json.loads(production["output"][-1])
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -92,10 +89,10 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
             [sys.executable, "tools/check-contract-modeling-production-migration.py", "check", "--candidate-sha", candidate_sha, "--out", temporary],
         )
         if migration["status"] != "pass":
-            raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v7", "status": "fail", "failedComponents": [migration]}))
+            raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v8", "status": "fail", "failedComponents": [migration]}))
         migration_parsed = json.loads((root / "production-migration-candidate.json").read_text(encoding="utf-8"))
         report = {
-            "kind": "governance.finalScopePurposeJoin.gate.v7",
+            "kind": "governance.finalScopePurposeJoin.gate.v8",
             "status": "pass",
             "decision": "allow",
             "authority": False,
@@ -103,7 +100,8 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
             "meaningAuthority": False,
             "effectAuthority": False,
             "companyAdoptionEffect": False,
-            "finalCheckName": FINAL_CHECK_NAME,
+            "identityProjection": IDENTITY_PATH.relative_to(ROOT).as_posix(),
+            "finalCheckName": identity["currentTopology"]["stableCheckName"],
             "candidateSha": candidate_sha,
             "selectedRepositoryCount": parsed["selectedRepositoryCount"],
             "liveConsumerReadback": parsed["liveConsumerReadback"],
@@ -113,9 +111,9 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
             "contractModelingAcceptedMerge": migration_parsed["acceptedDecisionMerge"],
             "contractModelingAntiReintroduction": migration_parsed["antiReintroduction"],
             "contractModelingProductionCutoverEligible": migration_parsed["productionCutoverEligible"],
-            "govReleaseDecisionCandidateHead": RELEASE_ADRS_HEAD,
-            "govReleaseContractDigest": RELEASE_CONTRACT_DIGEST,
-            "govReleaseAcceptedDecisionDigest": RELEASE_DECISION_DIGEST,
+            "govReleaseDecisionCandidateHead": identity["source"]["head"],
+            "govReleaseContractDigest": identity["contract"]["canonicalDigest"],
+            "govReleaseAcceptedDecisionDigest": identity["acceptedDecision"]["canonicalDigest"],
             "githubMergeHasCompanyAuthority": False,
             "unreleasedCommitHasEffect": False,
             "signatureRequired": False,
@@ -132,7 +130,7 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
             [sys.executable, "tools/check-gov-release-integration.py", "eligibility", "--gate", str(gate_path), "--live-consumers", str(live_consumers), "--candidate-sha", candidate_sha, "--out", str(eligibility_path)],
         )
         if release["status"] != "pass":
-            raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v7", "status": "fail", "failedComponents": [release]}))
+            raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v8", "status": "fail", "failedComponents": [release]}))
         report["govReleaseEligibility"] = json.loads(eligibility_path.read_text(encoding="utf-8"))
         report["releasePublished"] = False
         report["operationalAdoptionEffect"] = False
