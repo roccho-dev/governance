@@ -22,6 +22,8 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
+          parent_sha=$(git rev-parse HEAD)
+          base_tree=$(git rev-parse HEAD^{tree})
           python3 tools/gov_release/patch_issue_171.py
           python3 -m unittest discover -s tools/gov_release/tests -p 'test_*.py'
           test ! -e .github/workflows/tmp-apply-issue-171.yml
@@ -42,13 +44,12 @@ jobs:
           canary_blob=$(create_blob .github/workflows/gov-canary.yml)
           production_blob=$(create_blob tools/check-package-final-ci-production.py)
           roles_blob=$(create_blob tools/check-package-ci-final-role-demotion.py)
-          base_tree=$(gh api "repos/$REPOSITORY/git/commits/$GITHUB_SHA" --jq .tree.sha)
 
           python3 - <<PY
           import json
           value={
             'kind':'issue171GitData.v1',
-            'parentSha':'$GITHUB_SHA',
+            'parentSha':'$parent_sha',
             'baseTreeSha':'$base_tree',
             'blobs':{
               '.github/workflows/gov-release.yml':'$release_blob',
