@@ -15,7 +15,8 @@ RELEASE = ".github/workflows/gov-release.yml"
 CHECK_NAME = "gov-final-scope-purpose-join / gate"
 CANDIDATE_SHA_SOURCE = "github.event.pull_request.head.sha || github.sha"
 CUTOVER_STATE = "accepted-gov-release-topology-candidate"
-RELEASE_ADRS_HEAD = "60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326"
+RELEASE_ADRS_HEAD = "5a8a6d9968178144b2e547f28bb9977a7b65c755"
+RELEASE_DECISION_DIGEST = "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
 
 
 def canonical(value: Any) -> str:
@@ -56,6 +57,8 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         findings.append({"code": "cutover-state", "expected": CUTOVER_STATE, "actual": gate.get("cutover_state")})
     if gate.get("adrs_candidate_head") != RELEASE_ADRS_HEAD:
         findings.append({"code": "adrs-candidate-head"})
+    if gate.get("accepted_decision_digest") != RELEASE_DECISION_DIGEST:
+        findings.append({"code": "accepted-decision-digest"})
     if canary.get("role") != "bootstrap_exception" or canary.get("authority_class") != "evidence-only" or canary.get("authority") is not False:
         findings.append({"code": "canary-boundary"})
     if release.get("role") != "bootstrap_exception" or release.get("authority_class") != "release-adoption" or release.get("authority") is not False:
@@ -85,6 +88,8 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         findings.append({"code": "release-publication"})
     if "contents: write" not in release_text:
         findings.append({"code": "release-write-boundary"})
+    if "accepted-decision.json" not in release_text:
+        findings.append({"code": "release-accepted-decision"})
     publish_section = release_text.split("  publish:", 1)[1] if "  publish:" in release_text else ""
     if "actions/checkout" in publish_section:
         findings.append({"code": "publisher-checkout"})
@@ -92,12 +97,13 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         findings.append({"code": "publisher-executes-repository-code"})
 
     return {
-        "kind": "governance.ciFinalRoleDemotion.report.v4",
+        "kind": "governance.ciFinalRoleDemotion.report.v5",
         "status": "pass" if not findings else "fail",
         "authority": False,
         "authorityClass": "evidence-only",
         "currentlyAcceptedDecisionMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
         "govReleaseDecisionCandidateHead": RELEASE_ADRS_HEAD,
+        "govReleaseAcceptedDecisionDigest": RELEASE_DECISION_DIGEST,
         "finalCheckName": CHECK_NAME,
         "cutoverState": CUTOVER_STATE,
         "expectedWorkflowCount": 3,
