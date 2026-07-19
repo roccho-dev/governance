@@ -8,8 +8,9 @@
   ],
   "adrsCandidate": {
     "pullRequest": 242,
-    "head": "60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326",
+    "head": "5a8a6d9968178144b2e547f28bb9977a7b65c755",
     "contractDigest": "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b",
+    "acceptedDecisionDigest": "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f",
     "status": "accepted-in-candidate"
   },
   "acceptedMeaning": {
