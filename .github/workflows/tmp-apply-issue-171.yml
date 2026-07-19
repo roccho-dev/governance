@@ -24,9 +24,9 @@ jobs:
           test ! -e .github/workflows/tmp-apply-issue-171.yml
           test ! -e tools/gov_release/patch_issue_171.py
           test "$(find .github/workflows -maxdepth 1 -type f \( -name '*.yml' -o -name '*.yaml' \) | wc -l)" -eq 3
-          mkdir -p patched/.github/workflows patched/tools
-          cp .github/workflows/gov-release.yml patched/.github/workflows/gov-release.yml
-          cp .github/workflows/gov-canary.yml patched/.github/workflows/gov-canary.yml
+          mkdir -p patched/workflows patched/tools
+          cp .github/workflows/gov-release.yml patched/workflows/gov-release.yml
+          cp .github/workflows/gov-canary.yml patched/workflows/gov-canary.yml
           cp tools/check-package-final-ci-production.py patched/tools/check-package-final-ci-production.py
           cp tools/check-package-ci-final-role-demotion.py patched/tools/check-package-ci-final-role-demotion.py
       - uses: actions/upload-artifact@v4
