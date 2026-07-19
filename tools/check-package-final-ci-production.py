@@ -6,11 +6,17 @@ import copy
 import importlib.util
 import json
 import re
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools.gov_release.identity import IDENTITY_PATH, load_identity  # noqa: E402
+
 DECISION = ROOT / "governance/accepted-final-ci-decision.v1.json"
 ROLLOUT = ROOT / "governance/selected-final-ci-rollout.v1.json"
 RELEASE_BASELINE = ROOT / "governance/gov-release-baseline.v1.json"
@@ -19,23 +25,13 @@ WORKFLOWS = ROOT / ".github/workflows"
 GATE = ".github/workflows/gov-final-scope-purpose-join.yml"
 CANARY = ".github/workflows/gov-canary.yml"
 RELEASE = ".github/workflows/gov-release.yml"
-CHECK_NAME = "gov-final-scope-purpose-join / gate"
-RELEASE_CONTRACT_DIGEST = "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"
-RELEASE_DECISION_DIGEST = "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
-RELEASE_ADRS_HEAD = "5a8a6d9968178144b2e547f28bb9977a7b65c755"
 SHA = re.compile(r"^[0-9a-f]{40}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 EXPECTED_REPOS = {
     "roccho-dev/ui": "positive-feature-consumer",
     "roccho-dev/ops": "migration-consumer-known-mismatch",
 }
-STALE_EVIDENCE_FIELDS = {
-    "candidateHead",
-    "mergeCommit",
-    "receiptRunId",
-    "receiptArtifactDigest",
-    "receiptStatus",
-}
+STALE_EVIDENCE_FIELDS = {"candidateHead", "mergeCommit", "receiptRunId", "receiptArtifactDigest", "receiptStatus"}
 
 
 class GateError(ValueError):
@@ -77,24 +73,21 @@ def load_compiler() -> Any:
     return module
 
 
-def validate_current_decision(value: dict[str, Any]) -> None:
+def validate_current_decision(value: dict[str, Any], identity: dict[str, Any]) -> None:
     need(value.get("kind") == "governance.acceptedFinalCiDecisionProjection.v1", "decision-kind")
     need(value.get("issue") == "roccho-dev/adrs#233", "decision-source")
-    need(value.get("acceptedMerge") == "a8fc9e8e04d53f1d783317059e4421c8dc724d01", "decision-merge")
-    need(value.get("contractCanonicalDigest") == "8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314", "decision-digest")
-    need(value.get("stableRequiredCheck") == CHECK_NAME, "check-name")
+    need(value.get("acceptedMerge") == identity["currentTopology"]["acceptedMerge"], "decision-merge")
+    need(value.get("stableRequiredCheck") == identity["currentTopology"]["stableCheckName"], "check-name")
     need(value.get("allRepositoriesEnforced") is False, "decision-overclaim")
 
 
-def validate_release_candidate(value: dict[str, Any]) -> None:
+def validate_release_candidate(value: dict[str, Any], identity: dict[str, Any]) -> None:
     need(value.get("kind") == "governance.govReleaseBaseline.v1", "release-baseline-kind")
     need(value.get("status") == "candidate", "release-baseline-status")
     need(value.get("closureModel") == "gov-release-publication", "release-closure-model")
     need(value.get("supersedesClosureModels") == ["github-merge-protection", "signed-promotion"], "release-supersedes")
-    candidate = value["adrsCandidate"]
-    need(candidate["head"] == RELEASE_ADRS_HEAD, "release-adrs-head")
-    need(candidate["contractDigest"] == RELEASE_CONTRACT_DIGEST, "release-contract-digest")
-    need(candidate["acceptedDecisionDigest"] == RELEASE_DECISION_DIGEST, "release-decision-digest")
+    need(value.get("identityProjection") == IDENTITY_PATH.relative_to(ROOT).as_posix(), "release-identity-projection")
+    need(identity["source"]["status"] in {"accepted-in-candidate", "accepted"}, "release-decision-status")
     need(value["governance"]["workflowCount"] == 3, "release-workflow-count")
     need(value["currentOperationalAdoption"]["releasePublished"] is False, "release-not-published")
     need(value["currentOperationalAdoption"]["releaseReadback"] is False, "release-not-read-back")
@@ -103,14 +96,16 @@ def validate_release_candidate(value: dict[str, Any]) -> None:
         need(invariants.get(key) is False, "release-invariant:" + key)
 
 
-def validate_rollout(value: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def validate_rollout(value: dict[str, Any], identity: dict[str, Any]) -> dict[str, dict[str, Any]]:
     need(value.get("kind") == "governance.selectedFinalCiRollout.v2", "rollout-kind")
-    need(value.get("decisionMerge") == "a8fc9e8e04d53f1d783317059e4421c8dc724d01", "rollout-decision")
+    need(value.get("decisionMerge") == identity["currentTopology"]["acceptedMerge"], "rollout-decision")
     need(value.get("allRepositoriesEnforced") is False, "rollout-overclaim")
     rows = value.get("repositories")
     need(isinstance(rows, list) and len(rows) == 2, "rollout-cardinality")
     by_repository = {row.get("repository"): row for row in rows if isinstance(row, dict)}
     need(set(by_repository) == set(EXPECTED_REPOS), "rollout-repositories")
+    bundle_values = set()
+    closure_values = set()
     for repository, role in EXPECTED_REPOS.items():
         row = by_repository[repository]
         need(not (STALE_EVIDENCE_FIELDS & set(row)), f"checked-in-live-evidence:{repository}")
@@ -121,10 +116,14 @@ def validate_rollout(value: dict[str, Any]) -> dict[str, dict[str, Any]]:
         need(row.get("workflowPath") == ".github/workflows/final-ci-consumer.yml", f"rollout-workflow-path:{repository}")
         need(row.get("artifactName") == "final-ci-consumer-receipt", f"rollout-artifact-name:{repository}")
         need(row.get("receiptPath") == "final-ci-consumer-receipt.json", f"rollout-receipt-path:{repository}")
-        need(row.get("acceptedBundleDigest") == "sha256:8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314", f"bundle:{repository}")
-        need(row.get("sourceClosureDigest") == "sha256:a8fc9e8e04d53f1d783317059e4421c8dc724d01", f"closure:{repository}")
+        need(DIGEST.fullmatch(str(row.get("acceptedBundleDigest", ""))) is not None, f"bundle:{repository}")
+        need(DIGEST.fullmatch(str(row.get("sourceClosureDigest", ""))) is not None, f"closure:{repository}")
         need(row.get("lifecycle") == "active", f"lifecycle:{repository}")
         need(row.get("authority") is False, f"rollout-authority:{repository}")
+        bundle_values.add(row["acceptedBundleDigest"])
+        closure_values.add(row["sourceClosureDigest"])
+    need(len(bundle_values) == 1, "rollout-bundle-drift")
+    need(len(closure_values) == 1, "rollout-closure-drift")
     return by_repository
 
 
@@ -172,7 +171,7 @@ def validate_live_packet(packet: dict[str, Any], expected: dict[str, dict[str, A
     return by_repository
 
 
-def validate_provider_files() -> None:
+def validate_provider_files(identity: dict[str, Any]) -> None:
     expected = {GATE, CANARY, RELEASE}
     actual = {path.relative_to(ROOT).as_posix() for path in WORKFLOWS.iterdir() if path.is_file() and path.suffix in {".yml", ".yaml"}}
     need(actual == expected, "workflow-universe")
@@ -180,8 +179,9 @@ def validate_provider_files() -> None:
     need(len(rows) == 3, "ci-intent-cardinality")
     by_path = {row.get("path"): row for row in rows}
     need(set(by_path) == expected, "ci-intent-universe")
-    need(by_path[GATE].get("required_check_name") == CHECK_NAME, "intent-check-name")
+    need(by_path[GATE].get("required_check_name") == identity["currentTopology"]["stableCheckName"], "intent-check-name")
     need(by_path[GATE].get("authority_class") == "release-eligibility-evidence", "intent-gate-authority")
+    need(by_path[GATE].get("identity_projection") == IDENTITY_PATH.relative_to(ROOT).as_posix(), "intent-identity-projection")
     need(by_path[CANARY].get("authority_class") == "evidence-only", "intent-canary-authority")
     need(by_path[RELEASE].get("authority_class") == "release-adoption", "intent-release-authority")
     gate_text = (ROOT / GATE).read_text(encoding="utf-8")
@@ -194,16 +194,17 @@ def validate_provider_files() -> None:
     need("workflow_dispatch" in release_text, "release-dispatch")
     need("gh release create" in release_text, "release-publish")
     need("gov-release-manifest.json" in release_text, "release-manifest")
-    need("accepted-decision.json" in release_text, "release-decision-source")
+    need("gov-release-identity.v1.json" in gate_text + canary_text + release_text, "identity-projection-workflow")
     need("contents: write" in release_text, "release-write-boundary")
     need("pull_request_target" not in gate_text + canary_text + release_text, "pull-request-target")
     need("persist-credentials: false" in gate_text, "gate-credentials")
 
 
-def compile_selected_admissions(live: dict[str, dict[str, Any]], candidate_sha: str) -> list[dict[str, Any]]:
+def compile_selected_admissions(live: dict[str, dict[str, Any]], candidate_sha: str, expected: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     compiler = load_compiler()
-    bundle = "sha256:8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314"
-    closure = "sha256:a8fc9e8e04d53f1d783317059e4421c8dc724d01"
+    reference = next(iter(expected.values()))
+    bundle = reference["acceptedBundleDigest"]
+    closure = reference["sourceClosureDigest"]
     subjects = ["repo:roccho-dev/governance", "repo:roccho-dev/ui", "repo:roccho-dev/ops"]
     grants = [{"subjectId": subject, "grantId": f"grant:{subject}", "acceptedBundleDigest": bundle, "sourceClosureDigest": closure, "lifecycle": "active"} for subject in subjects]
     assertions = [{"subjectId": subjects[0], "assertionId": "governance.final-ci-self.v1", "acceptedBundleDigest": bundle, "sourceClosureDigest": closure, "candidateSha": candidate_sha, "lifecycle": "active"}]
@@ -224,26 +225,28 @@ def compile_selected_admissions(live: dict[str, dict[str, Any]], candidate_sha: 
 def check(candidate_sha: str, live_path: Path, decision_path: Path = DECISION, rollout_path: Path = ROLLOUT, release_baseline_path: Path = RELEASE_BASELINE) -> dict[str, Any]:
     need(SHA.fullmatch(candidate_sha) is not None, "candidate-sha")
     need(live_path.is_file(), "live-packet-missing")
+    identity = load_identity()
     decision = read_json(decision_path)
     rollout = read_json(rollout_path)
     release_baseline = read_json(release_baseline_path)
     packet = read_json(live_path)
-    validate_current_decision(decision)
-    validate_release_candidate(release_baseline)
-    expected = validate_rollout(rollout)
+    validate_current_decision(decision, identity)
+    validate_release_candidate(release_baseline, identity)
+    expected = validate_rollout(rollout, identity)
     live = validate_live_packet(packet, expected)
-    validate_provider_files()
-    admissions = compile_selected_admissions(live, candidate_sha)
+    validate_provider_files(identity)
+    admissions = compile_selected_admissions(live, candidate_sha, expected)
     return {
-        "kind": "governance.finalCiProductionEvidence.v4",
+        "kind": "governance.finalCiProductionEvidence.v5",
         "status": "pass",
         "decision": "allow",
         "candidateSha": candidate_sha,
-        "currentlyAcceptedDecisionMerge": decision["acceptedMerge"],
-        "govReleaseDecisionCandidateHead": RELEASE_ADRS_HEAD,
-        "govReleaseContractDigest": RELEASE_CONTRACT_DIGEST,
-        "govReleaseAcceptedDecisionDigest": RELEASE_DECISION_DIGEST,
-        "finalCheckName": CHECK_NAME,
+        "identityProjection": IDENTITY_PATH.relative_to(ROOT).as_posix(),
+        "currentlyAcceptedDecisionMerge": identity["currentTopology"]["acceptedMerge"],
+        "govReleaseDecisionCandidateHead": identity["source"]["head"],
+        "govReleaseContractDigest": identity["contract"]["canonicalDigest"],
+        "govReleaseAcceptedDecisionDigest": identity["acceptedDecision"]["canonicalDigest"],
+        "finalCheckName": identity["currentTopology"]["stableCheckName"],
         "workflowCount": 3,
         "selectedRepositoryCount": 3,
         "liveConsumerReadback": True,
@@ -308,7 +311,7 @@ def selftest() -> dict[str, Any]:
                 rejected.append({"case": name, "status": "rejected", "finding": str(error)})
             else:
                 raise GateError(f"destructive case passed:{name}")
-    return {"kind": "governance.finalCiProductionEvidence.selftest.v4", "status": "pass", "positiveCases": 1, "destructiveCases": len(rejected), "cases": rejected, "signatureRequired": False, "operationalAdoptionEffect": False, "allRepositoriesEnforced": False, "authority": False}
+    return {"kind": "governance.finalCiProductionEvidence.selftest.v5", "status": "pass", "positiveCases": 1, "destructiveCases": len(rejected), "cases": rejected, "identityProjection": IDENTITY_PATH.relative_to(ROOT).as_posix(), "signatureRequired": False, "operationalAdoptionEffect": False, "allRepositoriesEnforced": False, "authority": False}
 
 
 def main() -> int:
