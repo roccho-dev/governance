@@ -27,6 +27,7 @@ CANARY = ".github/workflows/gov-canary.yml"
 RELEASE = ".github/workflows/gov-release.yml"
 SHA = re.compile(r"^[0-9a-f]{40}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+SOURCE_CLOSURE = re.compile(r"^sha256:[0-9a-f]{40}$")
 EXPECTED_REPOS = {
     "roccho-dev/ui": "positive-feature-consumer",
     "roccho-dev/ops": "migration-consumer-known-mismatch",
@@ -117,7 +118,7 @@ def validate_rollout(value: dict[str, Any], identity: dict[str, Any]) -> dict[st
         need(row.get("artifactName") == "final-ci-consumer-receipt", f"rollout-artifact-name:{repository}")
         need(row.get("receiptPath") == "final-ci-consumer-receipt.json", f"rollout-receipt-path:{repository}")
         need(DIGEST.fullmatch(str(row.get("acceptedBundleDigest", ""))) is not None, f"bundle:{repository}")
-        need(DIGEST.fullmatch(str(row.get("sourceClosureDigest", ""))) is not None, f"closure:{repository}")
+        need(SOURCE_CLOSURE.fullmatch(str(row.get("sourceClosureDigest", ""))) is not None, f"closure:{repository}")
         need(row.get("lifecycle") == "active", f"lifecycle:{repository}")
         need(row.get("authority") is False, f"rollout-authority:{repository}")
         bundle_values.add(row["acceptedBundleDigest"])
