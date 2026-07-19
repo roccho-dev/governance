@@ -407,6 +407,7 @@ jobs:
             exit 1
           fi
           printf 'RELEASE_ID=%s\nRELEASE_DIGEST=%s\nRELEASE_TAG=%s\n' "$release_id" "$release_digest" "$tag" >> "$GITHUB_ENV"
+          export RELEASE_ID="$release_id" RELEASE_DIGEST="$release_digest" RELEASE_TAG="$tag"
           gh release create "$tag" \
             --repo "$REPOSITORY" \
             --target "$GITHUB_SHA" \
@@ -417,7 +418,8 @@ jobs:
             release-bundle/gov-release-manifest.json \
             release-bundle/accepted-decision.json \
             release-bundle/gov-engine-descriptor.json \
-            release-bundle/gov-nix-output-descriptor.json             release-bundle/gov-release-owner-authorization-transport.json
+            release-bundle/gov-nix-output-descriptor.json \
+            release-bundle/gov-release-owner-authorization-transport.json
           mkdir draft-readback
           gh release download "$tag" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir draft-readback
           cmp release-bundle/gov-release-manifest.json draft-readback/gov-release-manifest.json
@@ -440,6 +442,19 @@ jobs:
           Path('gov-release-readback-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
           PY
           gh release upload "$tag" --repo "$REPOSITORY" gov-release-readback-receipt.json
+      - name: Remove incomplete draft on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if test -n "${RELEASE_TAG:-}" && gh release view "$RELEASE_TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            draft=$(gh api "repos/$REPOSITORY/releases/tags/$RELEASE_TAG" --jq .draft)
+            if test "$draft" = true; then
+              gh release delete "$RELEASE_TAG" --repo "$REPOSITORY" --yes --cleanup-tag
+            fi
+          fi
       - name: Publish and perform post-publication byte readback
         env:
           GH_TOKEN: ${{ github.token }}

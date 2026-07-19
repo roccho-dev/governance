@@ -94,6 +94,10 @@ def check(path: Path = CI_INTENT) -> dict[str, Any]:
         findings.append({"code": "release-owner-authorization-input"})
     if "owner_authorization.py" not in release_text or "gov-release-owner-authorization-transport.json" not in release_text:
         findings.append({"code": "release-owner-authorization-validator"})
+    if 'export RELEASE_ID="$release_id" RELEASE_DIGEST="$release_digest" RELEASE_TAG="$tag"' not in release_text:
+        findings.append({"code": "release-same-step-environment"})
+    if "Remove incomplete draft on failure" not in release_text or "gh release delete" not in release_text:
+        findings.append({"code": "release-draft-cleanup"})
     if "gov-release-identity.v1.json" not in gate_text + canary_text + release_text:
         findings.append({"code": "workflow-identity-projection"})
     publish_section = release_text.split("  publish:", 1)[1] if "  publish:" in release_text else ""
