@@ -169,10 +169,8 @@ jobs:
           import hashlib,json
           from pathlib import Path
           validation=json.loads(Path('gov-release-manifest-validation.json').read_text())
-          assert validation['kind']=='govReleaseManifestValidation.v1'
-          assert validation['status']=='pass'
           canonical_digest=validation['releaseDigest']
-          assert canonical_digest.startswith('sha256:') and len(canonical_digest)==71
+          assert validation['status']=='pass' and canonical_digest.startswith('sha256:') and len(canonical_digest)==71
           Path('gov-release-manifest.digest').write_text(canonical_digest+'\n')
           Path('gov-release-manifest.bytes.sha256').write_text(hashlib.sha256(Path('gov-release-manifest.json').read_bytes()).hexdigest()+'\n')
           PY
@@ -214,13 +212,9 @@ jobs:
           from pathlib import Path
           root=Path('release-bundle')
           def load(name):
-              value=json.loads((root/name).read_text())
-              assert isinstance(value,dict)
-              return value
-          def canonical(value):
-              return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
-          def digest(value):
-              return 'sha256:'+hashlib.sha256(canonical(value)).hexdigest()
+              value=json.loads((root/name).read_text()); assert isinstance(value,dict); return value
+          def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          def digest(value): return 'sha256:'+hashlib.sha256(canonical(value)).hexdigest()
           decision=load('accepted-decision.json')
           assert set(decision)=={'kind','decisionIds','issues','govReleaseContractDigest','companyOperatingContractDigest','companyOperatingClosureDigest','previousFinalCiDecisionMerge','stableCheckName','selectedScope','githubMergeHasAuthority','githubRulesetRequired','signatureRequired','allRepositoriesEnforced','businessOutcomeAchieved'}
           assert decision['kind']=='govReleaseAcceptedDecision.v1'
@@ -231,14 +225,11 @@ jobs:
           engine=load('gov-engine-descriptor.json')
           assert engine=={'kind':'govEngineDescriptor.v1','repository':'roccho-dev/governance','commitSha':os.environ['ENGINE_SHA']}
           nix=load('gov-nix-output-descriptor.json')
-          assert set(nix)=={'kind','package','narHash'}
-          assert nix['kind']=='govNixOutputDescriptor.v1'
-          assert nix['package']=='gov-package-output'
-          assert isinstance(nix['narHash'],str) and nix['narHash'].startswith('sha256-')
+          assert set(nix)=={'kind','package','narHash'} and nix['kind']=='govNixOutputDescriptor.v1'
+          assert nix['package']=='gov-package-output' and isinstance(nix['narHash'],str) and nix['narHash'].startswith('sha256-')
           manifest=load('gov-release-manifest.json')
           assert set(manifest)=={'kind','releaseId','sequence','previousReleaseDigest','supersedesReleaseDigest','acceptedDecisionDigest','govEngineDigest','nixOutputDigest','status'}
-          assert manifest['kind']=='govReleaseManifest.v1'
-          assert manifest['status']=='adopted'
+          assert manifest['kind']=='govReleaseManifest.v1' and manifest['status']=='adopted'
           assert manifest['acceptedDecisionDigest']==digest(decision)
           assert manifest['govEngineDigest']==digest(engine)
           assert manifest['nixOutputDigest']==digest(nix)
@@ -260,8 +251,7 @@ jobs:
           python3 - <<'PY'
           import json,os,subprocess
           from pathlib import Path
-          text=Path('release-pages.jsonl').read_text().strip()
-          releases=[]
+          text=Path('release-pages.jsonl').read_text().strip(); releases=[]
           if text:
               decoder=json.JSONDecoder(); index=0
               while index < len(text):
@@ -270,12 +260,10 @@ jobs:
                   page,index=decoder.raw_decode(text,index); releases.extend(page)
           for release in releases:
               tag=release.get('tag_name','')
-              if release.get('draft') or not tag.startswith('gov-release/'):
-                  continue
+              if release.get('draft') or not tag.startswith('gov-release/'): continue
               parts=tag.split('/')
               assert len(parts)==3 and len(parts[2])==64 and all(c in '0123456789abcdef' for c in parts[2]), 'non-content-addressed-release-tag'
-              target=Path('previous-releases')/(parts[1]+'__'+parts[2])
-              target.mkdir(parents=True,exist_ok=True)
+              target=Path('previous-releases')/(parts[1]+'__'+parts[2]); target.mkdir(parents=True,exist_ok=True)
               for pattern in ['gov-release-manifest.json','gov-release-readback-receipt.json']:
                   subprocess.run(['gh','release','download',tag,'--repo',os.environ['REPOSITORY'],'--pattern',pattern,'--dir',str(target)],check=True)
               (target/'tag.txt').write_text(tag+'\n')
@@ -285,105 +273,34 @@ jobs:
           from pathlib import Path
           def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
           def digest(value): return 'sha256:'+hashlib.sha256(canonical(value)).hexdigest()
-          existing=[]
-          by_digest={}
-          by_sequence={}
-          release_ids=set()
-          for directory in sorted(Path('previous-releases').iterdir() if Path('previous-releases').exists() else []):
+          by_digest={}; by_sequence={}; release_ids=set()
+          directories=sorted(Path('previous-releases').iterdir()) if Path('previous-releases').exists() else []
+          for directory in directories:
               manifest=json.loads((directory/'gov-release-manifest.json').read_text())
               receipt=json.loads((directory/'gov-release-readback-receipt.json').read_text())
               assert set(manifest)=={'kind','releaseId','sequence','previousReleaseDigest','supersedesReleaseDigest','acceptedDecisionDigest','govEngineDigest','nixOutputDigest','status'}
               assert manifest['kind']=='govReleaseManifest.v1' and manifest['status']=='adopted'
-              release_digest=digest(manifest)
-              tag=(directory/'tag.txt').read_text().strip()
-              parts=tag.split('/')
+              release_digest=digest(manifest); parts=(directory/'tag.txt').read_text().strip().split('/')
               assert parts[1]==manifest['releaseId'] and parts[2]==release_digest[7:]
               assert receipt['kind']=='govReleaseReadbackReceipt.v1' and receipt['status']=='pass'
-              assert receipt['releaseId']==manifest['releaseId']
-              assert receipt['releaseDigest']==receipt['observedManifestDigest']==release_digest
+              assert receipt['releaseId']==manifest['releaseId'] and receipt['releaseDigest']==receipt['observedManifestDigest']==release_digest
               assert receipt['adopted'] is True and receipt['authority'] is False
-              assert manifest['sequence'] not in by_sequence
-              assert manifest['releaseId'] not in release_ids
-              by_sequence[manifest['sequence']]=(release_digest,manifest)
-              by_digest[release_digest]=manifest
-              release_ids.add(manifest['releaseId'])
-              existing.append(manifest)
-          sequences=sorted(by_sequence)
-          assert sequences==list(range(len(sequences)))
+              assert manifest['sequence'] not in by_sequence and manifest['releaseId'] not in release_ids
+              by_sequence[manifest['sequence']]=(release_digest,manifest); by_digest[release_digest]=manifest; release_ids.add(manifest['releaseId'])
+          sequences=sorted(by_sequence); assert sequences==list(range(len(sequences)))
           for sequence in sequences:
-              release_digest,manifest=by_sequence[sequence]
-              if sequence==0:
-                  assert manifest['previousReleaseDigest'] is None
-              else:
-                  assert manifest['previousReleaseDigest']==by_sequence[sequence-1][0]
+              _,manifest=by_sequence[sequence]
+              assert manifest['previousReleaseDigest'] is None if sequence==0 else manifest['previousReleaseDigest']==by_sequence[sequence-1][0]
               supersedes=manifest['supersedesReleaseDigest']
-              if supersedes is not None:
-                  assert supersedes in by_digest and by_digest[supersedes]['sequence']<sequence
+              if supersedes is not None: assert supersedes in by_digest and by_digest[supersedes]['sequence']<sequence
           candidate=json.loads(Path('release-bundle/gov-release-manifest.json').read_text())
-          assert candidate['sequence']==len(existing), 'sequence-not-contiguous'
-          if candidate['sequence']==0:
-              assert candidate['previousReleaseDigest'] is None
-          else:
-              assert candidate['previousReleaseDigest']==by_sequence[candidate['sequence']-1][0]
+          assert candidate['sequence']==len(directories), 'sequence-not-contiguous'
+          assert candidate['previousReleaseDigest'] is None if candidate['sequence']==0 else candidate['previousReleaseDigest']==by_sequence[candidate['sequence']-1][0]
           supersedes=candidate['supersedesReleaseDigest']
-          if supersedes is not None:
-              assert supersedes in by_digest and by_digest[supersedes]['sequence']<candidate['sequence']
+          if supersedes is not None: assert supersedes in by_digest and by_digest[supersedes]['sequence']<candidate['sequence']
           assert candidate['releaseId'] not in release_ids
           PY
-      - name: Draft publish, receipt staging, publication, and final readback
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          release_id=$(python3 -c "import json;print(json.load(open('release-bundle/gov-release-manifest.json'))['releaseId'])")
-          manifest_digest=$(cat release-bundle/gov-release-manifest.digest)
-          digest_hex=${manifest_digest#sha256:}
-          tag="gov-release/$release_id/$digest_hex"
-          if gh release view "$tag" --repo "$REPOSITORY" >/dev/null 2>&1; then
-            echo release-already-exists >&2
-            exit 1
-          fi
-          gh release create "$tag" \
-            --repo "$REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "$release_id" \
-            --notes "Canonical gov release manifest digest: $manifest_digest" \
-            --draft \
-            --latest=false \
-            release-bundle/accepted-decision.json \
-            release-bundle/gov-release-manifest.json \
-            release-bundle/gov-engine-descriptor.json \
-            release-bundle/gov-nix-output-descriptor.json
-          release_database_id=$(gh api "repos/$REPOSITORY/releases/tags/$tag" --jq .id)
-          python3 - <<'PY'
-          import json,os
-          from pathlib import Path
-          manifest=json.loads(Path('release-bundle/gov-release-manifest.json').read_text())
-          digest=Path('release-bundle/gov-release-manifest.digest').read_text().strip()
-          receipt={
-            'kind':'govReleaseReadbackReceipt.v1',
-            'status':'pass',
-            'releaseId':manifest['releaseId'],
-            'releaseDigest':digest,
-            'observedManifestDigest':digest,
-            'adopted':True,
-            'authority':False,
-            'transport':{
-              'provider':'github-release',
-              'repository':os.environ['GITHUB_REPOSITORY'],
-              'tag':os.environ['TAG'],
-              'releaseDatabaseId':int(os.environ['RELEASE_DATABASE_ID']),
-              'runId':int(os.environ['GITHUB_RUN_ID']),
-              'actor':os.environ['GITHUB_ACTOR'],
-            },
-          }
-          Path('gov-release-readback-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
-          PY
-        env:
-          TAG: ${{ env.GOV_RELEASE_TAG }}
-          RELEASE_DATABASE_ID: ${{ env.GOV_RELEASE_DATABASE_ID }}
-      - name: Complete staged and published readback
+      - name: Create content-addressed draft release
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -392,8 +309,21 @@ jobs:
           release_id=$(python3 -c "import json;print(json.load(open('release-bundle/gov-release-manifest.json'))['releaseId'])")
           manifest_digest=$(cat release-bundle/gov-release-manifest.digest)
           tag="gov-release/$release_id/${manifest_digest#sha256:}"
+          if gh release view "$tag" --repo "$REPOSITORY" >/dev/null 2>&1; then echo release-already-exists >&2; exit 1; fi
+          gh release create "$tag" --repo "$REPOSITORY" --target "$GITHUB_SHA" --title "$release_id" \
+            --notes "Canonical gov release manifest digest: $manifest_digest" --draft --latest=false \
+            release-bundle/accepted-decision.json release-bundle/gov-release-manifest.json \
+            release-bundle/gov-engine-descriptor.json release-bundle/gov-nix-output-descriptor.json
           release_database_id=$(gh api "repos/$REPOSITORY/releases/tags/$tag" --jq .id)
-          TAG="$tag" RELEASE_DATABASE_ID="$release_database_id" python3 - <<'PY'
+          echo "GOV_RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "GOV_RELEASE_DATABASE_ID=$release_database_id" >> "$GITHUB_ENV"
+      - name: Stage receipt, publish, and complete final readback
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG="$GOV_RELEASE_TAG" RELEASE_DATABASE_ID="$GOV_RELEASE_DATABASE_ID" python3 - <<'PY'
           import json,os
           from pathlib import Path
           manifest=json.loads(Path('release-bundle/gov-release-manifest.json').read_text())
@@ -401,40 +331,47 @@ jobs:
           receipt={'kind':'govReleaseReadbackReceipt.v1','status':'pass','releaseId':manifest['releaseId'],'releaseDigest':digest,'observedManifestDigest':digest,'adopted':True,'authority':False,'transport':{'provider':'github-release','repository':os.environ['GITHUB_REPOSITORY'],'tag':os.environ['TAG'],'releaseDatabaseId':int(os.environ['RELEASE_DATABASE_ID']),'runId':int(os.environ['GITHUB_RUN_ID']),'actor':os.environ['GITHUB_ACTOR']}}
           Path('gov-release-readback-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
           PY
-          gh release upload "$tag" --repo "$REPOSITORY" gov-release-readback-receipt.json
+          gh release upload "$GOV_RELEASE_TAG" --repo "$REPOSITORY" gov-release-readback-receipt.json
           mkdir -p draft-readback
           for pattern in accepted-decision.json gov-release-manifest.json gov-engine-descriptor.json gov-nix-output-descriptor.json gov-release-readback-receipt.json; do
-            gh release download "$tag" --repo "$REPOSITORY" --pattern "$pattern" --dir draft-readback
+            gh release download "$GOV_RELEASE_TAG" --repo "$REPOSITORY" --pattern "$pattern" --dir draft-readback
           done
           cmp release-bundle/accepted-decision.json draft-readback/accepted-decision.json
           cmp release-bundle/gov-release-manifest.json draft-readback/gov-release-manifest.json
           cmp release-bundle/gov-engine-descriptor.json draft-readback/gov-engine-descriptor.json
           cmp release-bundle/gov-nix-output-descriptor.json draft-readback/gov-nix-output-descriptor.json
           cmp gov-release-readback-receipt.json draft-readback/gov-release-readback-receipt.json
-          gh release edit "$tag" --repo "$REPOSITORY" --draft=false --latest=false
-          test "$(gh api "repos/$REPOSITORY/releases/tags/$tag" --jq .draft)" = false
+          gh release edit "$GOV_RELEASE_TAG" --repo "$REPOSITORY" --draft=false --latest=false
+          test "$(gh api "repos/$REPOSITORY/releases/$GOV_RELEASE_DATABASE_ID" --jq .draft)" = false
           mkdir -p published-readback
           for pattern in accepted-decision.json gov-release-manifest.json gov-engine-descriptor.json gov-nix-output-descriptor.json gov-release-readback-receipt.json; do
-            gh release download "$tag" --repo "$REPOSITORY" --pattern "$pattern" --dir published-readback
+            gh release download "$GOV_RELEASE_TAG" --repo "$REPOSITORY" --pattern "$pattern" --dir published-readback
           done
           cmp release-bundle/accepted-decision.json published-readback/accepted-decision.json
           cmp release-bundle/gov-release-manifest.json published-readback/gov-release-manifest.json
           cmp release-bundle/gov-engine-descriptor.json published-readback/gov-engine-descriptor.json
           cmp release-bundle/gov-nix-output-descriptor.json published-readback/gov-nix-output-descriptor.json
           cmp gov-release-readback-receipt.json published-readback/gov-release-readback-receipt.json
-          TAG="$tag" python3 - <<'PY'
+          TAG="$GOV_RELEASE_TAG" python3 - <<'PY'
           import hashlib,json,os
           from pathlib import Path
           def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
           manifest=json.loads(Path('published-readback/gov-release-manifest.json').read_text())
           receipt=json.loads(Path('published-readback/gov-release-readback-receipt.json').read_text())
-          observed='sha256:'+hashlib.sha256(canonical(manifest)).hexdigest()
-          expected=Path('release-bundle/gov-release-manifest.digest').read_text().strip()
-          assert observed==expected
-          assert os.environ['TAG']==f"gov-release/{manifest['releaseId']}/{observed[7:]}"
-          assert receipt['releaseDigest']==receipt['observedManifestDigest']==observed
-          assert receipt['adopted'] is True and receipt['status']=='pass'
+          observed='sha256:'+hashlib.sha256(canonical(manifest)).hexdigest(); expected=Path('release-bundle/gov-release-manifest.digest').read_text().strip()
+          assert observed==expected and os.environ['TAG']==f"gov-release/{manifest['releaseId']}/{observed[7:]}"
+          assert receipt['releaseDigest']==receipt['observedManifestDigest']==observed and receipt['adopted'] is True and receipt['status']=='pass'
           PY
+      - name: Remove only an unpublished failed draft
+        if: failure() && env.GOV_RELEASE_DATABASE_ID != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if test "$(gh api "repos/$REPOSITORY/releases/$GOV_RELEASE_DATABASE_ID" --jq .draft)" = true; then
+            gh release delete "$GOV_RELEASE_TAG" --repo "$REPOSITORY" --cleanup-tag --yes
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: gov-release-publish-readback
