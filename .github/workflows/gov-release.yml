@@ -126,10 +126,13 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C accepted-adrs rev-parse HEAD)" = "$ADRS_HEAD"
-          python3 accepted-adrs/tools/check-gov-release-v1.py contract --out gov-release-contract-validation.json
-          python3 accepted-adrs/tools/check-gov-release-v1.py decision --out accepted-decision-validation.json
-          python3 accepted-adrs/tools/check-gov-release-v1.py selftest --out accepted-decision-selftest.json
-          bash accepted-adrs/ci/check-gov-release-v1-static.sh
+          (
+            cd accepted-adrs
+            python3 tools/check-gov-release-v1.py contract --out ../gov-release-contract-validation.json
+            python3 tools/check-gov-release-v1.py decision --out ../accepted-decision-validation.json
+            python3 tools/check-gov-release-v1.py selftest --out ../accepted-decision-selftest.json
+            bash ci/check-gov-release-v1-static.sh
+          )
           python3 - <<'PY'
           import json,os
           contract=json.load(open('gov-release-contract-validation.json'))
