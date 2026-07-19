@@ -14,44 +14,49 @@ concurrency:
 
 jobs:
   topology:
-    name: final topology and promotion shadow observer
+    name: final topology and gov release observer
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout governance
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: proposals
           persist-credentials: false
-      - name: Run evidence-only topology and promotion selftests
+      - name: Run evidence-only topology and release selftests
         run: |
           set -euo pipefail
+          python3 tools/gov_release/identity.py selftest | tee "$RUNNER_TEMP/gov-release-identity-selftest.json"
           python3 tools/check-package-final-ci-production.py selftest --json | tee "$RUNNER_TEMP/final-ci-topology-selftest.json"
           python3 tools/check-package-ci-final-role-demotion.py check --json | tee "$RUNNER_TEMP/final-ci-role-report.json"
           python3 tools/check-live-final-ci-consumers.py selftest | tee "$RUNNER_TEMP/live-consumer-selftest.json"
           python3 tools/check-live-final-ci-control-plane.py selftest | tee "$RUNNER_TEMP/control-plane-selftest.json"
-          python3 tools/check-promotion-shadow-integration.py selftest --json | tee "$RUNNER_TEMP/promotion-shadow-selftest.json"
-          python3 tools/check-promotion-shadow-integration.py canary --json | tee "$RUNNER_TEMP/promotion-shadow-canary.json"
-          grep -q '"productionPromotionEffect":false' "$RUNNER_TEMP/promotion-shadow-selftest.json"
-          grep -q '"rulesetAffectsPromotionClosure":false' "$RUNNER_TEMP/promotion-shadow-canary.json"
-      - name: Upload topology observation
-        uses: actions/upload-artifact@v4
+          python3 tools/check-gov-release-integration.py selftest --json | tee "$RUNNER_TEMP/gov-release-selftest.json"
+          python3 tools/check-gov-release-integration.py canary --json | tee "$RUNNER_TEMP/gov-release-canary.json"
+          python3 - <<'PY'
+          import json,os
+          identity=json.load(open('governance/gov-release-identity.v1.json'))
+          canary=json.load(open(os.environ['RUNNER_TEMP']+'/gov-release-canary.json'))
+          assert canary['acceptedDecisionDigest']==identity['acceptedDecision']['canonicalDigest']
+          assert canary['contractDigest']==identity['contract']['canonicalDigest']
+          assert canary['rulesetAffectsReleaseClosure'] is False
+          PY
+      - uses: actions/upload-artifact@v4
         with:
           name: gov-canary-topology-observation
           path: |
+            ${{ runner.temp }}/gov-release-identity-selftest.json
             ${{ runner.temp }}/final-ci-topology-selftest.json
             ${{ runner.temp }}/final-ci-role-report.json
             ${{ runner.temp }}/live-consumer-selftest.json
             ${{ runner.temp }}/control-plane-selftest.json
-            ${{ runner.temp }}/promotion-shadow-selftest.json
-            ${{ runner.temp }}/promotion-shadow-canary.json
+            ${{ runner.temp }}/gov-release-selftest.json
+            ${{ runner.temp }}/gov-release-canary.json
           if-no-files-found: error
 
   selected-consumers:
     name: live selected consumer observer
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout governance
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: proposals
           persist-credentials: false
@@ -60,46 +65,137 @@ jobs:
           set -euo pipefail
           python3 tools/check-live-final-ci-consumers.py capture --out "$RUNNER_TEMP/live-selected-consumers.json"
           grep -q '"status":"pass"' "$RUNNER_TEMP/live-selected-consumers.json"
-          grep -q '"candidateSha"' "$RUNNER_TEMP/live-selected-consumers.json"
-          grep -q '"artifactDigest"' "$RUNNER_TEMP/live-selected-consumers.json"
-      - name: Upload current consumer observation
-        uses: actions/upload-artifact@v4
+          grep -q '"artifactBodiesVerified":true' "$RUNNER_TEMP/live-selected-consumers.json"
+          grep -q '"receiptCandidateShaBound":true' "$RUNNER_TEMP/live-selected-consumers.json"
+      - uses: actions/upload-artifact@v4
         with:
           name: gov-canary-live-selected-consumers
           path: ${{ runner.temp }}/live-selected-consumers.json
           if-no-files-found: error
 
+  release-observer:
+    name: published gov release observer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: proposals
+          persist-credentials: false
+      - name: Fetch all published content-addressed release packets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/releases"
+          gh api "repos/$REPOSITORY/releases?per_page=100" --paginate > "$RUNNER_TEMP/release-pages.jsonl"
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          text=Path(os.environ['RUNNER_TEMP']+'/release-pages.jsonl').read_text().strip(); releases=[]
+          if text:
+              decoder=json.JSONDecoder(); index=0
+              while index < len(text):
+                  while index < len(text) and text[index].isspace(): index += 1
+                  if index >= len(text): break
+                  page,index=decoder.raw_decode(text,index); releases.extend(page)
+          for release in releases:
+              tag=release.get('tag_name','')
+              if release.get('draft') or not tag.startswith('gov-release/'): continue
+              parts=tag.split('/')
+              assert len(parts)==3 and len(parts[2])==64 and all(c in '0123456789abcdef' for c in parts[2]), 'non-content-addressed-release-tag'
+              target=Path(os.environ['RUNNER_TEMP'])/'releases'/(parts[1]+'__'+parts[2]); target.mkdir(parents=True,exist_ok=True)
+              for pattern in ['accepted-decision.json','gov-release-manifest.json','gov-engine-descriptor.json','gov-nix-output-descriptor.json','gov-release-readback-receipt.json']:
+                  subprocess.run(['gh','release','download',tag,'--repo',os.environ['REPOSITORY'],'--pattern',pattern,'--dir',str(target)],check=True)
+              (target/'tag.txt').write_text(tag+'\n')
+          PY
+      - name: Validate complete chain and selected release readback
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'releases'
+          identity=json.load(open('governance/gov-release-identity.v1.json'))
+          expected_decision=identity['acceptedDecision']['canonicalDigest']
+          expected_contract=identity['contract']['canonicalDigest']
+          def load(path):
+              value=json.loads(path.read_text()); assert isinstance(value,dict); return value
+          def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          def digest(value): return 'sha256:'+hashlib.sha256(canonical(value)).hexdigest()
+          by_sequence={}; by_digest={}; release_ids=set()
+          for directory in sorted(root.iterdir() if root.exists() else []):
+              decision=load(directory/'accepted-decision.json')
+              manifest=load(directory/'gov-release-manifest.json')
+              engine=load(directory/'gov-engine-descriptor.json')
+              nix=load(directory/'gov-nix-output-descriptor.json')
+              receipt=load(directory/'gov-release-readback-receipt.json')
+              assert decision['kind']=='govReleaseAcceptedDecision.v1'
+              assert digest(decision)==expected_decision
+              assert decision['govReleaseContractDigest']==expected_contract
+              assert manifest['acceptedDecisionDigest']==expected_decision
+              assert manifest['govEngineDigest']==digest(engine)
+              assert manifest['nixOutputDigest']==digest(nix)
+              assert set(manifest)=={'kind','releaseId','sequence','previousReleaseDigest','supersedesReleaseDigest','acceptedDecisionDigest','govEngineDigest','nixOutputDigest','status'}
+              assert manifest['kind']=='govReleaseManifest.v1' and manifest['status']=='adopted'
+              release_digest=digest(manifest); tag=(directory/'tag.txt').read_text().strip(); parts=tag.split('/')
+              assert parts[1]==manifest['releaseId'] and parts[2]==release_digest[7:]
+              assert receipt['kind']=='govReleaseReadbackReceipt.v1' and receipt['status']=='pass'
+              assert receipt['releaseId']==manifest['releaseId'] and receipt['releaseDigest']==receipt['observedManifestDigest']==release_digest
+              assert receipt['adopted'] is True and receipt['authority'] is False
+              assert manifest['sequence'] not in by_sequence and manifest['releaseId'] not in release_ids
+              by_sequence[manifest['sequence']]=(release_digest,manifest); by_digest[release_digest]=manifest; release_ids.add(manifest['releaseId'])
+          sequences=sorted(by_sequence); assert sequences==list(range(len(sequences)))
+          for sequence in sequences:
+              release_digest,manifest=by_sequence[sequence]
+              if sequence==0: assert manifest['previousReleaseDigest'] is None
+              else: assert manifest['previousReleaseDigest']==by_sequence[sequence-1][0]
+              supersedes=manifest['supersedesReleaseDigest']
+              if supersedes is not None: assert supersedes in by_digest and by_digest[supersedes]['sequence']<sequence
+          if not sequences:
+              report={'kind':'governance.govReleaseLiveObservation.v3','status':'absent','releaseCount':0,'selectedReleaseId':None,'selectedReleaseDigest':None,'operationalAdoptionEffect':False,'authority':False}
+          else:
+              selected_digest,selected=by_sequence[sequences[-1]]
+              report={'kind':'governance.govReleaseLiveObservation.v3','status':'pass','releaseCount':len(sequences),'selectedReleaseId':selected['releaseId'],'selectedReleaseDigest':selected_digest,'sequence':selected['sequence'],'acceptedDecisionDigest':selected['acceptedDecisionDigest'],'govEngineDigest':selected['govEngineDigest'],'nixOutputDigest':selected['nixOutputDigest'],'selectedReadback':True,'operationalAdoptionEffect':True,'authority':False}
+          Path(os.environ['RUNNER_TEMP']+'/gov-release-live-observation.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
+          if sequences:
+              with Path(os.environ['RUNNER_TEMP']+'/gov-release-manifests.jsonl').open('w') as file:
+                  for sequence in sequences: file.write(json.dumps(by_sequence[sequence][1],sort_keys=True,separators=(',',':'))+'\n')
+              Path(os.environ['RUNNER_TEMP']+'/gov-release-selected.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gov-canary-release-observation
+          path: |
+            ${{ runner.temp }}/gov-release-live-observation.json
+            ${{ runner.temp }}/gov-release-selected.json
+            ${{ runner.temp }}/gov-release-manifests.jsonl
+          if-no-files-found: warn
+
   control-plane:
     name: informational GitHub ruleset observer
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout governance
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: proposals
           persist-credentials: false
-      - name: Observe current ruleset state without promotion authority
-        id: observe
+      - id: observe
         continue-on-error: true
-        run: |
-          set -o pipefail
-          python3 tools/check-live-final-ci-control-plane.py check --out "$RUNNER_TEMP/live-control-plane.json" 2>&1 | tee "$RUNNER_TEMP/live-control-plane.log"
-      - name: Reduce informational ruleset observation
+        run: python3 tools/check-live-final-ci-control-plane.py check --out "$RUNNER_TEMP/live-control-plane.json" 2>&1 | tee "$RUNNER_TEMP/live-control-plane.log"
+      - name: Reduce informational observation
         if: always()
         env:
-          OBSERVATION_OUTCOME: ${{ steps.observe.outcome }}
+          OUTCOME: ${{ steps.observe.outcome }}
         run: |
           python3 - <<'PY'
-          import json, os
+          import json,os
           from pathlib import Path
-          path=Path(os.environ['RUNNER_TEMP'])/'live-control-plane.json'
-          observed=json.loads(path.read_text()) if path.exists() else {'status':'unavailable'}
-          report={'kind':'governance.rulesetInformation.v1','status':'observed' if os.environ['OBSERVATION_OUTCOME']=='success' else 'absent-or-unavailable','severity':'information','promotionClosureImpact':'none','githubRulesetRequired':False,'providerAuthority':False,'observed':observed,'authority':False}
-          (Path(os.environ['RUNNER_TEMP'])/'ruleset-information.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
+          report={'kind':'governance.rulesetInformation.v2','status':'observed' if os.environ['OUTCOME']=='success' else 'absent-or-unavailable','severity':'information','releaseClosureImpact':'none','githubRulesetRequired':False,'providerAuthority':False,'authority':False}
+          Path(os.environ['RUNNER_TEMP']+'/ruleset-information.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
           PY
-      - name: Upload control-plane information
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: gov-canary-live-control-plane
           path: |
@@ -112,24 +208,19 @@ jobs:
     name: recursive contract-modeling observer
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout governance
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: proposals
           persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.13.5'
           cache: pip
           cache-dependency-path: tools/contract-modeling/requirements.txt
-      - name: Install pinned dependencies
-        run: python3 -m pip install --disable-pip-version-check -r tools/contract-modeling/requirements.txt
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
+      - run: python3 -m pip install --disable-pip-version-check -r tools/contract-modeling/requirements.txt
+      - uses: cachix/install-nix-action@v31
         with:
-          extra_nix_config: |
-            extra-experimental-features = nix-command flakes
+          extra_nix_config: extra-experimental-features = nix-command flakes
       - name: Run evidence-only contract-modeling proof
         env:
           CANDIDATE_SHA: ${{ github.sha }}
@@ -138,32 +229,29 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           python3 -m unittest discover -s tools/contract-modeling/tests -p 'test_*.py'
           CANDIDATE_SHA="$CANDIDATE_SHA" bash tools/contract-modeling/run-proof.sh
-      - name: Upload contract-modeling observation
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: gov-canary-contract-modeling
           path: tools/contract-modeling/out/
           if-no-files-found: error
 
   adrs-observer:
-    name: read-only ADRS and promotion candidate observer
+    name: read-only ADRS and gov release identity observer
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout governance
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: proposals
           persist-credentials: false
+      - name: Load the single exact identity projection
+        id: identity
+        run: python3 tools/gov_release/identity.py github-output >> "$GITHUB_OUTPUT"
       - name: Validate ADRS reader configuration
         env:
           ADRS_READER_CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
           ADRS_READER_PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
-        run: |
-          set -euo pipefail
-          test -n "$ADRS_READER_CLIENT_ID"
-          test -n "$ADRS_READER_PRIVATE_KEY"
-      - name: Create least-privilege ADRS observer token
-        id: adrs-token
+        run: test -n "$ADRS_READER_CLIENT_ID" && test -n "$ADRS_READER_PRIVATE_KEY"
+      - id: adrs-token
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
@@ -172,76 +260,57 @@ jobs:
           repositories: adrs
           permission-contents: read
           permission-issues: read
-      - name: Checkout exact ADRS 234 candidate
+      - name: Checkout exact gov release ADRS source
         uses: actions/checkout@v4
         with:
-          repository: roccho-dev/adrs
-          ref: c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
-          path: candidate-adrs
+          repository: ${{ steps.identity.outputs.adrs_repository }}
+          ref: ${{ steps.identity.outputs.adrs_head }}
+          path: release-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
-      - name: Checkout exact signed-promotion ADRS candidate
-        uses: actions/checkout@v4
-        with:
-          repository: roccho-dev/adrs
-          ref: e960e378b1c07002cbd8d9fbba35e94f4d6c37b5
-          path: promotion-adrs
-          token: ${{ steps.adrs-token.outputs.token }}
-          persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13.5'
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.23.2'
           cache: false
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-experimental-features = nix-command flakes
-      - name: Install pinned checker dependencies
+      - name: Install CUE
         run: |
-          python3 -m pip install --disable-pip-version-check -r tools/code-governance/requirements.txt cryptography==46.0.4
           go install cuelang.org/go/cmd/cue@v0.9.2
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
-      - name: Run live read-only ADRS observation
+      - name: Run live ADRS observation and exact gov release proof
         env:
           ADRS_TOKEN: ${{ steps.adrs-token.outputs.token }}
+          ADRS_HEAD: ${{ steps.identity.outputs.adrs_head }}
+          ACCEPTED_DECISION_DIGEST: ${{ steps.identity.outputs.accepted_decision_digest }}
+          CONTRACT_DIGEST: ${{ steps.identity.outputs.contract_digest }}
         run: |
           set -euo pipefail
           tools/code-governance/run-live-proof.sh 2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs.log"
-      - name: Run exact ADRS 234 candidate observation
-        run: |
-          set -euo pipefail
-          test "$(git -C candidate-adrs rev-parse HEAD)" = "c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068"
-          nix flake check -L "path:$PWD/candidate-adrs" 2>&1 | tee "$RUNNER_TEMP/gov-canary-adrs-234.log"
-          (cd candidate-adrs && bash ci/check-recursive-contract-modeling-v1-static.sh && python3 tools/check-recursive-contract-modeling-v1.py selftest) 2>&1 | tee -a "$RUNNER_TEMP/gov-canary-adrs-234.log"
-      - name: Run exact signed-promotion ADRS candidate observation
-        run: |
-          set -euo pipefail
-          test "$(git -C promotion-adrs rev-parse HEAD)" = "e960e378b1c07002cbd8d9fbba35e94f4d6c37b5"
+          test "$(git -C release-adrs rev-parse HEAD)" = "$ADRS_HEAD"
           (
-            cd promotion-adrs
-            cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-signed-promotion.cue
-            cue vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-signed-promotion-topology.cue
-            python3 tools/check-signed-promotion-v1.py candidate
-            python3 tools/check-signed-promotion-v1.py selftest
-            bash ci/check-signed-promotion-v1-static.sh
-          ) 2>&1 | tee "$RUNNER_TEMP/gov-canary-signed-promotion.log"
-          grep -q 'publisher-public-key-unprovisioned' "$RUNNER_TEMP/gov-canary-signed-promotion.log"
-      - name: Upload ADRS observation
+            cd release-adrs
+            cue vet adr/schema.cue adr/src/01KXNPWCS70N175PPHSQ4BSV1H-company-operating-contract-gov-release.cue
+            cue vet adr/schema.cue adr/src/01KXBEYD56HE04FEJ7YMD5JZ9N-final-ci-gov-release-topology.cue
+            python3 tools/check-gov-release-v1.py contract --out "$RUNNER_TEMP/gov-canary-contract.json"
+            python3 tools/check-gov-release-v1.py decision --out "$RUNNER_TEMP/gov-canary-decision.json"
+            python3 tools/check-gov-release-v1.py selftest
+            bash ci/check-gov-release-v1-static.sh
+          ) 2>&1 | tee "$RUNNER_TEMP/gov-canary-gov-release.log"
+          python3 - <<'PY'
+          import json,os
+          contract=json.load(open(os.environ['RUNNER_TEMP']+'/gov-canary-contract.json'))
+          decision=json.load(open(os.environ['RUNNER_TEMP']+'/gov-canary-decision.json'))
+          assert contract['contractDigest']==os.environ['CONTRACT_DIGEST']
+          assert decision['acceptedDecisionDigest']==os.environ['ACCEPTED_DECISION_DIGEST']
+          PY
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: gov-canary-adrs-observation
           path: |
             ${{ runner.temp }}/gov-canary-adrs.log
-            ${{ runner.temp }}/gov-canary-adrs-234.log
-            ${{ runner.temp }}/gov-canary-signed-promotion.log
+            ${{ runner.temp }}/gov-canary-gov-release.log
+            ${{ runner.temp }}/gov-canary-contract.json
+            ${{ runner.temp }}/gov-canary-decision.json
             tools/code-governance/out/proof-receipt.json
             tools/code-governance/out/transports/live/transport-receipt.json
-            tools/code-governance/out/evaluations/live-local/
           if-no-files-found: warn

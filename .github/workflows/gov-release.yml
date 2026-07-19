@@ -1,0 +1,405 @@
+name: gov-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Immutable release identifier
+        required: true
+        type: string
+      sequence:
+        description: Zero-based contiguous release sequence
+        required: true
+        type: number
+      previous_release_digest:
+        description: Previous canonical release digest, or null for sequence zero
+        required: true
+        default: null
+        type: string
+      supersedes_release_digest:
+        description: Earlier canonical release digest to supersede, or null
+        required: true
+        default: null
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: governance-release-publication
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: exact accepted decision capture
+    runs-on: ubuntu-latest
+    outputs:
+      adrs_repository: ${{ steps.identity.outputs.adrs_repository }}
+      adrs_head: ${{ steps.identity.outputs.adrs_head }}
+      accepted_decision_digest: ${{ steps.identity.outputs.accepted_decision_digest }}
+      contract_digest: ${{ steps.identity.outputs.contract_digest }}
+    steps:
+      - name: Require owner-controlled dispatch on proposals
+        env:
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          test "$ACTOR" = "$OWNER"
+          test "$REF" = refs/heads/proposals
+      - name: Checkout the selected governance engine
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Load the single exact identity projection
+        id: identity
+        run: |
+          python3 tools/gov_release/identity.py selftest
+          python3 tools/gov_release/identity.py github-output >> "$GITHUB_OUTPUT"
+      - name: Validate ADRS reader
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - name: Checkout exact accepted gov-release ADRS source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.identity.outputs.adrs_repository }}
+          ref: ${{ steps.identity.outputs.adrs_head }}
+          path: accepted-adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - name: Verify exact accepted release decision
+        env:
+          ADRS_HEAD: ${{ steps.identity.outputs.adrs_head }}
+          ACCEPTED_DECISION_DIGEST: ${{ steps.identity.outputs.accepted_decision_digest }}
+          CONTRACT_DIGEST: ${{ steps.identity.outputs.contract_digest }}
+        run: |
+          set -euo pipefail
+          test "$(git -C accepted-adrs rev-parse HEAD)" = "$ADRS_HEAD"
+          python3 accepted-adrs/tools/check-gov-release-v1.py contract --out gov-release-contract-validation.json
+          python3 accepted-adrs/tools/check-gov-release-v1.py decision --out accepted-decision-validation.json
+          python3 accepted-adrs/tools/check-gov-release-v1.py selftest --out accepted-decision-selftest.json
+          bash accepted-adrs/ci/check-gov-release-v1-static.sh
+          python3 - <<'PY'
+          import json,os
+          contract=json.load(open('gov-release-contract-validation.json'))
+          decision=json.load(open('accepted-decision-validation.json'))
+          selftest=json.load(open('accepted-decision-selftest.json'))
+          assert contract['contractDigest']==os.environ['CONTRACT_DIGEST']
+          assert decision['acceptedDecisionDigest']==os.environ['ACCEPTED_DECISION_DIGEST']
+          assert selftest['destructiveCases']==18
+          assert selftest['signatureRequired'] is False
+          PY
+          cp accepted-adrs/release/v1/accepted-decision.json accepted-decision.json
+          cp governance/gov-release-identity.v1.json gov-release-identity.v1.json
+          tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gov-release-accepted-adrs-source
+          path: |
+            accepted-adrs-source.tar.gz
+            accepted-decision.json
+            gov-release-identity.v1.json
+            gov-release-contract-validation.json
+            accepted-decision-validation.json
+            accepted-decision-selftest.json
+          if-no-files-found: error
+
+  evaluate:
+    name: deterministic release evaluation
+    needs: capture
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact merged governance engine
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: gov-release-accepted-adrs-source
+          path: evidence
+      - name: Extract accepted ADRS source
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/accepted-adrs
+          tar -C evidence/accepted-adrs -xzf evidence/accepted-adrs-source.tar.gz
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: extra-experimental-features = nix-command flakes
+      - name: Verify exact engine and all governance checks
+        env:
+          ENGINE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ENGINE_SHA"
+          cmp governance/gov-release-identity.v1.json evidence/gov-release-identity.v1.json
+          nix flake check -L --no-write-lock-file \
+            --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
+            --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579"
+          bash tools/gov_release/run-proof.sh
+      - name: Build reproducible Nix output and canonical descriptors
+        env:
+          ENGINE_SHA: ${{ github.sha }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          SEQUENCE: ${{ inputs.sequence }}
+          PREVIOUS_RELEASE_DIGEST: ${{ inputs.previous_release_digest }}
+          SUPERSEDES_RELEASE_DIGEST: ${{ inputs.supersedes_release_digest }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE_ID" in
+            ''|*[!A-Za-z0-9._-]*) echo invalid-release-id >&2; exit 1 ;;
+          esac
+          case "$SEQUENCE" in
+            ''|*[!0-9]*) echo invalid-sequence >&2; exit 1 ;;
+          esac
+          decision_digest=$(python3 -c "import json;print(json.load(open('governance/gov-release-identity.v1.json'))['acceptedDecision']['canonicalDigest'])")
+          out_path=$(nix build --no-link --print-out-paths .#gov-package-output)
+          nix path-info --json "$out_path" > nix-path-info.json
+          nar_hash=$(python3 - <<'PY'
+          import json
+          value=json.load(open('nix-path-info.json'))
+          row=next(iter(value.values())) if isinstance(value,dict) else value[0]
+          print(row['narHash'])
+          PY
+          )
+          python3 tools/gov_release/cli.py engine-descriptor \
+            --repository roccho-dev/governance \
+            --commit-sha "$ENGINE_SHA" \
+            --out gov-engine-descriptor.json
+          python3 tools/gov_release/cli.py nix-descriptor \
+            --package gov-package-output \
+            --nar-hash "$nar_hash" \
+            --out gov-nix-output-descriptor.json
+          python3 tools/gov_release/cli.py manifest \
+            --release-id "$RELEASE_ID" \
+            --sequence "$SEQUENCE" \
+            --previous-release-digest "$PREVIOUS_RELEASE_DIGEST" \
+            --supersedes-release-digest "$SUPERSEDES_RELEASE_DIGEST" \
+            --accepted-decision-digest "$decision_digest" \
+            --engine-descriptor gov-engine-descriptor.json \
+            --nix-descriptor gov-nix-output-descriptor.json \
+            --out gov-release-manifest.json
+          python3 tools/gov_release/cli.py validate \
+            --manifest gov-release-manifest.json \
+            --out gov-release-manifest-validation.json
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          validation=json.loads(Path('gov-release-manifest-validation.json').read_text())
+          canonical_digest=validation['releaseDigest']
+          assert validation['status']=='pass' and canonical_digest.startswith('sha256:') and len(canonical_digest)==71
+          Path('gov-release-manifest.digest').write_text(canonical_digest+'\n')
+          Path('gov-release-manifest.bytes.sha256').write_text(hashlib.sha256(Path('gov-release-manifest.json').read_bytes()).hexdigest()+'\n')
+          PY
+          cp evidence/accepted-decision.json accepted-decision.json
+          cp evidence/gov-release-identity.v1.json gov-release-identity.v1.json
+          cp evidence/accepted-decision-validation.json accepted-decision-validation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gov-release-evaluated-bundle
+          path: |
+            accepted-decision.json
+            accepted-decision-validation.json
+            gov-release-identity.v1.json
+            gov-release-manifest.json
+            gov-release-manifest.digest
+            gov-release-manifest.bytes.sha256
+            gov-release-manifest-validation.json
+            gov-engine-descriptor.json
+            gov-nix-output-descriptor.json
+            nix-path-info.json
+          if-no-files-found: error
+
+  publish:
+    name: owner-controlled release publication and readback
+    needs: evaluate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: gov-release-evaluated-bundle
+          path: release-bundle
+      - name: Independently verify evaluated release bytes
+        env:
+          ENGINE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('release-bundle')
+          def load(name):
+              value=json.loads((root/name).read_text()); assert isinstance(value,dict); return value
+          def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          def digest(value): return 'sha256:'+hashlib.sha256(canonical(value)).hexdigest()
+          identity=load('gov-release-identity.v1.json')
+          decision=load('accepted-decision.json')
+          assert digest(decision)==identity['acceptedDecision']['canonicalDigest']
+          assert decision['govReleaseContractDigest']==identity['contract']['canonicalDigest']
+          engine=load('gov-engine-descriptor.json')
+          assert engine=={'kind':'govEngineDescriptor.v1','repository':'roccho-dev/governance','commitSha':os.environ['ENGINE_SHA']}
+          nix=load('gov-nix-output-descriptor.json')
+          assert set(nix)=={'kind','package','narHash'} and nix['kind']=='govNixOutputDescriptor.v1'
+          manifest=load('gov-release-manifest.json')
+          assert set(manifest)=={'kind','releaseId','sequence','previousReleaseDigest','supersedesReleaseDigest','acceptedDecisionDigest','govEngineDigest','nixOutputDigest','status'}
+          assert manifest['kind']=='govReleaseManifest.v1' and manifest['status']=='adopted'
+          assert manifest['acceptedDecisionDigest']==digest(decision)
+          assert manifest['govEngineDigest']==digest(engine)
+          assert manifest['nixOutputDigest']==digest(nix)
+          assert not any(key.startswith('github') or key=='url' for key in manifest)
+          manifest_digest=digest(manifest)
+          assert (root/'gov-release-manifest.digest').read_text().strip()==manifest_digest
+          assert (root/'gov-release-manifest.bytes.sha256').read_text().strip()==hashlib.sha256((root/'gov-release-manifest.json').read_bytes()).hexdigest()
+          validation=load('gov-release-manifest-validation.json')
+          assert validation['releaseDigest']==manifest_digest and validation['status']=='pass'
+          PY
+      - name: Fetch and validate all published predecessor releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p previous-releases
+          gh api "repos/$REPOSITORY/releases?per_page=100" --paginate > release-pages.jsonl
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          text=Path('release-pages.jsonl').read_text().strip(); releases=[]
+          if text:
+              decoder=json.JSONDecoder(); index=0
+              while index < len(text):
+                  while index < len(text) and text[index].isspace(): index += 1
+                  if index >= len(text): break
+                  page,index=decoder.raw_decode(text,index); releases.extend(page)
+          for release in releases:
+              tag=release.get('tag_name','')
+              if release.get('draft') or not tag.startswith('gov-release/'): continue
+              parts=tag.split('/')
+              assert len(parts)==3 and len(parts[2])==64 and all(c in '0123456789abcdef' for c in parts[2]), 'non-content-addressed-release-tag'
+              target=Path('previous-releases')/(parts[1]+'__'+parts[2]); target.mkdir(parents=True,exist_ok=True)
+              for pattern in ['gov-release-manifest.json','gov-release-readback-receipt.json']:
+                  subprocess.run(['gh','release','download',tag,'--repo',os.environ['REPOSITORY'],'--pattern',pattern,'--dir',str(target)],check=True)
+              (target/'tag.txt').write_text(tag+'\n')
+          PY
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          def digest(value): return 'sha256:'+hashlib.sha256(canonical(value)).hexdigest()
+          candidate=json.loads(Path('release-bundle/gov-release-manifest.json').read_text())
+          existing=[]
+          for directory in sorted(Path('previous-releases').iterdir()) if Path('previous-releases').exists() else []:
+              manifest=json.loads((directory/'gov-release-manifest.json').read_text())
+              receipt=json.loads((directory/'gov-release-readback-receipt.json').read_text())
+              release_digest=digest(manifest)
+              assert (directory/'tag.txt').read_text().strip()==f"gov-release/{manifest['releaseId']}/{release_digest[7:]}"
+              assert receipt['status']=='pass' and receipt['adopted'] is True
+              assert receipt['releaseId']==manifest['releaseId']
+              assert receipt['releaseDigest']==release_digest==receipt['observedManifestDigest']
+              existing.append(manifest)
+          by_sequence={value['sequence']:value for value in existing}
+          by_digest={digest(value):value for value in existing}
+          assert len(by_sequence)==len(existing)
+          assert sorted(by_sequence)==list(range(len(existing)))
+          for sequence,value in sorted(by_sequence.items()):
+              if sequence==0: assert value['previousReleaseDigest'] is None
+              else: assert value['previousReleaseDigest']==digest(by_sequence[sequence-1])
+          assert candidate['sequence']==len(existing), 'sequence-not-contiguous'
+          if candidate['sequence']==0: assert candidate['previousReleaseDigest'] is None
+          else: assert candidate['previousReleaseDigest']==digest(by_sequence[candidate['sequence']-1])
+          supersedes=candidate['supersedesReleaseDigest']
+          if supersedes is not None:
+              assert supersedes in by_digest and by_digest[supersedes]['sequence'] < candidate['sequence']
+          assert candidate['releaseId'] not in {value['releaseId'] for value in existing}
+          PY
+      - name: Create draft and stage immutable readback receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          release_id=$(python3 -c "import json;print(json.load(open('release-bundle/gov-release-manifest.json'))['releaseId'])")
+          release_digest=$(cat release-bundle/gov-release-manifest.digest)
+          tag="gov-release/$release_id/${release_digest#sha256:}"
+          if gh release view "$tag" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            echo release-already-exists >&2
+            exit 1
+          fi
+          printf 'RELEASE_ID=%s\nRELEASE_DIGEST=%s\nRELEASE_TAG=%s\n' "$release_id" "$release_digest" "$tag" >> "$GITHUB_ENV"
+          gh release create "$tag" \
+            --repo "$REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$release_id" \
+            --notes "Canonical gov release manifest digest: $release_digest" \
+            --draft \
+            --latest=false \
+            release-bundle/gov-release-manifest.json \
+            release-bundle/accepted-decision.json \
+            release-bundle/gov-engine-descriptor.json \
+            release-bundle/gov-nix-output-descriptor.json
+          mkdir draft-readback
+          gh release download "$tag" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir draft-readback
+          cmp release-bundle/gov-release-manifest.json draft-readback/gov-release-manifest.json
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          receipt={
+            'kind':'govReleaseReadbackReceipt.v1',
+            'status':'pass',
+            'releaseId':os.environ['RELEASE_ID'],
+            'releaseDigest':os.environ['RELEASE_DIGEST'],
+            'observedManifestDigest':os.environ['RELEASE_DIGEST'],
+            'adopted':True,
+            'authority':False,
+            'transport':{'provider':'github-release','repository':os.environ['GITHUB_REPOSITORY'],'runId':int(os.environ['GITHUB_RUN_ID']),'actor':os.environ['GITHUB_ACTOR']},
+          }
+          Path('gov-release-readback-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+          gh release upload "$tag" --repo "$REPOSITORY" gov-release-readback-receipt.json
+      - name: Publish and perform post-publication byte readback
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release edit "$RELEASE_TAG" --repo "$REPOSITORY" --draft=false --latest=false
+          mkdir published-readback
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir published-readback
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-release-readback-receipt.json --dir published-readback
+          cmp release-bundle/gov-release-manifest.json published-readback/gov-release-manifest.json
+          cmp gov-release-readback-receipt.json published-readback/gov-release-readback-receipt.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          manifest=json.loads(Path('published-readback/gov-release-manifest.json').read_text())
+          receipt=json.loads(Path('published-readback/gov-release-readback-receipt.json').read_text())
+          observed='sha256:'+hashlib.sha256(canonical(manifest)).hexdigest()
+          assert observed==os.environ['RELEASE_DIGEST']
+          assert receipt['releaseDigest']==observed==receipt['observedManifestDigest']
+          assert receipt['status']=='pass' and receipt['adopted'] is True and receipt['authority'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gov-release-publish-readback
+          path: |
+            release-bundle/gov-release-manifest.json
+            release-bundle/gov-release-identity.v1.json
+            gov-release-readback-receipt.json
+          if-no-files-found: error

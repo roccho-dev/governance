@@ -1,0 +1,29 @@
+{
+  "kind": "governance.govReleaseIdentityProjection.v1",
+  "source": {
+    "repository": "roccho-dev/adrs",
+    "pullRequest": 242,
+    "head": "4a1b006075573dfc0c02479c6fd12e49672ba63a",
+    "decisionPath": "release/v1/accepted-decision.json",
+    "contractPath": "release/v1/contract.json",
+    "status": "accepted"
+  },
+  "acceptedDecision": {
+    "canonicalDigest": "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
+  },
+  "contract": {
+    "canonicalDigest": "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"
+  },
+  "currentTopology": {
+    "acceptedMerge": "a8fc9e8e04d53f1d783317059e4421c8dc724d01",
+    "stableCheckName": "gov-final-scope-purpose-join / gate"
+  },
+  "selectedScope": [
+    "roccho-dev/governance",
+    "roccho-dev/ui",
+    "roccho-dev/ops"
+  ],
+  "allRepositoriesEnforced": false,
+  "businessOutcomeAchieved": false,
+  "authority": false
+}
