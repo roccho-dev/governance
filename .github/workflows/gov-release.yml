@@ -1,0 +1,313 @@
+name: gov-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Immutable release identifier
+        required: true
+        type: string
+      sequence:
+        description: Zero-based contiguous release sequence
+        required: true
+        type: number
+      previous_release_digest:
+        description: Previous canonical release digest, or null for sequence zero
+        required: true
+        default: null
+        type: string
+      supersedes_release_digest:
+        description: Earlier canonical release digest to supersede, or null
+        required: true
+        default: null
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: governance-release-publication
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: exact accepted decision capture
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require owner-controlled dispatch on proposals
+        env:
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          test "$ACTOR" = "$OWNER"
+          test "$REF" = refs/heads/proposals
+      - name: Validate ADRS reader
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - name: Checkout exact accepted gov-release ADRS source
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/adrs
+          ref: 60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326
+          path: accepted-adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - name: Verify exact accepted release contract candidate
+        run: |
+          set -euo pipefail
+          test "$(git -C accepted-adrs rev-parse HEAD)" = 60dcc0bd92b4bfdd60dadb7817cbb9b91dc9c326
+          python3 accepted-adrs/tools/check-gov-release-v1.py contract --out accepted-decision-report.json
+          python3 accepted-adrs/tools/check-gov-release-v1.py selftest --out accepted-decision-selftest.json
+          bash accepted-adrs/ci/check-gov-release-v1-static.sh
+          grep -q '"contractDigest":"sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"' accepted-decision-report.json
+          tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gov-release-accepted-adrs-source
+          path: |
+            accepted-adrs-source.tar.gz
+            accepted-decision-report.json
+            accepted-decision-selftest.json
+          if-no-files-found: error
+
+  evaluate:
+    name: deterministic release evaluation
+    needs: capture
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact merged governance engine
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: gov-release-accepted-adrs-source
+          path: evidence
+      - name: Extract accepted ADRS source
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/accepted-adrs
+          tar -C evidence/accepted-adrs -xzf evidence/accepted-adrs-source.tar.gz
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: extra-experimental-features = nix-command flakes
+      - name: Verify exact engine and all governance checks
+        env:
+          ENGINE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ENGINE_SHA"
+          nix flake check -L --no-write-lock-file \
+            --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
+            --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579"
+          bash tools/gov_release/run-proof.sh
+      - name: Build reproducible Nix output and canonical descriptors
+        env:
+          ENGINE_SHA: ${{ github.sha }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          SEQUENCE: ${{ inputs.sequence }}
+          PREVIOUS_RELEASE_DIGEST: ${{ inputs.previous_release_digest }}
+          SUPERSEDES_RELEASE_DIGEST: ${{ inputs.supersedes_release_digest }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE_ID" in
+            ''|*[!A-Za-z0-9._-]*) echo invalid-release-id >&2; exit 1 ;;
+          esac
+          out_path=$(nix build --no-link --print-out-paths .#gov-package-output)
+          nix path-info --json "$out_path" > nix-path-info.json
+          nar_hash=$(python3 - <<'PY'
+          import json
+          value=json.load(open('nix-path-info.json'))
+          if isinstance(value,dict):
+              row=next(iter(value.values()))
+          else:
+              row=value[0]
+          print(row['narHash'])
+          PY
+          )
+          python3 tools/gov_release/cli.py engine-descriptor \
+            --repository roccho-dev/governance \
+            --commit-sha "$ENGINE_SHA" \
+            --out gov-engine-descriptor.json
+          python3 tools/gov_release/cli.py nix-descriptor \
+            --package gov-package-output \
+            --nar-hash "$nar_hash" \
+            --out gov-nix-output-descriptor.json
+          python3 tools/gov_release/cli.py manifest \
+            --release-id "$RELEASE_ID" \
+            --sequence "$SEQUENCE" \
+            --previous-release-digest "$PREVIOUS_RELEASE_DIGEST" \
+            --supersedes-release-digest "$SUPERSEDES_RELEASE_DIGEST" \
+            --accepted-decision-digest sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b \
+            --engine-descriptor gov-engine-descriptor.json \
+            --nix-descriptor gov-nix-output-descriptor.json \
+            --out gov-release-manifest.json
+          python3 tools/gov_release/cli.py validate \
+            --manifest gov-release-manifest.json \
+            --out gov-release-manifest-validation.json
+          sha256sum gov-release-manifest.json | cut -d' ' -f1 > gov-release-manifest.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gov-release-evaluated-bundle
+          path: |
+            gov-release-manifest.json
+            gov-release-manifest.sha256
+            gov-release-manifest-validation.json
+            gov-engine-descriptor.json
+            gov-nix-output-descriptor.json
+            nix-path-info.json
+          if-no-files-found: error
+
+  publish:
+    name: owner-controlled release publication and readback
+    needs: evaluate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: gov-release-evaluated-bundle
+          path: release-bundle
+      - name: Verify evaluated bytes without executing repository code
+        working-directory: release-bundle
+        run: |
+          set -euo pipefail
+          test "$(sha256sum gov-release-manifest.json | cut -d' ' -f1)" = "$(cat gov-release-manifest.sha256)"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          value=json.loads(Path('gov-release-manifest.json').read_text())
+          assert set(value)=={'kind','releaseId','sequence','previousReleaseDigest','supersedesReleaseDigest','acceptedDecisionDigest','govEngineDigest','nixOutputDigest','status'}
+          assert value['kind']=='govReleaseManifest.v1'
+          assert value['status']=='adopted'
+          assert value['acceptedDecisionDigest']=='sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b'
+          assert not any(key.startswith('github') or key=='url' for key in value)
+          PY
+      - name: Verify previous and superseded release identities
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p previous-releases
+          gh api "repos/$REPOSITORY/releases?per_page=100" --paginate > release-pages.jsonl
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          pages=[]
+          text=Path('release-pages.jsonl').read_text().strip()
+          if text:
+              decoder=json.JSONDecoder(); index=0
+              while index < len(text):
+                  while index < len(text) and text[index].isspace(): index += 1
+                  if index >= len(text): break
+                  page,index=decoder.raw_decode(text,index); pages.extend(page)
+          for release in pages:
+              tag=release.get('tag_name','')
+              if tag.startswith('gov-release/'):
+                  target=Path('previous-releases')/tag.replace('/','__')
+                  target.mkdir(parents=True,exist_ok=True)
+                  subprocess.run(['gh','release','download',tag,'--repo',os.environ['REPOSITORY'],'--pattern','gov-release-manifest.json','--dir',str(target)],check=True)
+          PY
+          cp release-bundle/gov-release-manifest.json candidate-manifest.json
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          def canonical(value): return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          def digest(value): return 'sha256:'+hashlib.sha256(canonical(value)).hexdigest()
+          candidate=json.loads(Path('candidate-manifest.json').read_text())
+          existing=[]
+          for path in Path('previous-releases').glob('*/gov-release-manifest.json'):
+              existing.append(json.loads(path.read_text()))
+          by_digest={digest(value):value for value in existing}
+          by_sequence={value['sequence']:value for value in existing}
+          assert candidate['sequence']==len(existing), 'sequence-not-contiguous'
+          if candidate['sequence']==0:
+              assert candidate['previousReleaseDigest'] is None
+          else:
+              previous=by_sequence[candidate['sequence']-1]
+              assert candidate['previousReleaseDigest']==digest(previous)
+          supersedes=candidate['supersedesReleaseDigest']
+          if supersedes is not None:
+              assert supersedes in by_digest
+              assert by_digest[supersedes]['sequence'] < candidate['sequence']
+          assert candidate['releaseId'] not in {value['releaseId'] for value in existing}
+          PY
+      - name: Draft publish, immutable-byte readback, publish, and post-publish readback
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          release_id=$(python3 -c "import json;print(json.load(open('release-bundle/gov-release-manifest.json'))['releaseId'])")
+          tag="gov-release/$release_id"
+          if gh release view "$tag" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            echo release-already-exists >&2
+            exit 1
+          fi
+          manifest_digest="sha256:$(cat release-bundle/gov-release-manifest.sha256)"
+          gh release create "$tag" \
+            --repo "$REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$release_id" \
+            --notes "Canonical gov release manifest digest: $manifest_digest" \
+            --draft \
+            --latest=false \
+            release-bundle/gov-release-manifest.json \
+            release-bundle/gov-engine-descriptor.json \
+            release-bundle/gov-nix-output-descriptor.json
+          mkdir draft-readback
+          gh release download "$tag" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir draft-readback
+          cmp release-bundle/gov-release-manifest.json draft-readback/gov-release-manifest.json
+          gh release edit "$tag" --repo "$REPOSITORY" --draft=false --latest=false
+          mkdir published-readback
+          gh release download "$tag" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir published-readback
+          cmp release-bundle/gov-release-manifest.json published-readback/gov-release-manifest.json
+          observed_digest="sha256:$(sha256sum published-readback/gov-release-manifest.json | cut -d' ' -f1)"
+          test "$observed_digest" = "$manifest_digest"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          manifest=json.loads(Path('release-bundle/gov-release-manifest.json').read_text())
+          digest='sha256:'+Path('release-bundle/gov-release-manifest.sha256').read_text().strip()
+          receipt={
+            'kind':'govReleaseReadbackReceipt.v1',
+            'status':'pass',
+            'releaseId':manifest['releaseId'],
+            'releaseDigest':digest,
+            'observedManifestDigest':digest,
+            'adopted':True,
+            'authority':False,
+            'transport':{
+              'provider':'github-release',
+              'repository':os.environ['GITHUB_REPOSITORY'],
+              'runId':int(os.environ['GITHUB_RUN_ID']),
+              'actor':os.environ['GITHUB_ACTOR'],
+            },
+          }
+          Path('gov-release-readback-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+          gh release upload "$tag" --repo "$REPOSITORY" gov-release-readback-receipt.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gov-release-publish-readback
+          path: |
+            release-bundle/gov-release-manifest.json
+            gov-release-readback-receipt.json
+          if-no-files-found: error
