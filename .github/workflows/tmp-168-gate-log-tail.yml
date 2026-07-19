@@ -1,0 +1,20 @@
+name: temporary issue 168 gate log tail
+
+on:
+  pull_request:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  tail:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read exact failed gate job log tail
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/roccho-dev/governance/actions/jobs/88162411913/logs > gate-job.log
+          tail -n 100 gate-job.log
