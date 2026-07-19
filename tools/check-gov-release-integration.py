@@ -15,7 +15,9 @@ if str(ROOT) not in sys.path:
 from tools.gov_release.core import ReleaseError, digest, make_eligibility  # noqa: E402
 
 BASELINE = ROOT / "governance/gov-release-baseline.v1.json"
-DECISION_DIGEST = "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"
+CONTRACT_DIGEST = "sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b"
+DECISION_DIGEST = "sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"
+ADRS_HEAD = "5a8a6d9968178144b2e547f28bb9977a7b65c755"
 
 
 def need(ok: bool, code: str) -> None:
@@ -34,7 +36,10 @@ def validate_baseline(value: dict[str, Any]) -> None:
     need(value.get("closureModel") == "gov-release-publication", "baseline-closure-model")
     need(value.get("supersedesClosureModels") == ["github-merge-protection", "signed-promotion"], "baseline-supersedes")
     need(value.get("historicalClosureReceipts") == {"adrs223": "superseded", "adrs233": "superseded", "governance150": "superseded"}, "baseline-old-closure")
-    need(value["adrsCandidate"]["contractDigest"] == DECISION_DIGEST, "baseline-decision-digest")
+    candidate = value["adrsCandidate"]
+    need(candidate["head"] == ADRS_HEAD, "baseline-adrs-head")
+    need(candidate["contractDigest"] == CONTRACT_DIGEST, "baseline-contract-digest")
+    need(candidate["acceptedDecisionDigest"] == DECISION_DIGEST, "baseline-decision-digest")
     need(value["governance"]["workflowCount"] == 3, "baseline-workflow-count")
     need(value["currentOperationalAdoption"]["releasePublished"] is False, "baseline-release-published")
     need(value["currentOperationalAdoption"]["releaseReadback"] is False, "baseline-release-readback")
@@ -64,7 +69,8 @@ def live_digests(value: dict[str, Any]) -> tuple[str, str]:
 
 
 def eligibility(gate: dict[str, Any], live: dict[str, Any], candidate_sha: str) -> dict[str, Any]:
-    validate_baseline(read(BASELINE))
+    baseline = read(BASELINE)
+    validate_baseline(baseline)
     claim_set_digest, receipt_set_digest = live_digests(live)
     value = make_eligibility(
         candidate_sha=candidate_sha,
@@ -76,8 +82,9 @@ def eligibility(gate: dict[str, Any], live: dict[str, Any], candidate_sha: str) 
     value.update(
         {
             "adrsPullRequest": 242,
-            "adrsHead": read(BASELINE)["adrsCandidate"]["head"],
-            "decisionStatus": read(BASELINE)["adrsCandidate"]["status"],
+            "adrsHead": baseline["adrsCandidate"]["head"],
+            "decisionStatus": baseline["adrsCandidate"]["status"],
+            "govReleaseContractDigest": CONTRACT_DIGEST,
             "releaseWorkflow": "gov-release",
             "signatureRequired": False,
             "githubRulesetRequired": False,
@@ -138,8 +145,9 @@ def selftest() -> dict[str, Any]:
     need("cryptography" not in workflows, "signature-dependency")
     need("gov-release-manifest.json" in workflows, "release-manifest-workflow")
     need("gh release create" in workflows, "release-publish-workflow")
+    need("accepted-decision.json" in workflows, "accepted-decision-workflow")
     return {
-        "kind": "governance.govReleaseIntegration.selftest.v1",
+        "kind": "governance.govReleaseIntegration.selftest.v2",
         "status": "pass",
         "positiveCases": 1,
         "destructiveCases": len(cases),
@@ -174,9 +182,10 @@ def main() -> int:
         baseline = read(BASELINE)
         validate_baseline(baseline)
         report = {
-            "kind": "governance.govReleaseCanary.v1",
+            "kind": "governance.govReleaseCanary.v2",
             "status": "candidate-pass",
-            "contractDigest": DECISION_DIGEST,
+            "contractDigest": CONTRACT_DIGEST,
+            "acceptedDecisionDigest": DECISION_DIGEST,
             "releasePublished": baseline["currentOperationalAdoption"]["releasePublished"],
             "releaseReadback": baseline["currentOperationalAdoption"]["releaseReadback"],
             "rulesetSeverity": "information",
