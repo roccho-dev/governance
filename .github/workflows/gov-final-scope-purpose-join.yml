@@ -16,39 +16,53 @@ concurrency:
 
 jobs:
   capture:
-    name: current accepted decision capture
+    name: current decision and release identity capture
     runs-on: ubuntu-latest
+    outputs:
+      adrs_repository: ${{ steps.identity.outputs.adrs_repository }}
+      adrs_head: ${{ steps.identity.outputs.adrs_head }}
+      accepted_decision_digest: ${{ steps.identity.outputs.accepted_decision_digest }}
+      contract_digest: ${{ steps.identity.outputs.contract_digest }}
+      accepted_merge: ${{ steps.identity.outputs.accepted_merge }}
+      stable_check_name: ${{ steps.identity.outputs.stable_check_name }}
+      decision_status: ${{ steps.identity.outputs.decision_status }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Capture current projection and exact gov-release candidate
+      - name: Load the single exact identity projection
+        id: identity
+        run: python3 tools/gov_release/identity.py github-output >> "$GITHUB_OUTPUT"
+      - name: Capture current projection and release candidate
         run: |
           set -euo pipefail
+          python3 tools/gov_release/identity.py selftest
           python3 - <<'PY'
           import json
           from pathlib import Path
           current=json.loads(Path('governance/accepted-final-ci-decision.v1.json').read_text())
-          candidate=json.loads(Path('governance/gov-release-baseline.v1.json').read_text())
-          assert current['acceptedMerge']=='a8fc9e8e04d53f1d783317059e4421c8dc724d01'
-          assert current['stableRequiredCheck']=='gov-final-scope-purpose-join / gate'
-          assert candidate['adrsCandidate']['head']=='5a8a6d9968178144b2e547f28bb9977a7b65c755'
-          assert candidate['adrsCandidate']['contractDigest']=='sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b'
-          assert candidate['adrsCandidate']['acceptedDecisionDigest']=='sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f'
-          assert candidate['currentOperationalAdoption']['releasePublished'] is False
-          assert candidate['invariants']['signatureRequired'] is False
-          assert candidate['invariants']['allRepositoriesEnforced'] is False
-          Path('decision-capture.json').write_text(json.dumps({'current':current,'govReleaseCandidate':candidate},sort_keys=True,separators=(',',':'))+'\n')
+          baseline=json.loads(Path('governance/gov-release-baseline.v1.json').read_text())
+          identity=json.loads(Path('governance/gov-release-identity.v1.json').read_text())
+          assert current['acceptedMerge']==identity['currentTopology']['acceptedMerge']
+          assert current['stableRequiredCheck']==identity['currentTopology']['stableCheckName']
+          assert baseline['identityProjection']=='governance/gov-release-identity.v1.json'
+          assert baseline['currentOperationalAdoption']['releasePublished'] is False
+          assert baseline['invariants']['signatureRequired'] is False
+          assert baseline['invariants']['allRepositoriesEnforced'] is False
+          Path('decision-capture.json').write_text(json.dumps({'current':current,'govReleaseBaseline':baseline,'govReleaseIdentity':identity},sort_keys=True,separators=(',',':'))+'\n')
           PY
       - uses: actions/upload-artifact@v4
         with:
           name: accepted-final-ci-decision
-          path: decision-capture.json
+          path: |
+            decision-capture.json
+            governance/gov-release-identity.v1.json
           if-no-files-found: error
 
   source-capture:
     name: accepted and candidate ADRS source capture
+    needs: capture
     runs-on: ubuntu-latest
     steps:
       - name: Validate ADRS reader
@@ -64,10 +78,11 @@ jobs:
           owner: roccho-dev
           repositories: adrs
           permission-contents: read
-      - uses: actions/checkout@v4
+      - name: Checkout currently accepted ADRS topology
+        uses: actions/checkout@v4
         with:
-          repository: roccho-dev/adrs
-          ref: a8fc9e8e04d53f1d783317059e4421c8dc724d01
+          repository: ${{ needs.capture.outputs.adrs_repository }}
+          ref: ${{ needs.capture.outputs.accepted_merge }}
           path: accepted-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -87,11 +102,11 @@ jobs:
           path: publication-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
-      - name: Checkout exact gov-release ADRS correction candidate
+      - name: Checkout exact gov-release ADRS correction
         uses: actions/checkout@v4
         with:
-          repository: roccho-dev/adrs
-          ref: 5a8a6d9968178144b2e547f28bb9977a7b65c755
+          repository: ${{ needs.capture.outputs.adrs_repository }}
+          ref: ${{ needs.capture.outputs.adrs_head }}
           path: release-adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -104,12 +119,17 @@ jobs:
           go install cuelang.org/go/cmd/cue@v0.9.2
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
       - name: Verify exact ADRS sources
+        env:
+          ACCEPTED_MERGE: ${{ needs.capture.outputs.accepted_merge }}
+          RELEASE_ADRS_HEAD: ${{ needs.capture.outputs.adrs_head }}
+          ACCEPTED_DECISION_DIGEST: ${{ needs.capture.outputs.accepted_decision_digest }}
+          CONTRACT_DIGEST: ${{ needs.capture.outputs.contract_digest }}
         run: |
           set -euo pipefail
-          test "$(git -C accepted-adrs rev-parse HEAD)" = a8fc9e8e04d53f1d783317059e4421c8dc724d01
+          test "$(git -C accepted-adrs rev-parse HEAD)" = "$ACCEPTED_MERGE"
           test "$(git -C candidate-adrs rev-parse HEAD)" = c9d4d0afd0679adc2a49e40d5e9e90ca6fd8f068
           test "$(git -C publication-adrs rev-parse HEAD)" = b30c0750b4783f3349bc3c2d91e00853c90ab2ef
-          test "$(git -C release-adrs rev-parse HEAD)" = 5a8a6d9968178144b2e547f28bb9977a7b65c755
+          test "$(git -C release-adrs rev-parse HEAD)" = "$RELEASE_ADRS_HEAD"
           python3 accepted-adrs/tools/check-final-organization-ci-topology-v1.py check \
             --contract accepted-adrs/ci_topology/v1/contract.json \
             --out "$RUNNER_TEMP/accepted-adrs-proof" >/dev/null
@@ -128,9 +148,16 @@ jobs:
             python3 tools/check-gov-release-v1.py selftest --out "$RUNNER_TEMP/gov-release-adrs-selftest.json"
             bash ci/check-gov-release-v1-static.sh | tee "$RUNNER_TEMP/gov-release-adrs-static.log"
           )
-          grep -q '"acceptedDecisionDigest":"sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"' "$RUNNER_TEMP/gov-release-adrs-decision.json"
-          grep -q '"destructiveCases":18' "$RUNNER_TEMP/gov-release-adrs-selftest.json"
-          grep -q '"signatureRequired":false' "$RUNNER_TEMP/gov-release-adrs-selftest.json"
+          python3 - <<'PY'
+          import json,os
+          contract=json.load(open(os.environ['RUNNER_TEMP']+'/gov-release-adrs-contract.json'))
+          decision=json.load(open(os.environ['RUNNER_TEMP']+'/gov-release-adrs-decision.json'))
+          selftest=json.load(open(os.environ['RUNNER_TEMP']+'/gov-release-adrs-selftest.json'))
+          assert contract['contractDigest']==os.environ['CONTRACT_DIGEST']
+          assert decision['acceptedDecisionDigest']==os.environ['ACCEPTED_DECISION_DIGEST']
+          assert selftest['destructiveCases']==18
+          assert selftest['signatureRequired'] is False
+          PY
           tar -C accepted-adrs --exclude=.git -czf accepted-adrs-source.tar.gz .
           tar -C candidate-adrs --exclude=.git -czf candidate-adrs-source.tar.gz .
           tar -C release-adrs --exclude=.git -czf release-adrs-source.tar.gz .
@@ -285,6 +312,7 @@ jobs:
         run: |
           set -euo pipefail
           {
+            python3 tools/gov_release/identity.py selftest
             python3 tools/compile-claim-port-joins.py selftest
             python3 tools/check-package-final-scope-purpose-join.py selftest --json
             python3 -m unittest discover -s tools/contract-modeling/tests -p 'test_*.py'
@@ -310,11 +338,12 @@ jobs:
           import json,os
           from pathlib import Path
           selftest=json.loads(Path('tools/contract-modeling/out/selftest-receipt.json').read_text())
+          identity=json.loads(Path('governance/gov-release-identity.v1.json').read_text())
           assert selftest['status']=='pass'
           lines=Path(os.environ['RUNNER_TEMP'] + '/gov-release-proof.json').read_text().splitlines()
           release=[json.loads(line) for line in lines if line.startswith('{')][-1]
           assert release['status'] in {'pass','candidate-pass'}
-          receipt={'kind':'governance.regressionReceipt.v5','status':'pass','candidateSha':os.environ['CANDIDATE_SHA'],'authority':False,'contractModeling':{'status':'pass','migrationComplete':selftest['migration_complete']},'govRelease':{'status':'candidate-pass','contractDigest':'sha256:5016d40e3bc7628436ac1b5736f180c36e114047772544bd6b64e53d6eeefb7b','acceptedDecisionDigest':'sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f','adrsHead':'5a8a6d9968178144b2e547f28bb9977a7b65c755','releasePublished':False,'operationalAdoptionEffect':False,'signatureRequired':False}}
+          receipt={'kind':'governance.regressionReceipt.v6','status':'pass','candidateSha':os.environ['CANDIDATE_SHA'],'authority':False,'contractModeling':{'status':'pass','migrationComplete':selftest['migration_complete']},'govRelease':{'status':'candidate-pass','identityProjection':'governance/gov-release-identity.v1.json','contractDigest':identity['contract']['canonicalDigest'],'acceptedDecisionDigest':identity['acceptedDecision']['canonicalDigest'],'adrsHead':identity['source']['head'],'releasePublished':False,'operationalAdoptionEffect':False,'signatureRequired':False}}
           Path('regression-receipt.json').write_text(json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n')
           PY
       - if: always()
@@ -367,21 +396,29 @@ jobs:
             --candidate-sha "$CANDIDATE_SHA" \
             --live-consumers evidence/live-consumers/live-selected-consumers.json \
             --json | tee final-gate-report.json
-          grep -q '"candidateEvidencePass":true' final-gate-report.json
-          grep -q '"artifactBodiesVerified":true' final-gate-report.json
-          grep -q '"receiptCandidateShaBound":true' final-gate-report.json
-          grep -q '"releaseEligible":true' final-gate-report.json
-          grep -q '"releasePublished":false' final-gate-report.json
-          grep -q '"operationalAdoptionEffect":false' final-gate-report.json
-          grep -q '"govReleaseAcceptedDecisionDigest":"sha256:51a0fb65a990981c392ff1f7d5c9f9fdb61f09c3caa81eef656ebbd3d7e22c9f"' final-gate-report.json
-          grep -q '"githubMergeHasCompanyAuthority":false' final-gate-report.json
-          grep -q '"signatureRequired":false' final-gate-report.json
-          grep -q '"allRepositoriesEnforced":false' final-gate-report.json
+          python3 - <<'PY'
+          import json
+          identity=json.load(open('governance/gov-release-identity.v1.json'))
+          report=json.load(open('final-gate-report.json'))
+          assert report['candidateEvidencePass'] is True
+          assert report['artifactBodiesVerified'] is True
+          assert report['receiptCandidateShaBound'] is True
+          assert report['govReleaseEligibility']['releaseEligible'] is True
+          assert report['releasePublished'] is False
+          assert report['operationalAdoptionEffect'] is False
+          assert report['govReleaseAcceptedDecisionDigest']==identity['acceptedDecision']['canonicalDigest']
+          assert report['govReleaseContractDigest']==identity['contract']['canonicalDigest']
+          assert report['govReleaseDecisionCandidateHead']==identity['source']['head']
+          assert report['githubMergeHasCompanyAuthority'] is False
+          assert report['signatureRequired'] is False
+          assert report['allRepositoriesEnforced'] is False
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: gov-final-gate-evidence
           path: |
             final-gate-report.json
+            governance/gov-release-identity.v1.json
             evidence/accepted-decision/decision-capture.json
             evidence/regression/regression-receipt.json
             evidence/live-consumers/live-selected-consumers.json
