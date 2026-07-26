@@ -42,7 +42,7 @@ jobs:
           nix-build --impure --expr '
             let
               flake = builtins.getFlake (toString ./.);
-              pkgs = import flake.inputs.nixpkgs { system = "x86_64-linux"; };
+              pkgs = flake.inputs.nixpkgs.legacyPackages.x86_64-linux;
             in import ./nix/approval-receipt-verifier.nix { inherit pkgs; }
           ' -o result-approval-receipt-verifier
       - name: Run existing flake checks
