@@ -1,9 +1,12 @@
 { pkgs ? import <nixpkgs> {} }:
 
+let
+  python = pkgs.python312;
+in
 pkgs.writeShellApplication {
   name = "approval-receipt-verifier";
-  runtimeInputs = [ pkgs.python3 ];
+  runtimeInputs = [ python ];
   text = ''
-    exec ${pkgs.python3}/bin/python3 ${../tools/approval-receipt-verifier.py} "$@"
+    exec ${python}/bin/python3 ${../tools/approval-receipt-verifier.py} "$@"
   '';
 }
