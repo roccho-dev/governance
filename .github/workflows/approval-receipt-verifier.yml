@@ -1,0 +1,50 @@
+name: Approval receipt verifier proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - tools/approval-receipt-verifier.py
+      - nix/approval-receipt-verifier.nix
+      - docs/approval-receipt-verifier/**
+      - .github/workflows/approval-receipt-verifier.yml
+      - flake.nix
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Run pure verifier proof twice
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          python3 tools/approval-receipt-verifier.py selftest > proof/selftest-a.json
+          python3 tools/approval-receipt-verifier.py selftest > proof/selftest-b.json
+          cmp proof/selftest-a.json proof/selftest-b.json
+          grep -q '"status": "PASS"' proof/selftest-a.json
+      - name: Reject provider coupling and authority drift
+        run: |
+          set -euo pipefail
+          ! grep -Ei '(^|[[:space:]])(import|from)[[:space:]]+(github|requests|httpx|urllib)' tools/approval-receipt-verifier.py
+          grep -q 'physical_human_identity_proven.*False' tools/approval-receipt-verifier.py
+          grep -q 'account_non_compromise_proven.*False' tools/approval-receipt-verifier.py
+      - uses: cachix/install-nix-action@v31.10.6
+      - name: Build bounded Nix package
+        run: nix-build nix/approval-receipt-verifier.nix -o result-approval-receipt-verifier
+      - name: Run existing flake checks
+        run: nix flake check -L
+      - name: Exercise installed binary
+        run: result-approval-receipt-verifier/bin/approval-receipt-verifier selftest > proof/nix-selftest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: approval-receipt-verifier-proof
+          path: proof/
+          if-no-files-found: error
