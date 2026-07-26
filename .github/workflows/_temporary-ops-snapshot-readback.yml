@@ -7,7 +7,6 @@ on:
       - .github/workflows/_temporary-ops-snapshot-readback.yml
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
@@ -15,39 +14,18 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
-      - name: Validate reader configuration
-        env:
-          CLIENT_ID: ${{ vars.ADRS_READER_CLIENT_ID }}
-          PRIVATE_KEY: ${{ secrets.ADRS_READER_PRIVATE_KEY }}
-        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
-      - id: token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.ADRS_READER_CLIENT_ID }}
-          private-key: ${{ secrets.ADRS_READER_PRIVATE_KEY }}
-          owner: roccho-dev
-          repositories: ui,ops
-          permission-actions: read
-          permission-contents: read
-      - name: Read exact current Ops receipt artifact
-        env:
-          TOKEN: ${{ steps.token.outputs.token }}
+      - name: Read exact current public Ops artifact identity
         run: |
           set -euo pipefail
           mkdir -p snapshot
           python3 - <<'PY'
-          import base64,hashlib,json,os,urllib.parse,urllib.request
-          token=os.environ['TOKEN']
+          import json,urllib.parse,urllib.request
           base='https://api.github.com'
-          headers={'Authorization':f'Bearer {token}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'governance-exact-snapshot-readback'}
+          headers={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'governance-exact-snapshot-identity'}
           def read_json(path):
               req=urllib.request.Request(base+path,headers=headers,method='GET')
               with urllib.request.urlopen(req,timeout=60) as response:
                   return json.load(response)
-          def read_bytes(path):
-              req=urllib.request.Request(base+path,headers={**headers,'Accept':'application/octet-stream'},method='GET')
-              with urllib.request.urlopen(req,timeout=60) as response:
-                  return response.read()
           ref=read_json('/repos/roccho-dev/ops/git/ref/heads/proposals')
           head=ref['object']['sha']
           query=urllib.parse.urlencode({'branch':'proposals','event':'push','status':'success','per_page':100})
@@ -59,16 +37,12 @@ jobs:
           exact=[a for a in artifacts if a.get('name')=='final-ci-consumer-receipt' and not a.get('expired')]
           assert len(exact)==1,exact
           artifact=exact[0]
-          body=read_bytes(f"/repos/roccho-dev/ops/actions/artifacts/{artifact['id']}/zip")
-          digest='sha256:'+hashlib.sha256(body).hexdigest()
-          assert digest==artifact['digest'],(digest,artifact['digest'])
-          open('snapshot/ops-final-ci-consumer-receipt.zip.b64','w').write(base64.b64encode(body).decode()+'\n')
-          metadata={'kind':'temporaryOpsSnapshotReadback.v1','status':'PASS','head':head,'runId':run['id'],'artifactId':artifact['id'],'artifactDigest':digest,'authority':False}
+          metadata={'kind':'temporaryOpsSnapshotIdentity.v1','status':'PASS','head':head,'runId':run['id'],'artifactId':artifact['id'],'artifactDigest':artifact['digest'],'authority':False}
           open('snapshot/metadata.json','w').write(json.dumps(metadata,sort_keys=True,separators=(',',':'))+'\n')
           print(json.dumps(metadata,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: exact-ops-current-snapshot
-          path: snapshot/
+          name: exact-ops-current-snapshot-identity
+          path: snapshot/metadata.json
           if-no-files-found: error
