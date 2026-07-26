@@ -7,8 +7,10 @@ on:
       - tools/approval-receipt-verifier.py
       - nix/approval-receipt-verifier.nix
       - docs/approval-receipt-verifier/**
+      - fixtures/adrsRecords/**
       - .github/workflows/approval-receipt-verifier.yml
       - flake.nix
+      - flake.lock
   workflow_dispatch:
 
 permissions:
@@ -36,18 +38,20 @@ jobs:
           ! grep -Ei '(^|[[:space:]])(import|from)[[:space:]]+(github|requests|httpx|urllib)' tools/approval-receipt-verifier.py
           grep -q 'physical_human_identity_proven.*False' tools/approval-receipt-verifier.py
           grep -q 'account_non_compromise_proven.*False' tools/approval-receipt-verifier.py
+          ! grep -R -E 'approvalReceipt|authorityGrant' fixtures/adrsRecords
       - uses: cachix/install-nix-action@v31.10.6
       - name: Run Nix gates with retained diagnostics
         run: |
           set +e
           nix-build --impure --expr '
             let
-              flake = builtins.getFlake (toString ./.);
-              pkgs = flake.inputs.nixpkgs.legacyPackages.x86_64-linux;
+              pkgs = (builtins.getFlake "github:NixOS/nixpkgs/a799d3e3886da994fa307f817a6bc705ae538eeb").legacyPackages.x86_64-linux;
             in import ./nix/approval-receipt-verifier.nix { inherit pkgs; }
           ' -o result-approval-receipt-verifier > proof/nix-build.log 2>&1
           echo $? > proof/nix-build.status
-          nix flake check -L > proof/flake-check.log 2>&1
+          nix flake check -L --no-write-lock-file \
+            --override-input adrsRecords path:./fixtures/adrsRecords \
+            > proof/flake-check.log 2>&1
           echo $? > proof/flake-check.status
           if test -x result-approval-receipt-verifier/bin/approval-receipt-verifier; then
             result-approval-receipt-verifier/bin/approval-receipt-verifier selftest > proof/nix-selftest.json 2> proof/nix-selftest.stderr
