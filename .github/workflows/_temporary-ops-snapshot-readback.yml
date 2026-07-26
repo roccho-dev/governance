@@ -26,7 +26,7 @@ jobs:
           client-id: ${{ vars.ADRS_READER_CLIENT_ID }}
           private-key: ${{ secrets.ADRS_READER_PRIVATE_KEY }}
           owner: roccho-dev
-          repositories: ops
+          repositories: ui,ops
           permission-actions: read
           permission-contents: read
       - name: Read exact current Ops receipt artifact
