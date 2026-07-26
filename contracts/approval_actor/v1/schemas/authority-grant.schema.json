@@ -1,0 +1,54 @@
+{
+  "$id": "doc://adrs/approval-actor-v1/authority-grant.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action_kinds": {"items": {"const": "pull_request_review.approve"}, "minItems": 1, "type": "array", "uniqueItems": true},
+    "grant_id": {"minLength": 1, "type": "string"},
+    "kind": {"const": "authorityGrant.v1"},
+    "provider_bindings": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "provider": {"const": "github"},
+          "provider_account_id": {"minimum": 1, "type": "integer"},
+          "provider_login": {"minLength": 1, "type": "string"}
+        },
+        "required": ["provider", "provider_account_id", "provider_login"],
+        "type": "object"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "type": "array"
+    },
+    "resource_scope": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_revision": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+        "finding_digest": {"pattern": "^sha256:[0-9a-f]{64}$", "type": "string"},
+        "policy_digest": {"pattern": "^sha256:[0-9a-f]{64}$", "type": "string"},
+        "provider_object_ids": {
+          "additionalProperties": false,
+          "properties": {
+            "pull_request_id": {"minimum": 1, "type": "integer"},
+            "pull_request_number": {"minimum": 1, "type": "integer"},
+            "repository_id": {"minimum": 1, "type": "integer"}
+          },
+          "required": ["repository_id", "pull_request_number", "pull_request_id"],
+          "type": "object"
+        },
+        "repository": {"pattern": "^[^/]+/[^/]+$", "type": "string"},
+        "subject_kind": {"const": "diagram.waiver"}
+      },
+      "required": ["repository", "subject_kind", "finding_digest", "policy_digest", "candidate_revision", "provider_object_ids"],
+      "type": "object"
+    },
+    "status": {"enum": ["active", "revoked", "superseded"]},
+    "subject_id": {"minLength": 1, "type": "string"},
+    "valid_from": {"format": "date-time", "type": "string"},
+    "valid_until": {"format": "date-time", "type": "string"}
+  },
+  "required": ["kind", "grant_id", "subject_id", "action_kinds", "resource_scope", "provider_bindings", "valid_from", "valid_until", "status"],
+  "title": "authorityGrant.v1",
+  "type": "object"
+}
