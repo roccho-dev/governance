@@ -63,3 +63,17 @@ nix-build --impure --expr '
 cmp "$first" "$result/nix-selftest.json"
 cmp "$manifest_a" "$result/nix-manifest.json"
 cat "$first"
+python3 - "$first" <<'PY'
+import json,sys
+approval=json.load(open(sys.argv[1]))
+print(json.dumps({
+  'kind':'governance.govReleaseProofSummary.v2',
+  'status':'candidate-pass',
+  'approvalVerifier':{
+    'status':approval['status'],
+    'destructiveCases':approval['destructiveCases'],
+    'engineManifestDigest':approval['engineManifestDigest'],
+    'canonicalEvidenceShape':'githubApprovalEvidence.v1',
+  },
+},sort_keys=True,separators=(',',':')))
+PY
