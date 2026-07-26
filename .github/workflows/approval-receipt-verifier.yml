@@ -37,8 +37,14 @@ jobs:
           grep -q 'physical_human_identity_proven.*False' tools/approval-receipt-verifier.py
           grep -q 'account_non_compromise_proven.*False' tools/approval-receipt-verifier.py
       - uses: cachix/install-nix-action@v31.10.6
-      - name: Build bounded Nix package
-        run: nix-build nix/approval-receipt-verifier.nix -o result-approval-receipt-verifier
+      - name: Build bounded Nix package from pinned flake input
+        run: |
+          nix-build --impure --expr '
+            let
+              flake = builtins.getFlake (toString ./.);
+              pkgs = import flake.inputs.nixpkgs { system = "x86_64-linux"; };
+            in import ./nix/approval-receipt-verifier.nix { inherit pkgs; }
+          ' -o result-approval-receipt-verifier
       - name: Run existing flake checks
         run: nix flake check -L
       - name: Exercise installed binary
