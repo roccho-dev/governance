@@ -2,7 +2,7 @@
   "actor_account_id": 40359643,
   "actor_login": "roccho-dev",
   "actor_type": "User",
-  "adapter_manifest_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "adapter_manifest_digest": "sha256:538ba7977bc9894bfcc2e2ae7f7e670b915f0302f318663546071d196f048724",
   "candidate_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "claim_ceiling": {
     "account_non_compromise_proven": false,
