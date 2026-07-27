@@ -32,8 +32,15 @@ assert selftest['expectedAdapterManifestDigest']=='sha256:538ba7977bc9894bfcc2e2
 assert selftest['engineManifestDigest']==manifest['manifest_digest']
 assert manifest['source_files'][0]['sha256']=='sha256:'+hashlib.sha256(Path('tools/approval-receipt-verifier.py').read_bytes()).hexdigest()
 identity=json.load(open('contracts/approval_actor/v1/identity.json'))
+assert identity['status']=='ACCEPTED'
+assert identity['adrsAcceptedMerge']=='70244fa200d8717c61b514432c54bed4248028d9'
+assert identity['opsMergedCommit']=='a622192703c53fea4890a3ad3618e2a0ac85032f'
+assert identity['admission']=='ALLOW_WITH_ACCEPTED_EXCEPTION'
+assert identity['admissionExceptionDigest']=='sha256:748ab4ccc62bc60c6bdc8c38a9d64d121f6fe0340907a935873c98971ca17f91'
+assert identity['fullCanonicalGreen'] is False
 assert identity['canonicalEvidenceShape']=='githubApprovalEvidence.v1'
-assert identity['contractDigest']=='sha256:21abaeb0cfb4f76babe7f1f530d14e807ef1c236e891257199490a8c0bb9d03e'
+assert identity['contractDigest']=='sha256:53e9fa1053c8a2f003765c6af2e8a90114f6470b46c9cc28d45eb3562518af0b'
+assert identity['opsAdapterManifestDigest']=='sha256:538ba7977bc9894bfcc2e2ae7f7e670b915f0302f318663546071d196f048724'
 def canonical_digest(path):
     value=json.load(open(path))
     return 'sha256:'+hashlib.sha256(json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -48,7 +55,7 @@ fixture=json.load(open('contracts/approval_actor/v1/fixtures/github-approval-evi
 schema=json.load(open('contracts/approval_actor/v1/schemas/github-approval-evidence.schema.json'))
 assert set(fixture)==set(schema['required'])
 assert fixture['kind']=='githubApprovalEvidence.v1' and fixture['status']=='COMPLETE'
-assert fixture['adapter_manifest_digest']=='sha256:538ba7977bc9894bfcc2e2ae7f7e670b915f0302f318663546071d196f048724'
+assert fixture['adapter_manifest_digest']==identity['opsAdapterManifestDigest']
 assert 'providerApprovalEvidence.v1' not in json.dumps(fixture)
 PY
 
@@ -77,6 +84,8 @@ print(json.dumps({
     'engineManifestDigest':approval['engineManifestDigest'],
     'expectedAdapterManifestDigest':approval['expectedAdapterManifestDigest'],
     'canonicalEvidenceShape':'githubApprovalEvidence.v1',
+    'mergedAdrsBound':True,
+    'mergedOpsBound':True,
   },
 },sort_keys=True,separators=(',',':')))
 PY
