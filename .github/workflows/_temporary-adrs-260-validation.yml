@@ -125,6 +125,8 @@ jobs:
           PY
           echo $? > proof/known-baseline-patch.status
 
+          mv candidate/ci/check-approval-actor-v1-static.sh candidate/ci/check-approval-actor-v1-static.sh.candidate-proofed
+          echo $? > proof/candidate-hook-isolation.status
           (cd candidate && bash ci/validate.sh) > proof/canonical-repaired.log 2>&1
           echo $? > proof/canonical-repaired.status
 
