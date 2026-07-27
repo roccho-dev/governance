@@ -27,7 +27,8 @@ from pathlib import Path
 selftest=json.load(open(sys.argv[1]))
 manifest=json.load(open(sys.argv[2]))
 assert selftest['status']=='PASS'
-assert selftest['destructiveCases']==22
+assert selftest['destructiveCases']==23
+assert selftest['expectedAdapterManifestDigest']=='sha256:538ba7977bc9894bfcc2e2ae7f7e670b915f0302f318663546071d196f048724'
 assert selftest['engineManifestDigest']==manifest['manifest_digest']
 assert manifest['source_files'][0]['sha256']=='sha256:'+hashlib.sha256(Path('tools/approval-receipt-verifier.py').read_bytes()).hexdigest()
 identity=json.load(open('contracts/approval_actor/v1/identity.json'))
@@ -47,6 +48,7 @@ fixture=json.load(open('contracts/approval_actor/v1/fixtures/github-approval-evi
 schema=json.load(open('contracts/approval_actor/v1/schemas/github-approval-evidence.schema.json'))
 assert set(fixture)==set(schema['required'])
 assert fixture['kind']=='githubApprovalEvidence.v1' and fixture['status']=='COMPLETE'
+assert fixture['adapter_manifest_digest']=='sha256:538ba7977bc9894bfcc2e2ae7f7e670b915f0302f318663546071d196f048724'
 assert 'providerApprovalEvidence.v1' not in json.dumps(fixture)
 PY
 
@@ -73,6 +75,7 @@ print(json.dumps({
     'status':approval['status'],
     'destructiveCases':approval['destructiveCases'],
     'engineManifestDigest':approval['engineManifestDigest'],
+    'expectedAdapterManifestDigest':approval['expectedAdapterManifestDigest'],
     'canonicalEvidenceShape':'githubApprovalEvidence.v1',
   },
 },sort_keys=True,separators=(',',':')))
