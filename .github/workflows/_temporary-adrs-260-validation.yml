@@ -1,0 +1,180 @@
+name: Temporary ADRS 260 exact validation
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/_temporary-adrs-260-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate ADRS reader configuration
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: 46f9ba9807903ce987c1f6dc86218f6dec2e34b6
+          path: candidate
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+          cache: false
+      - name: Install CUE
+        run: |
+          go install cuelang.org/go/cmd/cue@v0.9.2
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: Run bounded exact-head admission proof
+        shell: bash
+        run: |
+          mkdir -p proof
+          set +e
+
+          test "$(git -C candidate rev-parse HEAD)" = 46f9ba9807903ce987c1f6dc86218f6dec2e34b6
+          echo $? > proof/head.status
+
+          (
+            cd candidate
+            cue vet adr/schema.cue adr/allowed.cue
+            cue vet adr/schema.cue adr/src/01KYF3A0M0P7XJ6B9Q2C4R8T5V-approval-actor-v1.cue
+          ) > proof/cue.log 2>&1
+          echo $? > proof/cue.status
+
+          python3 candidate/tools/check-approval-actor-v1.py selftest --out proof/architecture-a.json > proof/architecture-a.stdout 2> proof/architecture-a.stderr
+          echo $? > proof/architecture-a.status
+          python3 candidate/tools/check-approval-actor-v1.py selftest --out proof/architecture-b.json > proof/architecture-b.stdout 2> proof/architecture-b.stderr
+          echo $? > proof/architecture-b.status
+          cmp proof/architecture-a.json proof/architecture-b.json > proof/architecture-replay.log 2>&1
+          echo $? > proof/architecture-replay.status
+
+          python3 candidate/tools/check-approval-admission-exception.py check --out proof/admission-a.json > proof/admission-a.stdout 2> proof/admission-a.stderr
+          echo $? > proof/admission-a.status
+          python3 candidate/tools/check-approval-admission-exception.py check --out proof/admission-b.json > proof/admission-b.stdout 2> proof/admission-b.stderr
+          echo $? > proof/admission-b.status
+          cmp proof/admission-a.json proof/admission-b.json > proof/admission-replay.log 2>&1
+          echo $? > proof/admission-replay.status
+
+          python3 candidate/tools/check-approval-admission-exception.py selftest --out proof/admission-selftest-a.json > proof/admission-selftest-a.stdout 2> proof/admission-selftest-a.stderr
+          echo $? > proof/admission-selftest-a.status
+          python3 candidate/tools/check-approval-admission-exception.py selftest --out proof/admission-selftest-b.json > proof/admission-selftest-b.stdout 2> proof/admission-selftest-b.stderr
+          echo $? > proof/admission-selftest-b.status
+          cmp proof/admission-selftest-a.json proof/admission-selftest-b.json > proof/admission-selftest-replay.log 2>&1
+          echo $? > proof/admission-selftest-replay.status
+
+          (cd candidate && bash ci/check-approval-actor-v1-static.sh) > proof/static.log 2>&1
+          echo $? > proof/static.status
+
+          (cd candidate && bash ci/validate.sh) > proof/canonical-known.log 2>&1
+          canonical_exit=$?
+          echo "$canonical_exit" > proof/canonical-known.exit
+          test "$canonical_exit" -ne 0
+          known_status=$?
+          grep -Fq 'decision/live/issue-234-recursive-contract-modeling-v1-publication-correction.jsonl:3 decisionReceipt.v1 must be a pass receipt for #202/#204' proof/canonical-known.log
+          known_status=$((known_status || $?))
+          echo "$known_status" > proof/known-failure-contract.status
+
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('candidate')
+          path=root/'decision/live/issue-234-recursive-contract-modeling-v1-publication-correction.jsonl'
+          rows=[json.loads(line) for line in path.read_text().splitlines()]
+          assert len(rows)==3
+          assert {k:rows[2].get(k) for k in ('hubIssue','workIssue','status')} == {'hubIssue':202,'workIssue':234,'status':'pass'}
+          rows[2]['workIssue']=204
+          path.write_text('\n'.join(json.dumps(row,sort_keys=True,separators=(',',':')) for row in rows)+'\n')
+          new_sha=hashlib.sha256(path.read_bytes()).hexdigest()
+          old_sha='33f6ff1913f908134227186851868f0a47de4868868602b639ba91110aaad057'
+          for rel in [
+              'ci/check-recursive-contract-modeling-v1-publication-correction-static.sh',
+              'adr/src/01K0E1CM000000000000000235-recursive-contract-modeling-v1-publication-correction.cue',
+          ]:
+              target=root/rel
+              text=target.read_text()
+              assert old_sha in text
+              target.write_text(text.replace(old_sha,new_sha))
+          (Path('proof')/'known-baseline-repair.json').write_text(json.dumps({
+              'kind':'temporaryKnownBaselineRepair.v1',
+              'path':str(path.relative_to(root)),
+              'line':3,
+              'changedField':'workIssue',
+              'from':234,
+              'to':204,
+              'newBatchSha256':'sha256:'+new_sha,
+              'committed':False,
+              'authority':False,
+          },sort_keys=True,separators=(',',':'))+'\n')
+          PY
+          echo $? > proof/known-baseline-patch.status
+
+          (cd candidate && bash ci/validate.sh) > proof/canonical-repaired.log 2>&1
+          echo $? > proof/canonical-repaired.status
+
+          python3 - <<'PY' > proof/summary.json
+          import hashlib,json
+          from pathlib import Path
+          root=Path('candidate')
+          files={}
+          for rel in [
+              'approval_actor/v1/admission-exception.json',
+              'approval_actor/v1/contract.json',
+              'approval_actor/v1/accepted-decision.json',
+              'approval_actor/v1/release-manifest.json',
+              'approval_actor/v1/proof.json',
+              'approval_actor/v1/schemas/authority-grant.schema.json',
+              'approval_actor/v1/schemas/github-approval-evidence.schema.json',
+              'approval_actor/v1/schemas/approval-receipt.schema.json',
+              'approval_actor/v1/schemas/implementation-manifest.schema.json',
+          ]:
+              files[rel]='sha256:'+hashlib.sha256((root/rel).read_bytes()).hexdigest()
+          statuses={p.name:int(p.read_text().strip()) for p in sorted(Path('proof').glob('*.status'))}
+          report={
+              'kind':'externalAdrsApprovalActorExceptionProof.v1',
+              'candidateHead':'46f9ba9807903ce987c1f6dc86218f6dec2e34b6',
+              'candidateSpecificProof':'PASS' if all(v==0 for v in statuses.values()) else 'FAIL',
+              'canonicalBaseline':'FAIL_KNOWN_ADRS_234',
+              'knownFailureCount':1,
+              'additionalFailureCount':0 if statuses.get('canonical-repaired.status')==0 else None,
+              'admission':'ALLOW_WITH_ACCEPTED_EXCEPTION' if all(v==0 for v in statuses.values()) else 'DENY',
+              'fullCanonicalGreen':False,
+              'nativeAdrsCiExecution':'NOT_RUN',
+              'statuses':statuses,
+              'files':files,
+              'authority':False,
+          }
+          print(json.dumps(report,sort_keys=True,separators=(',',':')))
+          PY
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adrs-260-exact-exception-validation
+          path: proof/
+          if-no-files-found: error
+      - name: Enforce bounded admission proof
+        if: always()
+        run: |
+          for file in proof/*.status; do test "$(cat "$file")" = 0; done
+          test "$(python3 -c 'import json;print(json.load(open("proof/summary.json"))["candidateSpecificProof"])')" = PASS
+          test "$(python3 -c 'import json;print(json.load(open("proof/summary.json"))["knownFailureCount"])')" = 1
+          test "$(python3 -c 'import json;print(json.load(open("proof/summary.json"))["additionalFailureCount"])')" = 0
+          test "$(python3 -c 'import json;print(json.load(open("proof/summary.json"))["admission"])')" = ALLOW_WITH_ACCEPTED_EXCEPTION
+          test "$(python3 -c 'import json;print(json.load(open("proof/summary.json"))["fullCanonicalGreen"])')" = False
