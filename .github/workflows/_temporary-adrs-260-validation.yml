@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           repository: roccho-dev/adrs
-          ref: c817310dcc15a23dcfa12a2fde05e4a2a29a0195
+          ref: d16b9f3c09b334807e24aea5fef4b9d463819edf
           path: candidate
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p proof
-          test "$(git -C candidate rev-parse HEAD)" = c817310dcc15a23dcfa12a2fde05e4a2a29a0195
+          test "$(git -C candidate rev-parse HEAD)" = d16b9f3c09b334807e24aea5fef4b9d463819edf
           (
             cd candidate
             cue vet adr/schema.cue adr/allowed.cue
@@ -106,9 +106,9 @@ jobs:
               'approval_actor/v1/proof.json','approval_actor/v1/schemas/authority-grant.schema.json',
               'approval_actor/v1/schemas/github-approval-evidence.schema.json',
               'approval_actor/v1/schemas/approval-receipt.schema.json',
-              'approval_actor/v1/schemas/implementation-manifest.schema.json','tools/adr/check',
+              'approval_actor/v1/schemas/implementation-manifest.schema.json','tools/adr/check','ci/validate.sh',
           ]: files[rel]='sha256:'+hashlib.sha256((root/rel).read_bytes()).hexdigest()
-          print(json.dumps({'kind':'externalAdrsApprovalActorExceptionProof.v1','candidateHead':'c817310dcc15a23dcfa12a2fde05e4a2a29a0195','candidateSpecificProof':'PASS','canonicalBaseline':'FAIL_KNOWN_ADRS_234','knownFailureCount':1,'additionalFailureCount':0,'admission':'ALLOW_WITH_ACCEPTED_EXCEPTION','fullCanonicalGreen':False,'nativeAdrsCiExecution':'NOT_RUN','files':files,'authority':False},sort_keys=True,separators=(',',':')))
+          print(json.dumps({'kind':'externalAdrsApprovalActorExceptionProof.v1','candidateHead':'d16b9f3c09b334807e24aea5fef4b9d463819edf','candidateSpecificProof':'PASS','canonicalBaseline':'FAIL_KNOWN_ADRS_234','knownFailureCount':1,'additionalFailureCount':0,'admission':'ALLOW_WITH_ACCEPTED_EXCEPTION','fullCanonicalGreen':False,'nativeAdrsCiExecution':'NOT_RUN','files':files,'authority':False},sort_keys=True,separators=(',',':')))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
