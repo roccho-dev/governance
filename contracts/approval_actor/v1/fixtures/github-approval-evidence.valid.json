@@ -1,0 +1,28 @@
+{
+  "actor_account_id": 40359643,
+  "actor_login": "roccho-dev",
+  "actor_type": "User",
+  "adapter_manifest_digest": "sha256:538ba7977bc9894bfcc2e2ae7f7e670b915f0302f318663546071d196f048724",
+  "candidate_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "claim_ceiling": {
+    "account_non_compromise_proven": false,
+    "authority_grant_validity_proven": false,
+    "physical_human_identity_proven": false,
+    "provider_independent_non_repudiation_proven": false
+  },
+  "findings": [],
+  "kind": "githubApprovalEvidence.v1",
+  "observed_at": "2026-07-20T12:01:00Z",
+  "provider": "github",
+  "provider_response_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "pull_request_id": 90000015,
+  "pull_request_number": 15,
+  "repository_full_name": "roccho-dev/diagrams",
+  "repository_id": 1285891542,
+  "review_commit_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "review_dismissed": false,
+  "review_id": 7001,
+  "review_state": "APPROVED",
+  "review_submitted_at": "2026-07-20T12:00:00Z",
+  "status": "COMPLETE"
+}
