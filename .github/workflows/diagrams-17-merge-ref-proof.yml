@@ -1,0 +1,127 @@
+name: Diagrams 17 merge-ref proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/diagrams-17-merge-ref-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: a293e39890aee692f70d4e8d114d4081733a937b
+          path: diagrams
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: diagrams/package-lock.json
+
+      - name: Install projection dependencies
+        working-directory: diagrams
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y graphviz
+          python -m pip install '.[test]'
+          npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Prove exact merge source and repository boundary
+        working-directory: diagrams
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = a293e39890aee692f70d4e8d114d4081733a937b
+          test -f contracts/mxgraph_current_state/v1/identity.json
+          test -f src/jsonl_diagram_core/mxgraph_model.py
+          test -f src/jsonl_diagram_core/mxgraph_projection.py
+          test ! -e src/jsonl_diagram_core/meaning_model.py
+          test ! -e src/jsonl_diagram_core/render_ast.py
+          test ! -e src/jsonl_diagram_core/drawio_render_ast.py
+          test ! -e src/jsonl_diagram_core/svg_render_ast.py
+          test ! -e proposal-evidence/dvm-elimination
+          test ! -e generated/expression-suite
+
+      - name: Run full repository tests
+        working-directory: diagrams
+        run: python -m unittest discover -s tests -v
+
+      - name: Build twice from clean inputs
+        working-directory: diagrams
+        run: |
+          python examples/expression_suite/build_suite.py --out ../proof/suite-a --require-engines
+          python examples/expression_suite/build_suite.py --out ../proof/suite-b --require-engines
+          node examples/expression_suite/tools/d2_elk_smoke.mjs ../proof/suite-a
+          node examples/expression_suite/tools/d2_elk_smoke.mjs ../proof/suite-b
+          diff -ru ../proof/suite-a ../proof/suite-b
+
+      - name: Prove canonical receipt and claim ceiling
+        working-directory: diagrams
+        run: |
+          python tools/check_canonical_cutover.py \
+            --suite ../proof/suite-a \
+            --candidate a293e39890aee692f70d4e8d114d4081733a937b \
+            --out ../proof/canonical-cutover-receipt.json
+          python - <<'PY'
+          import json
+          receipt=json.load(open('../proof/canonical-cutover-receipt.json'))
+          assert receipt['status']=='PASS'
+          assert receipt['candidateRevision']=='a293e39890aee692f70d4e8d114d4081733a937b'
+          assert receipt['adrsMergedCommit']=='2ae2830c211057274e0900440ea7b9a1c9e0e9ad'
+          assert receipt['canonicalModels']==13
+          assert receipt['soleGeneratedCurrentState']=='mxGraphModel'
+          assert receipt['canonicalCutoverComplete'] is True
+          assert receipt['allProjectionsMigrated'] is True
+          assert receipt['duplicateIrCountZero'] is True
+          assert receipt['businessOutcomeAchieved'] is False
+          assert receipt['corporateSaleOutcomeAchieved'] is False
+          PY
+
+      - uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Run Nix checks and package
+        working-directory: diagrams
+        run: |
+          nix flake check -L
+          nix build -L .#jsonl-diagram-core
+
+      - name: Emit merge-ref proof receipt
+        run: |
+          python - <<'PY' > proof/merge-ref-proof.json
+          import hashlib,json,pathlib
+          receipt=json.load(open('proof/canonical-cutover-receipt.json'))
+          result={
+            'kind':'diagramsCanonicalMergeRefProof.v1',
+            'repository':'roccho-dev/diagrams',
+            'mergeCommit':'a293e39890aee692f70d4e8d114d4081733a937b',
+            'status':'PASS',
+            'canonicalReceiptSha256':'sha256:'+hashlib.sha256(pathlib.Path('proof/canonical-cutover-receipt.json').read_bytes()).hexdigest(),
+            'canonicalModels':receipt['canonicalModels'],
+            'canonicalCutoverComplete':receipt['canonicalCutoverComplete'],
+            'allProjectionsMigrated':receipt['allProjectionsMigrated'],
+            'duplicateIrCountZero':receipt['duplicateIrCountZero'],
+            'businessOutcomeAchieved':False,
+            'corporateSaleOutcomeAchieved':False,
+            'authority':False,
+          }
+          print(json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagrams-17-merge-ref-proof
+          path: proof
+          if-no-files-found: error
