@@ -1,0 +1,168 @@
+name: ADRS 271 exact-head proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/adrs-271-exact-head-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: 2da7e4da2ce059deebf3863dab30dc9ecd149207
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: 3855dd6ec09b1254ab21c99095027c8e9401657e
+          path: diagrams
+          persist-credentials: false
+
+      - uses: actions/checkout@v6
+        with:
+          repository: jgraph/drawio
+          ref: 88ee1f5ab4d40603a8f3aaa0d9d6dc3794c6b3f0
+          path: drawio
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Run exact ADRS canonical and Nix gates
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          test "$(git -C adrs rev-parse HEAD)" = 2da7e4da2ce059deebf3863dab30dc9ecd149207
+          cd adrs
+          python3 -S tools/check-diagram-semantic-contract-v1-0-1.py check --root . --out ../proof/check-a.json
+          python3 -S tools/check-diagram-semantic-contract-v1-0-1.py check --root . --out ../proof/check-b.json
+          cmp ../proof/check-a.json ../proof/check-b.json
+          python3 -S tools/check-diagram-semantic-contract-v1-0-1.py selftest --root . --out ../proof/selftest-a.json
+          python3 -S tools/check-diagram-semantic-contract-v1-0-1.py selftest --root . --out ../proof/selftest-b.json
+          cmp ../proof/selftest-a.json ../proof/selftest-b.json
+          cmp ../proof/selftest-a.json diagram_semantic_contract/v1_0_1/proof.json
+          nix flake check -L |& tee ../proof/nix-flake-check.log
+          cd ..
+
+      - name: Build corrected official GraphViewer bundle
+        run: |
+          set -euo pipefail
+          PYTHONPATH=diagrams/src python diagrams/tools/build_compiled_graphviewer.py \
+            --source adrs/diagram_semantic_contract/v1_0_1/expected.drawio \
+            --viewer-runtime drawio/src/main/webapp/js/viewer-static.min.js \
+            --license drawio/LICENSE \
+            --runtime-pin diagrams/contracts/compiled_graphviewer/v1/runtime-pin.json \
+            --out proof/bundle
+          test "$(sha256sum proof/bundle/source.drawio | cut -d' ' -f1)" = a1f5c765f477286e030a7a7c614ed7649b0048d9c53ee32ddfe34170e9957112
+
+      - name: Resolve exact Playwright wheels
+        run: |
+          set -euo pipefail
+          mkdir -p proof/wheels
+          python -m pip download --only-binary=:all: --dest proof/wheels 'playwright==1.58.0'
+          cat > proof/wheels/SHA256SUMS <<'EOF'
+          f88193799d43dbf8c8a806d6405c9c52fe2af40bf75072a606357b33cc336c7f  greenlet-3.5.4-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
+          c95568ba1eda83812598c1dc9be60b4406dffd60b149bc1536180ad108723d6b  playwright-1.58.0-py3-none-manylinux1_x86_64.whl
+          af2f8fede4171ef667dfded53f96e2ed0d6e6bd7ee3bb46437f77e3b57689228  pyee-13.0.1-py3-none-any.whl
+          481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8  typing_extensions-4.16.0-py3-none-any.whl
+          EOF
+          (cd proof/wheels && sha256sum -c SHA256SUMS)
+
+      - name: Write exact official renderer smoke probe
+        run: |
+          cat > proof/smoke.py <<'PY'
+          import hashlib,html,json,re,sys,time
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          bundle=Path('/work/proof/bundle')
+          source=(bundle/'source.drawio').read_bytes()
+          expected='sha256:a1f5c765f477286e030a7a7c614ed7649b0048d9c53ee32ddfe34170e9957112'
+          index=(bundle/'index.html').read_text()
+          match=re.search(r'<div id="viewer" class="mxgraph" data-mxgraph="([^"]*)"></div>',index)
+          assert match
+          data=html.unescape(match.group(1))
+          console=[]; page_errors=[]
+          with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True,executable_path='/ms-playwright/chromium-1208/chrome-linux64/chrome')
+              page=browser.new_page(viewport={'width':1280,'height':800},device_scale_factor=1,color_scheme='light',reduced_motion='reduce')
+              page.on('console',lambda msg: console.append(msg.text) if msg.type=='error' else None)
+              page.on('pageerror',lambda err: page_errors.append(str(err)))
+              page.set_content('<style>html,body,#viewer{width:100%;height:100%;margin:0}#viewer{min-height:600px}</style><div id="viewer" class="mxgraph" data-mxgraph="'+html.escape(data,quote=True)+'"></div>')
+              page.add_script_tag(content=(bundle/'app.js').read_text())
+              page.add_script_tag(content=(bundle/'viewer-static.min.js').read_text())
+              deadline=time.monotonic()+30
+              while time.monotonic()<deadline:
+                  if page.evaluate("Boolean(window.__compiledViewerProof&&window.__compiledViewerProof.status==='READY')"): break
+                  page.wait_for_timeout(100)
+              else: raise RuntimeError('GraphViewer did not reach READY')
+              result=page.evaluate("() => ({initialized:window.__compiledViewerProof.officialGraphViewerInitialized===true,svgCount:document.querySelectorAll('#viewer svg').length,pageCount:window.__compiledViewer.diagrams.length||1,cellIds:Object.keys(window.__compiledViewer.graph.getModel().cells||{}).sort()})")
+              page.screenshot(path='/work/proof/renderer-smoke.png',full_page=True,animations='disabled')
+              version=browser.version
+              browser.close()
+          source_sha='sha256:'+hashlib.sha256(source).hexdigest()
+          duplicate_messages=[m for m in console+page_errors if 'Duplicate ID' in m or 'duplicate' in m.lower()]
+          output={'kind':'diagramSemanticContractOfficialRendererSmoke.v1','status':'PASS' if result['initialized'] and result['svgCount']>0 and source_sha==expected and not console and not page_errors else 'FAIL','sourceSha256':source_sha,'browserVersion':version,'rendererCommit':'88ee1f5ab4d40603a8f3aaa0d9d6dc3794c6b3f0','viewerSha256':'sha256:'+hashlib.sha256((bundle/'viewer-static.min.js').read_bytes()).hexdigest(),'initialized':result['initialized'],'svgCount':result['svgCount'],'pageCount':result['pageCount'],'cellIds':result['cellIds'],'consoleErrors':console,'pageErrors':page_errors,'duplicateIdMessages':duplicate_messages,'sourceUnchanged':hashlib.sha256((bundle/'source.drawio').read_bytes()).digest()==hashlib.sha256(source).digest(),'semanticMeaningChanged':False,'authority':False}
+          Path('/work/proof/renderer-smoke.json').write_text(json.dumps(output,sort_keys=True,separators=(',',':'))+'\n')
+          print(json.dumps(output,indent=2,sort_keys=True))
+          raise SystemExit(0 if output['status']=='PASS' else 1)
+          PY
+
+      - name: Run official renderer smoke in exact OCI image without network
+        run: |
+          set -euo pipefail
+          image='mcr.microsoft.com/playwright/python@sha256:678457c4c323b981d8b4befc57b95366bb1bb6aa30057b1269f6b171e8d9975a'
+          docker pull "$image"
+          docker run --rm --network none -v "$PWD:/work" -w /work "$image" bash -lc '
+            set -euo pipefail
+            python -m pip install --no-index --find-links=/work/proof/wheels playwright==1.58.0
+            test "$(sha256sum /ms-playwright/chromium-1208/chrome-linux64/chrome | cut -d" " -f1)" = 481fea1516a1f2b76454664272f12cd9dd1f20117b21e1f1498e08bc7f872c00
+            python /work/proof/smoke.py
+          '
+
+      - name: Emit exact-head proof receipt
+        run: |
+          python - <<'PY' > proof/summary.json
+          import hashlib,json,pathlib
+          check=json.load(open('proof/selftest-a.json'))
+          smoke=json.load(open('proof/renderer-smoke.json'))
+          assert check['status']=='PASS' and check['destructiveCaseCount']==12
+          assert smoke['status']=='PASS' and smoke['duplicateIdMessages']==[] and smoke['consoleErrors']==[] and smoke['pageErrors']==[]
+          result={'kind':'adrs271ExternalExactHeadProof.v1','candidate':'2da7e4da2ce059deebf3863dab30dc9ecd149207','status':'PASS','decisionId':'01KZRENDER4C0RRECT10N00001','correctedArtifactSha256':check['correctedArtifactSha256'],'expectedSemanticSha256':check['expectedSemanticSha256'],'destructiveCaseCount':12,'officialRendererSmoke':'PASS','rendererSmokeSha256':'sha256:'+hashlib.sha256(pathlib.Path('proof/renderer-smoke.json').read_bytes()).hexdigest(),'semanticMeaningChanged':False,'implementationEncodingCorrected':False,'renderQualityAuditComplete':False,'publicationAdmissible':False,'businessOutcomeAchieved':False,'corporateSaleOutcomeAchieved':False,'authority':False}
+          print(json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adrs-271-exact-head-proof
+          path: proof
+          if-no-files-found: error
