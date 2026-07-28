@@ -35,3 +35,41 @@ jobs:
             diagrams-source-a293e398.tar.gz
             diagrams-source-a293e398.sha256
           if-no-files-found: error
+
+  viewer-runtime:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: jgraph/drawio
+          ref: v30.0.4
+          path: drawio
+          persist-credentials: false
+      - name: Bind official runtime bytes
+        run: |
+          set -euo pipefail
+          mkdir -p viewer-runtime
+          cp drawio/src/main/webapp/js/viewer-static.min.js viewer-runtime/
+          cp drawio/LICENSE viewer-runtime/LICENSE
+          git -C drawio rev-parse HEAD > viewer-runtime/upstream-commit.txt
+          printf '%s\n' 'v30.0.4' > viewer-runtime/upstream-tag.txt
+          sha256sum viewer-runtime/viewer-static.min.js viewer-runtime/LICENSE > viewer-runtime/SHA256SUMS.txt
+          python - <<'PY' > viewer-runtime/manifest.json
+          import hashlib,json,pathlib
+          root=pathlib.Path('viewer-runtime')
+          result={
+            'kind':'drawioViewerRuntimePin.v1',
+            'repository':'jgraph/drawio',
+            'tag':'v30.0.4',
+            'commit':(root/'upstream-commit.txt').read_text().strip(),
+            'viewerPath':'src/main/webapp/js/viewer-static.min.js',
+            'viewerSha256':'sha256:'+hashlib.sha256((root/'viewer-static.min.js').read_bytes()).hexdigest(),
+            'licenseSha256':'sha256:'+hashlib.sha256((root/'LICENSE').read_bytes()).hexdigest(),
+          }
+          print(json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: drawio-viewer-runtime-v30.0.4
+          path: viewer-runtime
+          if-no-files-found: error
