@@ -36,6 +36,45 @@ jobs:
             diagrams-source-3855dd6.sha256
           if-no-files-found: error
 
+  adrs-source:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: b92102d78eb2fe428b1a23b974e451dd7fd027ff
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - name: Bind ADRS source and create deterministic archive
+        run: |
+          set -euo pipefail
+          test "$(git -C adrs rev-parse HEAD)" = b92102d78eb2fe428b1a23b974e451dd7fd027ff
+          rm -rf adrs/.git
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf adrs-source-b92102d.tar.gz adrs
+          sha256sum adrs-source-b92102d.tar.gz > adrs-source-b92102d.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adrs-source-b92102d
+          path: |
+            adrs-source-b92102d.tar.gz
+            adrs-source-b92102d.sha256
+          if-no-files-found: error
+
   runtime-image:
     runs-on: ubuntu-24.04
     steps:
