@@ -1,0 +1,131 @@
+name: Diagrams 19 merge-ref proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/diagrams-19-merge-ref-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: 3855dd6ec09b1254ab21c99095027c8e9401657e
+          path: diagrams
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: diagrams/package-lock.json
+
+      - name: Install dependencies
+        working-directory: diagrams
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y graphviz
+          python -m pip install '.[test]'
+          npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Prove exact merge source and boundary
+        working-directory: diagrams
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 3855dd6ec09b1254ab21c99095027c8e9401657e
+          test -f src/jsonl_diagram_core/semantic_conformance.py
+          test -f tools/build_semantic_conformance.py
+          test -f tools/prove_semantic_conformance.py
+          test ! -e src/jsonl_diagram_core/meaning_model.py
+          test ! -e src/jsonl_diagram_core/render_ast.py
+          test "$(find . -type f \( -name 'dvm.json' -o -name '*comparison-ir*' -o -name '*semantic-state.json' \) -not -path './.git/*' | wc -l)" -eq 0
+
+      - name: Run full repository tests
+        working-directory: diagrams
+        run: python -m unittest discover -s tests -v
+
+      - name: Build independent observed artifact and receipt
+        working-directory: diagrams
+        run: |
+          mkdir -p ../proof
+          GENERATED_AT="$(git show -s --format=%cI HEAD)"
+          python tools/build_semantic_conformance.py \
+            --expected tests/fixtures/semantic_conformance/expected.drawio \
+            --expected-contract tests/fixtures/semantic_conformance/expected-contract.json \
+            --events tests/fixtures/semantic_conformance/observed.events.jsonl \
+            --implementation-revision 3855dd6ec09b1254ab21c99095027c8e9401657e \
+            --generated-at "$GENERATED_AT" \
+            --observed-out ../proof/observed.drawio \
+            --provenance-out ../proof/observed-provenance.json \
+            --receipt-out ../proof/receipt.json
+          python tools/prove_semantic_conformance.py \
+            --implementation-revision 3855dd6ec09b1254ab21c99095027c8e9401657e \
+            --generated-at "$GENERATED_AT" \
+            --out ../proof/proof.json
+          python - <<'PY'
+          import json
+          receipt=json.load(open('../proof/receipt.json'))
+          proof=json.load(open('../proof/proof.json'))
+          assert receipt['comparison']['status']=='PASS'
+          assert receipt['expected']['adrs_merge_commit']=='b92102d78eb2fe428b1a23b974e451dd7fd027ff'
+          assert receipt['expected']['decision_id']=='01KYK7M4A8D2N6Q0R5S9T3V1WX'
+          assert receipt['observed']['implementation_revision']=='3855dd6ec09b1254ab21c99095027c8e9401657e'
+          assert receipt['observed']['origin']=='implementation-derived'
+          assert proof['status']=='PASS'
+          assert proof['destructiveCaseCount']==20
+          assert proof['comparisonIrPersisted'] is False
+          assert proof['businessOutcomeAchieved'] is False
+          assert proof['corporateSaleOutcomeAchieved'] is False
+          PY
+
+      - uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Run Nix checks and package
+        working-directory: diagrams
+        run: |
+          nix flake check -L
+          nix build -L .#jsonl-diagram-core
+
+      - name: Emit merge-ref receipt
+        run: |
+          python - <<'PY' > proof/merge-ref-proof.json
+          import hashlib,json,pathlib
+          receipt=json.load(open('proof/receipt.json'))
+          proof=json.load(open('proof/proof.json'))
+          result={
+            'kind':'diagramSemanticConformanceMergeRefProof.v1',
+            'repository':'roccho-dev/diagrams',
+            'mergeCommit':'3855dd6ec09b1254ab21c99095027c8e9401657e',
+            'adrsMergeCommit':'b92102d78eb2fe428b1a23b974e451dd7fd027ff',
+            'decisionId':'01KYK7M4A8D2N6Q0R5S9T3V1WX',
+            'status':'PASS',
+            'receiptSha256':'sha256:'+hashlib.sha256(pathlib.Path('proof/receipt.json').read_bytes()).hexdigest(),
+            'proofSha256':'sha256:'+hashlib.sha256(pathlib.Path('proof/proof.json').read_bytes()).hexdigest(),
+            'destructiveCaseCount':proof['destructiveCaseCount'],
+            'semanticConformanceComplete':True,
+            'renderQualityAuditComplete':False,
+            'publicationAdmissible':False,
+            'businessOutcomeAchieved':False,
+            'corporateSaleOutcomeAchieved':False,
+            'authority':False,
+          }
+          print(json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagrams-19-merge-ref-proof
+          path: proof
+          if-no-files-found: error
