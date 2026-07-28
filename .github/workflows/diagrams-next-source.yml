@@ -39,11 +39,25 @@ jobs:
   adrs-source:
     runs-on: ubuntu-24.04
     steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
       - uses: actions/checkout@v6
         with:
           repository: roccho-dev/adrs
           ref: 2ae2830c211057274e0900440ea7b9a1c9e0e9ad
           path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
       - name: Bind ADRS source and create deterministic archive
         run: |
