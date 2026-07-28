@@ -1,0 +1,37 @@
+name: Diagrams render-audit source snapshot
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/diagrams-render-audit-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: 3855dd6ec09b1254ab21c99095027c8e9401657e
+          path: diagrams
+          persist-credentials: false
+      - name: Bind source and create deterministic archive
+        run: |
+          set -euo pipefail
+          test "$(git -C diagrams rev-parse HEAD)" = 3855dd6ec09b1254ab21c99095027c8e9401657e
+          rm -rf diagrams/.git
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf diagrams-source-3855dd6.tar.gz diagrams
+          sha256sum diagrams-source-3855dd6.tar.gz > diagrams-source-3855dd6.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diagrams-source-3855dd6
+          path: |
+            diagrams-source-3855dd6.tar.gz
+            diagrams-source-3855dd6.sha256
+          if-no-files-found: error
