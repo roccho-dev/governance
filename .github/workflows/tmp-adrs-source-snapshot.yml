@@ -1,0 +1,53 @@
+name: Temporary ADRS source snapshot
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/tmp-adrs-source-snapshot.yml
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate ADRS reader
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: proposals
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - name: Package exact ADRS source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          root = Path('adrs')
+          with ZipFile('adrs-source.zip', 'w', ZIP_DEFLATED) as archive:
+              for path in sorted(root.rglob('*')):
+                  if not path.is_file() or '.git' in path.parts:
+                      continue
+                  archive.write(path, path.relative_to(root).as_posix())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adrs-source-snapshot
+          path: adrs-source.zip
+          if-no-files-found: error
