@@ -1,0 +1,60 @@
+name: ADRS 266 one-shot repair
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/adrs-266-repair.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS app identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: write
+
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: proposal/265-decision-receipt-scopes
+          fetch-depth: 0
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: true
+
+      - name: Restore canonical flake and retain only required Nix fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show 70244fa200d8717c61b514432c54bed4248028d9:flake.nix > flake.nix
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('flake.nix')
+          text=path.read_text()
+          old='''          runCheck = name: command: pkgs.runCommand "adrs-${name}" {\n            nativeBuildInputs = [\n              pkgs.bash\n              pkgs.coreutils\n              pkgs.cue\n              pkgs.findutils\n              pkgs.gnugrep\n'''
+          new='''          runCheck = name: command: pkgs.runCommand "adrs-${name}" {\n            ADRS_SOURCE_SHA = self.rev or "unknown";\n            nativeBuildInputs = [\n              pkgs.bash\n              pkgs.coreutils\n              pkgs.cue\n              pkgs.findutils\n              pkgs.gitMinimal\n              pkgs.gnugrep\n'''
+          assert text.count(old)==1
+          path.write_text(text.replace(old,new))
+          PY
+          git diff --check
+          test "$(git diff --numstat -- flake.nix | awk '{print $1":"$2}')" = "2:0"
+          git config user.name roccho-dev
+          git config user.email 40359643+roccho-dev@users.noreply.github.com
+          git add flake.nix
+          git commit -m 'fix(nix): restore canonical generated artifacts'
+          git push origin HEAD:proposal/265-decision-receipt-scopes
