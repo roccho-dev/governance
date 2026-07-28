@@ -1,0 +1,119 @@
+name: ADRS 262 exact-head proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/adrs-262-exact-head-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: 3a3c94718ad7a1fd4b86cdbead2a3d38e66a3d84
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+
+      - uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Run exact architecture proof and canonical validation
+        id: gates
+        shell: bash
+        run: |
+          mkdir -p proof
+          set +e
+          cd adrs
+          test "$(git rev-parse HEAD)" = 3a3c94718ad7a1fd4b86cdbead2a3d38e66a3d84
+          echo $? > ../proof/exact-head.status
+
+          python3 tools/check-mxgraph-current-state-v1.py --out ../proof/check-a.json > ../proof/check-a.stdout 2> ../proof/check-a.stderr
+          echo $? > ../proof/check-a.status
+          python3 tools/check-mxgraph-current-state-v1.py --out ../proof/check-b.json > ../proof/check-b.stdout 2> ../proof/check-b.stderr
+          echo $? > ../proof/check-b.status
+          cmp ../proof/check-a.json ../proof/check-b.json > ../proof/check-cmp.log 2>&1
+          echo $? > ../proof/check-cmp.status
+
+          python3 tools/check-mxgraph-current-state-v1.py --selftest --out ../proof/selftest-a.json > ../proof/selftest-a.stdout 2> ../proof/selftest-a.stderr
+          echo $? > ../proof/selftest-a.status
+          python3 tools/check-mxgraph-current-state-v1.py --selftest --out ../proof/selftest-b.json > ../proof/selftest-b.stdout 2> ../proof/selftest-b.stderr
+          echo $? > ../proof/selftest-b.status
+          cmp ../proof/selftest-a.json ../proof/selftest-b.json > ../proof/selftest-cmp.log 2>&1
+          echo $? > ../proof/selftest-cmp.status
+
+          bash ci/check-mxgraph-current-state-v1-static.sh > ../proof/static.log 2>&1
+          echo $? > ../proof/static.status
+          nix flake check -L > ../proof/nix-flake-check.log 2>&1
+          echo $? > ../proof/nix-flake-check.status
+
+          python3 - <<'PY' > ../proof/claim-boundary.log 2>&1
+          import json
+          check=json.load(open('../proof/check-a.json'))
+          selftest=json.load(open('../proof/selftest-a.json'))
+          accepted=json.load(open('mxgraph_current_state/v1/accepted-decision.json'))
+          manifest=json.load(open('mxgraph_current_state/v1/release-manifest.json'))
+          assert check['status']=='PASS'
+          assert check['publicationReceiptKind']=='decisionPublicationReceipt.v1'
+          assert len(selftest['destructiveCases'])==18
+          assert accepted['status']=='Accepted'
+          assert accepted['claimCeiling']['canonicalCutoverComplete'] is False
+          assert accepted['claimCeiling']['duplicateIrCountZero'] is False
+          assert manifest['architectureAccepted'] is True
+          assert manifest['canonicalCutoverComplete'] is False
+          assert manifest['corporateSaleOutcomeAchieved'] is False
+          PY
+          echo $? > ../proof/claim-boundary.status
+          cd ..
+
+          python3 - <<'PY' > proof/proof-summary.json
+          import json,pathlib
+          root=pathlib.Path('proof')
+          statuses={p.name.removesuffix('.status'):int(p.read_text().strip()) for p in sorted(root.glob('*.status'))}
+          summary={
+            'kind':'adrs262ExternalExactHeadProof.v1',
+            'candidate':'3a3c94718ad7a1fd4b86cdbead2a3d38e66a3d84',
+            'status':'PASS' if all(value==0 for value in statuses.values()) else 'FAIL',
+            'statuses':statuses,
+            'architectureAccepted':True,
+            'canonicalCutoverComplete':False,
+            'duplicateIrCountZero':False,
+            'authority':False,
+          }
+          print(json.dumps(summary,sort_keys=True,separators=(',',':')))
+          PY
+          test "$(python3 -c 'import json;print(json.load(open("proof/proof-summary.json"))["status"])')" = PASS
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adrs-262-exact-head-proof
+          path: proof
+          if-no-files-found: error
+
+      - name: Enforce exact-head proof
+        if: always()
+        run: test "${{ steps.gates.outputs.status }}" = 0
