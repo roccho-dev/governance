@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           repository: roccho-dev/adrs
-          ref: ca19dd93f7304a0a6cacfa2b4d48343bc301daaa
+          ref: c37874c2b676833f3a97291986f0ceda1a7d9c94
           path: adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -46,7 +46,7 @@ jobs:
           mkdir -p proof
           set +e
           cd adrs
-          test "$(git rev-parse HEAD)" = ca19dd93f7304a0a6cacfa2b4d48343bc301daaa
+          test "$(git rev-parse HEAD)" = c37874c2b676833f3a97291986f0ceda1a7d9c94
           echo $? > ../proof/exact-head.status
 
           python3 tools/check-decision-receipt-kinds-v1.py check --out ../proof/check-a.json > ../proof/check-a.stdout 2> ../proof/check-a.stderr
@@ -95,7 +95,7 @@ jobs:
           statuses={p.name.removesuffix('.status'):int(p.read_text().strip()) for p in sorted(root.glob('*.status'))}
           summary={
             'kind':'adrs266ExternalExactHeadProof.v1',
-            'candidate':'ca19dd93f7304a0a6cacfa2b4d48343bc301daaa',
+            'candidate':'c37874c2b676833f3a97291986f0ceda1a7d9c94',
             'status':'PASS' if all(v==0 for v in statuses.values()) else 'FAIL',
             'statuses':statuses,
             'canonicalCompensationRequired':False,
