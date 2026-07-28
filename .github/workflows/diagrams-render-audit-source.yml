@@ -35,3 +35,33 @@ jobs:
             diagrams-source-3855dd6.tar.gz
             diagrams-source-3855dd6.sha256
           if-no-files-found: error
+
+  runtime-image:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Resolve exact Playwright OCI identity
+        run: |
+          set -euo pipefail
+          image='mcr.microsoft.com/playwright/python:v1.58.0-noble'
+          docker pull "$image"
+          mkdir -p render-runtime
+          docker image inspect "$image" > render-runtime/image-inspect.json
+          docker image inspect --format '{{index .RepoDigests 0}}' "$image" > render-runtime/image-digest.txt
+          docker run --rm "$image" bash -lc 'python --version; chromium --version || true; fc-list | sort | sha256sum' > render-runtime/runtime-identity.txt
+          python - <<'PY' > render-runtime/manifest.json
+          import hashlib,json,pathlib
+          root=pathlib.Path('render-runtime')
+          result={
+            'kind':'renderAuditRuntimeImagePin.v1',
+            'imageTag':'mcr.microsoft.com/playwright/python:v1.58.0-noble',
+            'imageDigest':(root/'image-digest.txt').read_text().strip(),
+            'inspectSha256':'sha256:'+hashlib.sha256((root/'image-inspect.json').read_bytes()).hexdigest(),
+            'runtimeIdentitySha256':'sha256:'+hashlib.sha256((root/'runtime-identity.txt').read_bytes()).hexdigest(),
+          }
+          print(json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: render-audit-runtime-image-v1.58.0
+          path: render-runtime
+          if-no-files-found: error
