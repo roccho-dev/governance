@@ -1,0 +1,113 @@
+name: Diagrams 18 merge-ref proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/diagrams-18-merge-ref-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: fd32b3b2a7f24cf171cf0c1503922b7819edd33b
+          path: diagrams
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: jgraph/drawio
+          ref: 88ee1f5ab4d40603a8f3aaa0d9d6dc3794c6b3f0
+          path: drawio
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: diagrams/package-lock.json
+      - name: Install dependencies
+        working-directory: diagrams
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y graphviz
+          python -m pip install '.[test]' playwright==1.54.0
+          npm ci --ignore-scripts --no-audit --no-fund
+          python -m playwright install --with-deps chromium
+      - name: Bind exact merge and run repository tests
+        working-directory: diagrams
+        env:
+          DRAWIO_VIEWER_RUNTIME: ../drawio/src/main/webapp/js/viewer-static.min.js
+          DRAWIO_VIEWER_LICENSE: ../drawio/LICENSE
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = fd32b3b2a7f24cf171cf0c1503922b7819edd33b
+          python -m unittest discover -s tests -v
+          mkdir -p ../proof
+          python tools/prove_compiled_graphviewer.py \
+            --viewer-runtime ../drawio/src/main/webapp/js/viewer-static.min.js \
+            --license ../drawio/LICENSE \
+            --out ../proof/destructive-proof.json
+      - name: Compile and prove official browser runtime twice
+        working-directory: diagrams
+        run: |
+          python tools/build_compiled_graphviewer.py \
+            --source tests/fixtures/compiled_graphviewer/semantic-visibility.drawio \
+            --viewer-runtime ../drawio/src/main/webapp/js/viewer-static.min.js \
+            --license ../drawio/LICENSE \
+            --out ../proof/bundle-a
+          python tools/build_compiled_graphviewer.py \
+            --source tests/fixtures/compiled_graphviewer/semantic-visibility.drawio \
+            --viewer-runtime ../drawio/src/main/webapp/js/viewer-static.min.js \
+            --license ../drawio/LICENSE \
+            --out ../proof/bundle-b
+          diff -ru ../proof/bundle-a ../proof/bundle-b
+          python tools/probe_compiled_graphviewer.py \
+            --bundle ../proof/bundle-a \
+            --out ../proof/browser-proof.json \
+            --screenshots ../proof/screenshots
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Run Nix closure
+        working-directory: diagrams
+        run: |
+          nix flake check -L
+          nix build -L .#jsonl-diagram-core
+      - name: Emit merge-ref receipt
+        run: |
+          python3 - <<'PY' > proof/merge-ref-receipt.json
+          import json
+          browser=json.load(open('proof/browser-proof.json'))
+          destructive=json.load(open('proof/destructive-proof.json'))
+          assert browser['status']=='PASS'
+          assert destructive['status']=='PASS' and destructive['caseCount']==16
+          value={
+            'kind':'compiledGraphViewerMergeRefProof.v1',
+            'mergeCommit':'fd32b3b2a7f24cf171cf0c1503922b7819edd33b',
+            'status':'PASS',
+            'officialGraphViewerInitialized':True,
+            'pageLayerLinkPreserved':True,
+            'monotonicVisibility':True,
+            'runtimeExternalRequestsZero':True,
+            'sourceModelUnchanged':True,
+            'deterministicBundle':True,
+            'destructiveCaseCount':16,
+            'renderQualityAuditComplete':False,
+            'publicationAdmissible':False,
+            'authority':False,
+          }
+          print(json.dumps(value,sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagrams-18-merge-ref-proof
+          path: proof
+          if-no-files-found: error
