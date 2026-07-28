@@ -39,29 +39,64 @@ jobs:
   runtime-image:
     runs-on: ubuntu-24.04
     steps:
-      - name: Resolve exact Playwright OCI identity
+      - name: Resolve exact Playwright OCI, browser, font and Python wheels
         run: |
           set -euo pipefail
           image='mcr.microsoft.com/playwright/python:v1.58.0-noble'
           docker pull "$image"
-          mkdir -p render-runtime
+          mkdir -p render-runtime/wheels
           docker image inspect "$image" > render-runtime/image-inspect.json
           docker image inspect --format '{{index .RepoDigests 0}}' "$image" > render-runtime/image-digest.txt
-          docker run --rm "$image" bash -lc 'python --version; chromium --version || true; fc-list | sort | sha256sum' > render-runtime/runtime-identity.txt
+
+          docker run --rm -v "$PWD/render-runtime:/out" "$image" bash -lc '
+            set -euo pipefail
+            chrome=$(find /ms-playwright -type f -path "*/chrome-linux*/chrome" -perm -111 | sort | head -1)
+            test -n "$chrome"
+            font=$(fc-match -f "%{file}\n" "DejaVu Sans" | head -1)
+            test -f "$font"
+            printf "%s\n" "$chrome" > /out/browser-path.txt
+            "$chrome" --version > /out/browser-version.txt
+            sha256sum "$chrome" > /out/browser-sha256.txt
+            printf "%s\n" "$font" > /out/font-path.txt
+            fc-match -f "%{family}\n" "DejaVu Sans" | head -1 > /out/font-family.txt
+            sha256sum "$font" > /out/font-sha256.txt
+            cp /etc/os-release /out/os-release
+            python --version > /out/python-version.txt 2>&1
+          '
+
+          python -m pip download --only-binary=:all: --dest render-runtime/wheels 'playwright==1.58.0'
+          (cd render-runtime/wheels && sha256sum * | sort) > render-runtime/wheel-sha256.txt
+
           python - <<'PY' > render-runtime/manifest.json
           import hashlib,json,pathlib
           root=pathlib.Path('render-runtime')
+          wheel_rows=[]
+          for line in (root/'wheel-sha256.txt').read_text().splitlines():
+              digest,name=line.split(None,1)
+              wheel_rows.append({'file':name.strip(),'sha256':'sha256:'+digest})
           result={
-            'kind':'renderAuditRuntimeImagePin.v1',
+            'kind':'renderAuditRuntimeImagePin.v2',
             'imageTag':'mcr.microsoft.com/playwright/python:v1.58.0-noble',
             'imageDigest':(root/'image-digest.txt').read_text().strip(),
-            'inspectSha256':'sha256:'+hashlib.sha256((root/'image-inspect.json').read_bytes()).hexdigest(),
-            'runtimeIdentitySha256':'sha256:'+hashlib.sha256((root/'runtime-identity.txt').read_bytes()).hexdigest(),
+            'imageInspectSha256':'sha256:'+hashlib.sha256((root/'image-inspect.json').read_bytes()).hexdigest(),
+            'osReleaseSha256':'sha256:'+hashlib.sha256((root/'os-release').read_bytes()).hexdigest(),
+            'pythonVersion':(root/'python-version.txt').read_text().strip(),
+            'browser':{
+              'path':(root/'browser-path.txt').read_text().strip(),
+              'version':(root/'browser-version.txt').read_text().strip(),
+              'sha256':'sha256:'+(root/'browser-sha256.txt').read_text().split()[0],
+            },
+            'font':{
+              'path':(root/'font-path.txt').read_text().strip(),
+              'family':(root/'font-family.txt').read_text().strip(),
+              'sha256':'sha256:'+(root/'font-sha256.txt').read_text().split()[0],
+            },
+            'pythonWheels':wheel_rows,
           }
           print(json.dumps(result,sort_keys=True,separators=(',',':')))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: render-audit-runtime-image-v1.58.0
+          name: render-audit-runtime-lock-v1.58.0
           path: render-runtime
           if-no-files-found: error
