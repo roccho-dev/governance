@@ -36,6 +36,31 @@ jobs:
             diagrams-source-a293e398.sha256
           if-no-files-found: error
 
+  adrs-source:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: 2ae2830c211057274e0900440ea7b9a1c9e0e9ad
+          path: adrs
+          persist-credentials: false
+      - name: Bind ADRS source and create deterministic archive
+        run: |
+          set -euo pipefail
+          test "$(git -C adrs rev-parse HEAD)" = 2ae2830c211057274e0900440ea7b9a1c9e0e9ad
+          rm -rf adrs/.git
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf adrs-source-2ae2830.tar.gz adrs
+          sha256sum adrs-source-2ae2830.tar.gz > adrs-source-2ae2830.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adrs-source-2ae2830
+          path: |
+            adrs-source-2ae2830.tar.gz
+            adrs-source-2ae2830.sha256
+          if-no-files-found: error
+
   viewer-runtime:
     runs-on: ubuntu-24.04
     steps:
