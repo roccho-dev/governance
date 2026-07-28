@@ -1,0 +1,123 @@
+name: Diagrams 21 merge-ref proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/diagrams-21-merge-ref-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: 579c4e3527d19cb1dbb879ede82a611b6c472faf
+          path: diagrams
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: 37833fb028146140681fde01d7d33cb633b6c508
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: diagrams/package-lock.json
+      - name: Install dependencies
+        working-directory: diagrams
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y graphviz
+          python -m pip install '.[test]'
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: Prove exact merge source, ADRS binding and official encoding
+        working-directory: diagrams
+        run: |
+          set -euo pipefail
+          mkdir -p ../proof
+          test "$(git rev-parse HEAD)" = 579c4e3527d19cb1dbb879ede82a611b6c472faf
+          test "$(git -C ../adrs rev-parse HEAD)" = 37833fb028146140681fde01d7d33cb633b6c508
+          cmp tests/fixtures/semantic_conformance/expected.drawio ../adrs/diagram_semantic_contract/v1_0_1/expected.drawio
+          python - <<'PY'
+          import hashlib,json,xml.etree.ElementTree as ET
+          from pathlib import Path
+          expected=Path('tests/fixtures/semantic_conformance/expected.drawio')
+          local=json.load(open('tests/fixtures/semantic_conformance/expected-contract.json'))
+          accepted=json.load(open('../adrs/diagram_semantic_contract/v1_0_1/accepted-decision.json'))
+          assert local['adrsMergeCommit']=='37833fb028146140681fde01d7d33cb633b6c508'
+          assert local['decisionId']==accepted['decisionId']=='01KZRENDER4C0RRECT10N00001'
+          assert local['acceptedArtifactSha256']==accepted['expectedArtifactSha256']=='sha256:'+hashlib.sha256(expected.read_bytes()).hexdigest()
+          root=ET.parse(expected).getroot(); wrappers=[x for x in root.findall('./diagram/mxGraphModel/root/*') if x.tag in {'object','UserObject'}]
+          assert len(wrappers)==5 and all(x.get('id') and x.find('mxCell').get('id') is None for x in wrappers)
+          PY
+      - name: Run full tests and corrected semantic replay
+        working-directory: diagrams
+        run: |
+          python -m unittest discover -s tests -v
+          GENERATED_AT="$(git show -s --format=%cI HEAD)"
+          python tools/build_semantic_conformance.py \
+            --expected tests/fixtures/semantic_conformance/expected.drawio \
+            --expected-contract tests/fixtures/semantic_conformance/expected-contract.json \
+            --events tests/fixtures/semantic_conformance/observed.events.jsonl \
+            --implementation-revision 579c4e3527d19cb1dbb879ede82a611b6c472faf \
+            --generated-at "$GENERATED_AT" \
+            --observed-out ../proof/observed.drawio \
+            --provenance-out ../proof/observed-provenance.json \
+            --receipt-out ../proof/receipt.json
+          python tools/prove_semantic_conformance.py \
+            --implementation-revision 579c4e3527d19cb1dbb879ede82a611b6c472faf \
+            --generated-at "$GENERATED_AT" \
+            --out ../proof/semantic-proof.json
+          python - <<'PY'
+          import json,xml.etree.ElementTree as ET
+          receipt=json.load(open('../proof/receipt.json')); proof=json.load(open('../proof/semantic-proof.json'))
+          assert receipt['comparison']['status']=='PASS'
+          assert proof['status']=='PASS' and proof['destructiveCaseCount']==20
+          root=ET.parse('../proof/observed.drawio').getroot(); wrappers=[x for x in root.findall('./diagram/mxGraphModel/root/*') if x.tag in {'object','UserObject'}]
+          assert wrappers and all(x.get('id') and x.find('mxCell').get('id') is None for x in wrappers)
+          PY
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Run Nix checks and package
+        working-directory: diagrams
+        run: |
+          nix flake check -L
+          nix build -L .#jsonl-diagram-core
+      - name: Emit merge-ref receipt
+        run: |
+          python - <<'PY' > proof/summary.json
+          import hashlib,json,pathlib
+          receipt=json.load(open('proof/receipt.json')); proof=json.load(open('proof/semantic-proof.json'))
+          result={'kind':'diagrams21MergeRefProof.v1','mergeCommit':'579c4e3527d19cb1dbb879ede82a611b6c472faf','adrsMergeCommit':'37833fb028146140681fde01d7d33cb633b6c508','decisionId':'01KZRENDER4C0RRECT10N00001','status':'PASS','receiptSha256':'sha256:'+hashlib.sha256(pathlib.Path('proof/receipt.json').read_bytes()).hexdigest(),'semanticProofSha256':'sha256:'+hashlib.sha256(pathlib.Path('proof/semantic-proof.json').read_bytes()).hexdigest(),'destructiveCaseCount':20,'implementationEncodingCorrected':True,'semanticMeaningChanged':False,'semanticConformanceComplete':True,'renderQualityAuditComplete':False,'publicationAdmissible':False,'businessOutcomeAchieved':False,'corporateSaleOutcomeAchieved':False,'authority':False}
+          print(json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagrams-21-merge-ref-proof
+          path: proof
+          if-no-files-found: error
