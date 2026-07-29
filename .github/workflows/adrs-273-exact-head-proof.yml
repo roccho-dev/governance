@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           repository: roccho-dev/adrs
-          ref: 2eeea00a61474a3919e74b55d09d6b49e0512a8c
+          ref: 6584119c14f2c89213cf373633dabe7477d5eceb
           path: adrs
           token: ${{ steps.adrs-token.outputs.token }}
           persist-credentials: false
@@ -54,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p proof
-          test "$(git -C adrs rev-parse HEAD)" = 2eeea00a61474a3919e74b55d09d6b49e0512a8c
+          test "$(git -C adrs rev-parse HEAD)" = 6584119c14f2c89213cf373633dabe7477d5eceb
           cd adrs
           python3 -S tools/check-diagram-semantic-contract-v1-0-2.py check --root . --out ../proof/check-a.json
           python3 -S tools/check-diagram-semantic-contract-v1-0-2.py check --root . --out ../proof/check-b.json
@@ -109,7 +109,6 @@ jobs:
           def hit(a,b,r):
             x1,y1=a;x2,y2=b;rx,ry,rw,rh=r
             if max(x1,x2)<rx or min(x1,x2)>rx+rw or max(y1,y2)<ry or min(y1,y2)>ry+rh:return False
-            # exact for the horizontal/vertical rendered route in this fixture
             if y1==y2:return ry<=y1<=ry+rh and not (max(x1,x2)<rx or min(x1,x2)>rx+rw)
             if x1==x2:return rx<=x1<=rx+rw and not (max(y1,y2)<ry or min(y1,y2)>ry+rh)
             return True
@@ -132,7 +131,7 @@ jobs:
           import json
           check=json.load(open('proof/selftest-a.json'));render=json.load(open('proof/renderer-proof.json'))
           assert check['status']=='PASS' and check['destructiveCaseCount']==12 and render['status']=='PASS' and render['edgeCrossesScopeLabel'] is False
-          print(json.dumps({'kind':'adrs273ExternalExactHeadProof.v1','candidate':'2eeea00a61474a3919e74b55d09d6b49e0512a8c','decisionId':'01KZV5A1C0RRECT10N00000200','status':'PASS','destructiveCaseCount':12,'rendererProof':'PASS','semanticMeaningChanged':False,'implementationVisualCorrectionApplied':False,'renderQualityAuditComplete':False,'publicationAdmissible':False,'businessOutcomeAchieved':False,'corporateSaleOutcomeAchieved':False,'authority':False},sort_keys=True,separators=(',',':')))
+          print(json.dumps({'kind':'adrs273ExternalExactHeadProof.v1','candidate':'6584119c14f2c89213cf373633dabe7477d5eceb','decisionId':'01KZV5A1C0RRECT10N00000200','status':'PASS','destructiveCaseCount':12,'rendererProof':'PASS','semanticMeaningChanged':False,'implementationVisualCorrectionApplied':False,'renderQualityAuditComplete':False,'publicationAdmissible':False,'businessOutcomeAchieved':False,'corporateSaleOutcomeAchieved':False,'authority':False},sort_keys=True,separators=(',',':')))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
