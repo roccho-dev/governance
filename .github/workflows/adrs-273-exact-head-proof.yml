@@ -1,0 +1,142 @@
+name: ADRS 273 exact-head proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/adrs-273-exact-head-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: 2eeea00a61474a3919e74b55d09d6b49e0512a8c
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: 579c4e3527d19cb1dbb879ede82a611b6c472faf
+          path: diagrams
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: jgraph/drawio
+          ref: 88ee1f5ab4d40603a8f3aaa0d9d6dc3794c6b3f0
+          path: drawio
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Run exact ADRS canonical and Nix gates
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          test "$(git -C adrs rev-parse HEAD)" = 2eeea00a61474a3919e74b55d09d6b49e0512a8c
+          cd adrs
+          python3 -S tools/check-diagram-semantic-contract-v1-0-2.py check --root . --out ../proof/check-a.json
+          python3 -S tools/check-diagram-semantic-contract-v1-0-2.py check --root . --out ../proof/check-b.json
+          cmp ../proof/check-a.json ../proof/check-b.json
+          python3 -S tools/check-diagram-semantic-contract-v1-0-2.py selftest --root . --out ../proof/selftest-a.json
+          python3 -S tools/check-diagram-semantic-contract-v1-0-2.py selftest --root . --out ../proof/selftest-b.json
+          cmp ../proof/selftest-a.json ../proof/selftest-b.json
+          cmp ../proof/selftest-a.json diagram_semantic_contract/v1_0_2/proof.json
+          nix flake check -L |& tee ../proof/nix-flake-check.log
+          cd ..
+      - name: Build official GraphViewer bundle
+        run: |
+          PYTHONPATH=diagrams/src python diagrams/tools/build_compiled_graphviewer.py \
+            --source adrs/diagram_semantic_contract/v1_0_2/expected.drawio \
+            --viewer-runtime drawio/src/main/webapp/js/viewer-static.min.js \
+            --license drawio/LICENSE \
+            --runtime-pin diagrams/contracts/compiled_graphviewer/v1/runtime-pin.json \
+            --out proof/bundle
+          test "$(sha256sum proof/bundle/source.drawio | cut -d' ' -f1)" = 7c70ae9cf6827205c4c15e77f4eb21b2faf17d81417cae3da9f57a24e83521b9
+      - name: Resolve exact Playwright wheels
+        run: |
+          mkdir -p proof/wheels
+          python -m pip download --only-binary=:all: --dest proof/wheels 'playwright==1.58.0'
+          cat > proof/wheels/SHA256SUMS <<'EOF'
+          f88193799d43dbf8c8a806d6405c9c52fe2af40bf75072a606357b33cc336c7f  greenlet-3.5.4-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
+          c95568ba1eda83812598c1dc9be60b4406dffd60b149bc1536180ad108723d6b  playwright-1.58.0-py3-none-manylinux1_x86_64.whl
+          af2f8fede4171ef667dfded53f96e2ed0d6e6bd7ee3bb46437f77e3b57689228  pyee-13.0.1-py3-none-any.whl
+          481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8  typing_extensions-4.16.0-py3-none-any.whl
+          EOF
+          (cd proof/wheels && sha256sum -c SHA256SUMS)
+      - name: Write renderer geometry probe
+        run: |
+          cat > proof/probe.py <<'PY'
+          import hashlib,html,json,re,time
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          b=Path('/work/proof/bundle'); index=(b/'index.html').read_text(); m=re.search(r'<div id="viewer" class="mxgraph" data-mxgraph="([^"]*)"></div>',index); assert m
+          data=html.unescape(m.group(1)); console=[]; errors=[]
+          with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True,executable_path='/ms-playwright/chromium-1208/chrome-linux64/chrome')
+            page=browser.new_page(viewport={'width':1280,'height':800},device_scale_factor=1,color_scheme='light',reduced_motion='reduce')
+            page.on('console',lambda msg: console.append(msg.text) if msg.type=='error' else None);page.on('pageerror',lambda err:errors.append(str(err)))
+            page.set_content('<style>html,body,#viewer{width:100%;height:100%;margin:0}#viewer{min-height:600px}</style><div id="viewer" class="mxgraph" data-mxgraph="'+html.escape(data,quote=True)+'"></div>')
+            page.add_script_tag(content=(b/'app.js').read_text());page.add_script_tag(content=(b/'viewer-static.min.js').read_text())
+            end=time.monotonic()+30
+            while time.monotonic()<end:
+              if page.evaluate("Boolean(window.__compiledViewerProof&&window.__compiledViewerProof.status==='READY')"):break
+              page.wait_for_timeout(100)
+            else:raise RuntimeError('not ready')
+            geom=page.evaluate("""() => {const g=window.__compiledViewer.graph,m=g.getModel(),gs=g.view.getState(m.getCell('group_scope')),es=g.view.getState(m.getCell('edge_flow'));const b=gs.text.boundingBox;const pts=es.absolutePoints.map(p=>[p.x,p.y]);return {label:[b.x,b.y,b.width,b.height],points:pts,svgCount:document.querySelectorAll('#viewer svg').length}}""")
+            page.screenshot(path='/work/proof/renderer.png',full_page=True,animations='disabled');browser.close()
+          def hit(a,b,r):
+            x1,y1=a;x2,y2=b;rx,ry,rw,rh=r
+            if max(x1,x2)<rx or min(x1,x2)>rx+rw or max(y1,y2)<ry or min(y1,y2)>ry+rh:return False
+            # exact for the horizontal/vertical rendered route in this fixture
+            if y1==y2:return ry<=y1<=ry+rh and not (max(x1,x2)<rx or min(x1,x2)>rx+rw)
+            if x1==x2:return rx<=x1<=rx+rw and not (max(y1,y2)<ry or min(y1,y2)>ry+rh)
+            return True
+          crosses=any(hit(a,b,geom['label']) for a,b in zip(geom['points'],geom['points'][1:]))
+          out={'kind':'semanticFixtureVisualCorrectionRendererProof.v1','status':'PASS' if geom['svgCount']>0 and not crosses and not console and not errors else 'FAIL','artifactSha256':'sha256:'+hashlib.sha256((b/'source.drawio').read_bytes()).hexdigest(),'semanticMeaningChanged':False,'scopeLabelBox':geom['label'],'flowAbsolutePoints':geom['points'],'edgeCrossesScopeLabel':crosses,'consoleErrors':console,'pageErrors':errors,'screenshotSha256':'sha256:'+hashlib.sha256(Path('/work/proof/renderer.png').read_bytes()).hexdigest(),'authority':False}
+          Path('/work/proof/renderer-proof.json').write_text(json.dumps(out,sort_keys=True,separators=(',',':'))+'\n');print(json.dumps(out,indent=2));raise SystemExit(0 if out['status']=='PASS' else 1)
+          PY
+      - name: Run fixed renderer proof without network
+        run: |
+          image='mcr.microsoft.com/playwright/python@sha256:678457c4c323b981d8b4befc57b95366bb1bb6aa30057b1269f6b171e8d9975a'
+          docker pull "$image"
+          docker run --rm --network none -v "$PWD:/work" -w /work "$image" bash -lc '
+            python -m pip install --no-index --find-links=/work/proof/wheels playwright==1.58.0
+            test "$(sha256sum /ms-playwright/chromium-1208/chrome-linux64/chrome | cut -d" " -f1)" = 481fea1516a1f2b76454664272f12cd9dd1f20117b21e1f1498e08bc7f872c00
+            python /work/proof/probe.py
+          '
+      - name: Emit proof summary
+        run: |
+          python - <<'PY' > proof/summary.json
+          import json
+          check=json.load(open('proof/selftest-a.json'));render=json.load(open('proof/renderer-proof.json'))
+          assert check['status']=='PASS' and check['destructiveCaseCount']==12 and render['status']=='PASS' and render['edgeCrossesScopeLabel'] is False
+          print(json.dumps({'kind':'adrs273ExternalExactHeadProof.v1','candidate':'2eeea00a61474a3919e74b55d09d6b49e0512a8c','decisionId':'01KZV5A1C0RRECT10N00000200','status':'PASS','destructiveCaseCount':12,'rendererProof':'PASS','semanticMeaningChanged':False,'implementationVisualCorrectionApplied':False,'renderQualityAuditComplete':False,'publicationAdmissible':False,'businessOutcomeAchieved':False,'corporateSaleOutcomeAchieved':False,'authority':False},sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adrs-273-exact-head-proof
+          path: proof
+          if-no-files-found: error
