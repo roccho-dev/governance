@@ -161,12 +161,12 @@ jobs:
               runtime=obs['runtimeObserved']
               assert runtime['browserVersion']=='145.0.7632.6'
               assert runtime['fontLoaded'] is True
-              assert runtime['actualFontFamily']=='WenQuanYi Zen Hei'
               assert runtime['browserExecutableSha256']=='sha256:481fea1516a1f2b76454664272f12cd9dd1f20117b21e1f1498e08bc7f872c00'
               assert runtime['fontSha256']=='sha256:79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9'
               assert runtime['osReleaseSha256']=='sha256:3e5851448bae5b36f351becde037a8b13b77307279f484eda808f8177d9a4293'
-              assert obs['rendererInitialized'] is True and obs['externalRequests']==[] and obs['consoleErrors']==[] and obs['pageErrors']==[]
+              assert obs['initialized'] is True and obs['externalRequests']==[] and obs['consoleErrors']==[] and obs['pageErrors']==[]
               assert obs['modelBeforeSha256']==obs['modelAfterSha256']
+              assert all(subject['fontFamily'].strip('"')=='WenQuanYi Zen Hei' for subject in obs['subjects'].values())
           assert pathlib.Path('proof/render-a.png').read_bytes()==pathlib.Path('proof/render-b.png').read_bytes()
           summary={
             'kind':'diagrams22ExternalExactHeadProof.v1',
