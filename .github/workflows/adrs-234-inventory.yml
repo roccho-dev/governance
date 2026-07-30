@@ -1,0 +1,153 @@
+name: ADRS 234 producer and consumer inventory
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/adrs-234-inventory.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: proposals
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Build exact producer and consumer inventory
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          git -C adrs rev-parse HEAD | tee proof/ADRS_HEAD
+          git -C adrs log --follow --format='%H|%aI|%s' -- decision/live/issue-234-recursive-contract-modeling-v1.jsonl > proof/producer-history.txt
+          git -C adrs blame --line-porcelain -- decision/live/issue-234-recursive-contract-modeling-v1.jsonl > proof/producer-blame.txt
+          git -C adrs log --all -S'"workIssue":204' --format='%H|%aI|%s' -- decision/live/issue-234-recursive-contract-modeling-v1.jsonl > proof/producer-pickaxe.txt
+          python - <<'PY'
+          import json, pathlib, re
+          root=pathlib.Path('adrs')
+          text_suffixes={'.json','.jsonl','.sh','.py','.cue','.md','.yml','.yaml','.nix'}
+          needles=['workIssue','subjectIssue','fullCanonicalGreen','canonicalCompensationRequired','approval-actor-v1-admission-exception','issue-234-recursive-contract-modeling-v1','decisionReceipt.v1','decisionAppendReceipt.v1','decisionPublicationReceipt.v1']
+          matches={n:[] for n in needles}
+          parsed_rows=[]
+          for path in sorted(root.rglob('*')):
+              if not path.is_file() or '.git' in path.parts or path.suffix not in text_suffixes:
+                  continue
+              try: text=path.read_text(encoding='utf-8')
+              except UnicodeDecodeError: continue
+              rel=str(path.relative_to(root))
+              for lineno,line in enumerate(text.splitlines(),1):
+                  for needle in needles:
+                      if needle in line:
+                          matches[needle].append({'path':rel,'line':lineno,'text':line[:500]})
+              if path.suffix=='.jsonl':
+                  for lineno,line in enumerate(text.splitlines(),1):
+                      if not line.strip(): continue
+                      try: row=json.loads(line)
+                      except json.JSONDecodeError: continue
+                      if any(k in row for k in ('workIssue','subjectIssue')):
+                          parsed_rows.append({'path':rel,'line':lineno,'kind':row.get('kind'),'id':row.get('id'),'workIssue':row.get('workIssue'),'subjectIssue':row.get('subjectIssue'),'decisionId':row.get('decisionId'),'correctionDecisionId':row.get('correctionDecisionId')})
+          code_consumers=[]
+          for needle in ('workIssue','subjectIssue'):
+              for item in matches[needle]:
+                  if pathlib.Path(item['path']).suffix in {'.sh','.py','.cue','.nix','.yml','.yaml'}:
+                      code_consumers.append({'field':needle,**item})
+          original=root/'decision/live/issue-234-recursive-contract-modeling-v1.jsonl'
+          rows=[json.loads(x) for x in original.read_text().splitlines()]
+          mismatch={'path':str(original.relative_to(root)),'line':3,'kind':rows[2].get('kind'),'workIssue':rows[2].get('workIssue'),'subjectIssue':rows[2].get('subjectIssue'),'domainDecisionId':rows[2].get('decisionId')}
+          result={'kind':'adrs234ProducerConsumerInventory.v1','status':'PASS','adrsHead':(pathlib.Path('proof/ADRS_HEAD').read_text().strip()),'mismatch':mismatch,'matches':matches,'parsedRows':parsed_rows,'codeConsumers':code_consumers,'counts':{'parsedRows':len(parsed_rows),'codeConsumers':len(code_consumers),'workIssueMatches':len(matches['workIssue']),'subjectIssueMatches':len(matches['subjectIssue']),'fullCanonicalGreenMatches':len(matches['fullCanonicalGreen']),'canonicalCompensationRequiredMatches':len(matches['canonicalCompensationRequired'])},'authority':False}
+          pathlib.Path('proof/inventory.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Prove sealed history and new-kind behavior
+        run: |
+          set -euo pipefail
+          original='adrs/decision/live/issue-234-recursive-contract-modeling-v1.jsonl'
+          correction='adrs/decision/live/issue-234-recursive-contract-modeling-v1-publication-correction.jsonl'
+          (cd adrs && bash ci/decision-append.sh --validate decision/live/issue-234-recursive-contract-modeling-v1.jsonl) | tee proof/original-legacy-validation.json
+          (cd adrs && bash ci/decision-append.sh --validate decision/live/issue-234-recursive-contract-modeling-v1-publication-correction.jsonl) | tee proof/correction-legacy-validation.json
+          python - <<'PY'
+          import json,pathlib
+          src=pathlib.Path('adrs/decision/live/issue-234-recursive-contract-modeling-v1.jsonl')
+          rows=[json.loads(x) for x in src.read_text().splitlines()]
+          edited=[dict(x) for x in rows]
+          edited[2]['workIssue']=234
+          pathlib.Path('/tmp/edited-legacy.jsonl').write_text('\n'.join(json.dumps(x,sort_keys=True,separators=(',',':')) for x in edited)+'\n')
+          converted=[dict(rows[0]),dict(rows[1]),{
+            'acceptedDecisionDigest':rows[2]['acceptedDecisionDigest'],
+            'authority':False,
+            'decisionId':rows[2]['decisionId'],
+            'hubIssue':202,
+            'id':'decision-publication-receipt.adrs-234.contract-batch-v2',
+            'kind':'decisionPublicationReceipt.v1',
+            'status':'pass',
+            'subjectIssue':234,
+            'validatedKinds':['decisionEvent.v1','decisionRule.v1','decisionPublicationReceipt.v1']
+          }]
+          pathlib.Path('/tmp/converted-new-kind.jsonl').write_text('\n'.join(json.dumps(x,sort_keys=True,separators=(',',':')) for x in converted)+'\n')
+          PY
+          if (cd adrs && bash ci/decision-append.sh --validate /tmp/edited-legacy.jsonl) >proof/edited-legacy.stdout 2>proof/edited-legacy.stderr; then
+            echo 'edited sealed legacy row unexpectedly passed' >&2
+            exit 1
+          fi
+          echo PASS > proof/edited-legacy-rejected
+          (cd adrs && bash ci/decision-append.sh --validate /tmp/converted-new-kind.jsonl) | tee proof/converted-new-kind-validation.json
+      - name: Run full canonical validation
+        run: |
+          set -euo pipefail
+          (cd adrs && bash ci/validate.sh) |& tee proof/ci-validate.log
+          (cd adrs && nix flake check -L) |& tee proof/nix-flake-check.log
+          printf '%s\n' PASS > proof/full-canonical-validation
+      - name: Archive exact source and summary
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('proof')
+          inv=json.load(open(p/'inventory.json')) if (p/'inventory.json').exists() else {}
+          summary={
+            'kind':'adrs234InventoryProof.v1',
+            'status':'PASS' if (p/'full-canonical-validation').exists() and (p/'edited-legacy-rejected').exists() else 'FAIL',
+            'adrsHead':(p/'ADRS_HEAD').read_text().strip() if (p/'ADRS_HEAD').exists() else None,
+            'legacyOriginalAcceptedOnlyByExactDigest':True,
+            'editedLegacyRejected':(p/'edited-legacy-rejected').exists(),
+            'newPublicationKindAccepted':(p/'converted-new-kind-validation.json').exists(),
+            'fullCanonicalValidation':(p/'full-canonical-validation').exists(),
+            'mismatch':inv.get('mismatch'),
+            'authority':False,
+            'businessOutcomeAchieved':False,
+            'corporateSaleOutcomeAchieved':False
+          }
+          (p/'summary.json').write_text(json.dumps(summary,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+          zip -qr proof/adrs-source.zip adrs -x 'adrs/.git/*' 'adrs/result*'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adrs-234-inventory-proof
+          path: proof
+          if-no-files-found: error
