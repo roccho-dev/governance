@@ -1,0 +1,87 @@
+name: Current merged approval lane proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/current-approval-lane-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/ops
+          ref: a622192703c53fea4890a3ad3618e2a0ac85032f
+          path: ops
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/governance
+          ref: 9be6d7c1413b6c9ea15c06fbed2392f7fa64219b
+          path: governance
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: 04569f23b42946776abbb208a1cd9bea954169be
+          path: diagrams
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Prove exact current merged source lane
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          test "$(git -C ops rev-parse HEAD)" = a622192703c53fea4890a3ad3618e2a0ac85032f
+          test "$(git -C governance rev-parse HEAD)" = 9be6d7c1413b6c9ea15c06fbed2392f7fa64219b
+          test "$(git -C diagrams rev-parse HEAD)" = 04569f23b42946776abbb208a1cd9bea954169be
+          python diagrams/tools/prove_approval_lane_e2e.py \
+            --ops-root ops \
+            --governance-root governance \
+            --diagrams-root diagrams \
+            --ops-head a622192703c53fea4890a3ad3618e2a0ac85032f \
+            --governance-head 9be6d7c1413b6c9ea15c06fbed2392f7fa64219b \
+            --diagrams-head 04569f23b42946776abbb208a1cd9bea954169be \
+            --out proof/approval-lane-e2e.json
+          python - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('proof/approval-lane-e2e.json')
+          value=json.loads(p.read_text())
+          assert value['status']=='PASS'
+          assert value['receiptStatus']=='VALID'
+          assert value['heads']=={
+            'ops':'a622192703c53fea4890a3ad3618e2a0ac85032f',
+            'governance':'9be6d7c1413b6c9ea15c06fbed2392f7fa64219b',
+            'diagrams':'04569f23b42946776abbb208a1cd9bea954169be',
+          }
+          assert value['consumerErrors']==[]
+          summary={
+            'kind':'currentApprovalLaneMergeProof.v1',
+            'status':'PASS',
+            'receiptStatus':value['receiptStatus'],
+            'approvalReceiptDigest':value['approvalReceiptDigest'],
+            'providerEvidenceDigest':value['providerEvidenceDigest'],
+            'opsAdapterManifestDigest':value['opsAdapterManifestDigest'],
+            'governanceEngineManifestDigest':value['governanceEngineManifestDigest'],
+            'heads':value['heads'],
+            'e2eSha256':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest(),
+            'authority':False,
+            'publicationAdmissible':False,
+            'businessOutcomeAchieved':False,
+            'corporateSaleOutcomeAchieved':False,
+          }
+          pathlib.Path('proof/summary.json').write_text(json.dumps(summary,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: current-approval-lane-proof
+          path: proof
+          if-no-files-found: error
