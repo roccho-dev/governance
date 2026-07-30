@@ -1,0 +1,205 @@
+name: Diagrams 22 merge-ref proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/diagrams-22-merge-ref-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: 04569f23b42946776abbb208a1cd9bea954169be
+          path: diagrams
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: e2b2251160b4178f51fc00392d8e3a5dd686b4ad
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: jgraph/drawio
+          ref: 88ee1f5ab4d40603a8f3aaa0d9d6dc3794c6b3f0
+          path: drawio
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: diagrams/package-lock.json
+      - name: Install dependencies and verify exact inputs
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y graphviz
+          python -m pip install './diagrams[test]'
+          npm --prefix diagrams ci --ignore-scripts --no-audit --no-fund
+          test "$(git -C diagrams rev-parse HEAD)" = 04569f23b42946776abbb208a1cd9bea954169be
+          test "$(git -C adrs rev-parse HEAD)" = e2b2251160b4178f51fc00392d8e3a5dd686b4ad
+          test "$(git -C drawio rev-parse HEAD)" = 88ee1f5ab4d40603a8f3aaa0d9d6dc3794c6b3f0
+          cmp adrs/diagram_semantic_contract/v1_0_2/expected.drawio diagrams/tests/fixtures/render_audit/accepted-v1.0.2.drawio
+          test "$(sha256sum diagrams/tests/fixtures/render_audit/accepted-v1.0.2.drawio | cut -d' ' -f1)" = 7c70ae9cf6827205c4c15e77f4eb21b2faf17d81417cae3da9f57a24e83521b9
+          test "$(sha256sum drawio/src/main/webapp/js/viewer-static.min.js | cut -d' ' -f1)" = 12c0c8b5828d3641dbd3d369d913069c6cf7e9a9e285a53449b9324e2029ca40
+          test "$(sha256sum drawio/LICENSE | cut -d' ' -f1)" = 43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1
+      - name: Run full repository tests
+        working-directory: diagrams
+        run: python -m unittest discover -s tests -v
+      - name: Build independent semantic PASS and official viewer bundle
+        run: |
+          set -euo pipefail
+          mkdir -p proof wheels
+          GENERATED_AT="$(git -C diagrams show -s --format=%cI HEAD)"
+          python diagrams/tools/build_semantic_conformance.py \
+            --expected diagrams/tests/fixtures/render_audit/accepted-v1.0.2.drawio \
+            --expected-contract diagrams/tests/fixtures/render_audit/semantic-expected-contract.json \
+            --events diagrams/tests/fixtures/semantic_conformance/observed.events.jsonl \
+            --implementation-revision 04569f23b42946776abbb208a1cd9bea954169be \
+            --generated-at "$GENERATED_AT" \
+            --observed-out proof/observed.drawio \
+            --provenance-out proof/semantic-provenance.json \
+            --receipt-out proof/semantic-receipt.json
+          test "$(python -c 'import json;print(json.load(open("proof/semantic-receipt.json"))["comparison"]["status"])')" = PASS
+          python diagrams/tools/build_compiled_graphviewer.py \
+            --source diagrams/tests/fixtures/render_audit/accepted-v1.0.2.drawio \
+            --viewer-runtime drawio/src/main/webapp/js/viewer-static.min.js \
+            --license drawio/LICENSE \
+            --runtime-pin diagrams/contracts/compiled_graphviewer/v1/runtime-pin.json \
+            --out proof/bundle
+      - name: Resolve exact Playwright wheels
+        run: |
+          set -euo pipefail
+          python -m pip download --only-binary=:all: --dest wheels 'playwright==1.58.0'
+          cat > wheels/SHA256SUMS <<'EOF'
+          f88193799d43dbf8c8a806d6405c9c52fe2af40bf75072a606357b33cc336c7f  greenlet-3.5.4-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
+          c95568ba1eda83812598c1dc9be60b4406dffd60b149bc1536180ad108723d6b  playwright-1.58.0-py3-none-manylinux1_x86_64.whl
+          af2f8fede4171ef667dfded53f96e2ed0d6e6bd7ee3bb46437f77e3b57689228  pyee-13.0.1-py3-none-any.whl
+          481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8  typing_extensions-4.16.0-py3-none-any.whl
+          EOF
+          (cd wheels && sha256sum -c SHA256SUMS)
+      - name: Observe two clean fixed-runtime renders
+        run: |
+          set -euo pipefail
+          image='mcr.microsoft.com/playwright/python@sha256:678457c4c323b981d8b4befc57b95366bb1bb6aa30057b1269f6b171e8d9975a'
+          docker pull "$image"
+          for run in a b; do
+            docker run --rm --network none -v "$PWD:/work" -w /work "$image" bash -lc "
+              set -euo pipefail
+              python -m pip install --no-index --find-links=/work/wheels playwright==1.58.0
+              test \"\$(sha256sum /ms-playwright/chromium-1208/chrome-linux64/chrome | cut -d' ' -f1)\" = 481fea1516a1f2b76454664272f12cd9dd1f20117b21e1f1498e08bc7f872c00
+              test \"\$(sha256sum /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc | cut -d' ' -f1)\" = 79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9
+              test \"\$(sha256sum /etc/os-release | cut -d' ' -f1)\" = 3e5851448bae5b36f351becde037a8b13b77307279f484eda808f8177d9a4293
+              python /work/diagrams/tools/probe_render_audit.py \
+                --bundle /work/proof/bundle \
+                --policy /work/diagrams/contracts/render_audit/v1/policy.json \
+                --runtime /work/diagrams/contracts/render_audit/v1/runtime-lock.json \
+                --semantic-receipt /work/proof/semantic-receipt.json \
+                --repo-root /work/diagrams \
+                --browser /ms-playwright/chromium-1208/chrome-linux64/chrome \
+                --screenshot /work/proof/render-${run}.png \
+                --out /work/proof/observations-${run}.json
+            "
+          done
+      - name: Build receipt and prove all destructive cases
+        run: |
+          set -euo pipefail
+          for suffix in a b; do
+            python diagrams/tools/build_render_audit.py \
+              --observations-a proof/observations-a.json \
+              --observations-b proof/observations-b.json \
+              --policy diagrams/contracts/render_audit/v1/policy.json \
+              --runtime diagrams/contracts/render_audit/v1/runtime-lock.json \
+              --out proof/receipt-${suffix}.json
+            python diagrams/tools/prove_render_audit.py \
+              --observations-a proof/observations-a.json \
+              --observations-b proof/observations-b.json \
+              --policy diagrams/contracts/render_audit/v1/policy.json \
+              --runtime diagrams/contracts/render_audit/v1/runtime-lock.json \
+              --out proof/proof-${suffix}.json
+          done
+          cmp proof/receipt-a.json proof/receipt-b.json
+          cmp proof/proof-a.json proof/proof-b.json
+          python - <<'PY'
+          import hashlib,json,pathlib
+          receipt=json.load(open('proof/receipt-a.json'))
+          destructive=json.load(open('proof/proof-a.json'))
+          a=json.load(open('proof/observations-a.json'))
+          b=json.load(open('proof/observations-b.json'))
+          assert receipt['result']=={'decision':'ALLOW','dispositions':[],'errors':[],'findings':[],'gateStatus':'VALID','risk':'CLEAN','verification':'COMPLETE'}
+          assert receipt['renderQualityAuditComplete'] is True
+          assert receipt['semantic_channel_unchanged'] is True
+          assert receipt['source_model_unchanged'] is True
+          assert destructive['status']=='PASS' and destructive['destructiveCaseCount']==23
+          assert all(row['status']=='PASS' for row in destructive['destructiveCases'])
+          for obs in (a,b):
+              runtime=obs['runtimeObserved']
+              assert runtime['browserVersion']=='145.0.7632.6'
+              assert runtime['fontLoaded'] is True
+              assert runtime['browserExecutableSha256']=='sha256:481fea1516a1f2b76454664272f12cd9dd1f20117b21e1f1498e08bc7f872c00'
+              assert runtime['fontSha256']=='sha256:79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9'
+              assert runtime['osReleaseSha256']=='sha256:3e5851448bae5b36f351becde037a8b13b77307279f484eda808f8177d9a4293'
+              assert obs['initialized'] is True and obs['externalRequests']==[] and obs['consoleErrors']==[] and obs['pageErrors']==[]
+              assert obs['modelBeforeSha256']==obs['modelAfterSha256']
+              assert all(subject['fontFamily'].strip('"')=='WenQuanYi Zen Hei' for subject in obs['subjects'].values())
+          assert pathlib.Path('proof/render-a.png').read_bytes()==pathlib.Path('proof/render-b.png').read_bytes()
+          summary={
+            'kind':'diagrams22ExternalMergeRefProof.v1',
+            'status':'PASS',
+            'diagramsMerge':'04569f23b42946776abbb208a1cd9bea954169be',
+            'adrsMerge':'e2b2251160b4178f51fc00392d8e3a5dd686b4ad',
+            'decisionId':'01KZV5A1C0RRECT10N00000200',
+            'mxfileSha256':'sha256:7c70ae9cf6827205c4c15e77f4eb21b2faf17d81417cae3da9f57a24e83521b9',
+            'semanticDigest':'sha256:7ff59dcb4e4652df9ba3f9b2d8830bb811a17dfdcb84c571da5f67854c2daba2',
+            'destructiveCaseCount':23,
+            'decision':'ALLOW','risk':'CLEAN','verification':'COMPLETE','gateStatus':'VALID',
+            'screenshotSha256':'sha256:'+hashlib.sha256(pathlib.Path('proof/render-a.png').read_bytes()).hexdigest(),
+            'renderQualityAuditComplete':True,'publicationAdmissible':False,
+            'businessOutcomeAchieved':False,'corporateSaleOutcomeAchieved':False,'authority':False
+          }
+          pathlib.Path('proof/summary.json').write_text(json.dumps(summary,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+      - name: Reject duplicate state and preserve Nix closure
+        run: |
+          set -euo pipefail
+          test "$(find diagrams -type f \( -name 'dvm.json' -o -name '*comparison-ir*' -o -name '*semantic-state.json' -o -name '*render-state*' -o -name '*rendering-ir*' \) -not -path 'diagrams/.git/*' -not -path 'diagrams/ci-artifacts/*' | wc -l)" -eq 0
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Run Nix checks and package
+        working-directory: diagrams
+        run: |
+          nix flake check -L |& tee ../proof/nix-flake-check.log
+          nix build -L .#jsonl-diagram-core |& tee ../proof/nix-build.log
+      - name: Remove non-evidence bulk
+        if: always()
+        run: rm -rf proof/bundle wheels
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagrams-22-merge-ref-proof
+          path: proof
+          if-no-files-found: error
