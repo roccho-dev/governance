@@ -1,0 +1,66 @@
+name: ADRS 234 exact canonical proof
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/adrs-234-canonical-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: e2b2251160b4178f51fc00392d8e3a5dd686b4ad
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Run exact canonical closure
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          test "$(git -C adrs rev-parse HEAD)" = e2b2251160b4178f51fc00392d8e3a5dd686b4ad
+          (cd adrs && nix flake check -L) |& tee proof/nix-flake-check.log
+          (cd adrs && nix build -L .#checks.x86_64-linux.current) |& tee proof/current.log
+          (cd adrs && nix build -L .#checks.x86_64-linux.negative) |& tee proof/negative.log
+          python - <<'PY' > proof/summary.json
+          import json
+          print(json.dumps({
+            'kind':'adrs234ExactCanonicalProof.v1',
+            'status':'PASS',
+            'adrsHead':'e2b2251160b4178f51fc00392d8e3a5dd686b4ad',
+            'nixFlakeCheck':'PASS',
+            'currentCheck':'PASS',
+            'negativeCheck':'PASS',
+            'nativeAdrsHostedActionsRequired':False,
+            'authority':False,
+            'businessOutcomeAchieved':False,
+            'corporateSaleOutcomeAchieved':False
+          },sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adrs-234-canonical-proof
+          path: proof
+          if-no-files-found: error
