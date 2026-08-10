@@ -1,0 +1,63 @@
+name: adrs-280-duckdb-shadow
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tools/adrs-280-duckdb-shadow/**'
+      - 'docs/adrs-280-duckdb-shadow.md'
+      - '.github/workflows/adrs-280-duckdb-shadow.yml'
+      - 'tools/contract-modeling/requirements.txt'
+  push:
+    branches: [proposals]
+    paths:
+      - 'tools/adrs-280-duckdb-shadow/**'
+      - 'docs/adrs-280-duckdb-shadow.md'
+      - '.github/workflows/adrs-280-duckdb-shadow.yml'
+      - 'tools/contract-modeling/requirements.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adrs-280-duckdb-shadow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reduce-project-fixture:
+    name: reduce-project-fixture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install the repository-pinned DuckDB
+        run: |
+          set -euo pipefail
+          duckdb_pin=$(grep -E '^duckdb==[^[:space:]]+$' tools/contract-modeling/requirements.txt)
+          test -n "$duckdb_pin"
+          python3 -m pip install --disable-pip-version-check "$duckdb_pin"
+      - name: Prove deterministic reduce and projection from materialized fixture
+        run: |
+          set -euo pipefail
+          python3 tools/adrs-280-duckdb-shadow/verify.py | tee "$RUNNER_TEMP/adrs-280-duckdb-shadow-receipt.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          receipt=json.loads(Path(os.environ['RUNNER_TEMP']+'/adrs-280-duckdb-shadow-receipt.json').read_text())
+          assert receipt['status']=='pass'
+          assert receipt['authority'] is False
+          assert receipt['cutoverAuthorized'] is False
+          assert receipt['liveGitHubIssueRead'] is False
+          assert receipt['checks']['goldenProjection'] is True
+          assert receipt['checks']['physicalOrderIndependent'] is True
+          assert receipt['checks']['unauthorizedAcceptIgnored'] is True
+          assert receipt['checks']['branchConflictQuarantined'] is True
+          assert receipt['checks']['destructiveCasesFailClosed']==6
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adrs-280-duckdb-shadow-receipt
+          path: ${{ runner.temp }}/adrs-280-duckdb-shadow-receipt.json
+          if-no-files-found: error
