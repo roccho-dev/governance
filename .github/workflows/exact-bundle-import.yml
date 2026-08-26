@@ -1,0 +1,64 @@
+name: Exact Git bundle import
+
+on:
+  push:
+    paths:
+      - '.carry/ready.json'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and import exact commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest='.carry/manifest.json'
+          python3 - "$manifest" <<'PY' > "$RUNNER_TEMP/manifest.tsv"
+          import json,re,sys
+          x=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert x['schema']=='exact-git-bundle-import/1'
+          for key in ['baseCommit','targetCommit','targetTree']:
+              assert re.fullmatch(r'[0-9a-f]{40}',x[key])
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}',x['bundleDigest'])
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}',x['carrierDigest'])
+          assert re.fullmatch(r'[A-Za-z0-9._/-]+',x['targetBranch'])
+          assert isinstance(x['chunks'],list) and x['chunks']
+          print('\t'.join([x['baseCommit'],x['targetCommit'],x['targetTree'],x['targetBranch'],x['bundleDigest'],x['carrierDigest']]))
+          for part in x['chunks']:
+              assert re.fullmatch(r'part-[0-9]{3}',part)
+              print(part)
+          PY
+          IFS=$'\t' read -r base target tree branch bundle_digest carrier_digest < "$RUNNER_TEMP/manifest.tsv"
+          tail -n +2 "$RUNNER_TEMP/manifest.tsv" | while read -r part; do test -f ".carry/$part"; done
+          tail -n +2 "$RUNNER_TEMP/manifest.tsv" | while read -r part; do cat ".carry/$part"; done > "$RUNNER_TEMP/payload.b64"
+          test "sha256:$(sha256sum "$RUNNER_TEMP/payload.b64" | awk '{print $1}')" = "$carrier_digest"
+          base64 --decode "$RUNNER_TEMP/payload.b64" > "$RUNNER_TEMP/payload.bundle"
+          test "sha256:$(sha256sum "$RUNNER_TEMP/payload.bundle" | awk '{print $1}')" = "$bundle_digest"
+          git cat-file -e "$base^{commit}"
+          git bundle verify "$RUNNER_TEMP/payload.bundle"
+          git fetch "$RUNNER_TEMP/payload.bundle" "refs/heads/$branch:refs/carry/imported"
+          test "$(git rev-parse refs/carry/imported)" = "$target"
+          test "$(git rev-parse 'refs/carry/imported^{tree}')" = "$tree"
+          test "$(git rev-parse 'refs/carry/imported^')" = "$base"
+          git push origin "refs/carry/imported:refs/heads/$branch"
+          test "$(git ls-remote origin "refs/heads/$branch" | awk 'NR==1 {print $1}')" = "$target"
+          python3 - "$RUNNER_TEMP/import.receipt.json" "$GITHUB_REPOSITORY" "$base" "$target" "$tree" "$branch" "$bundle_digest" "$carrier_digest" <<'PY'
+          import json,pathlib,sys
+          out,repo,base,target,tree,branch,bundle,carrier=sys.argv[1:]
+          value={'schema':'exact-git-bundle-import.receipt/1','status':'PASS','authority':False,'repository':repo,'baseCommit':base,'targetCommit':target,'targetTree':tree,'targetBranch':branch,'bundleDigest':bundle,'carrierDigest':carrier}
+          pathlib.Path(out).write_text(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n',encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exact-git-bundle-import-${{ github.run_id }}
+          path: ${{ runner.temp }}/import.receipt.json
+          if-no-files-found: error
+          retention-days: 30
