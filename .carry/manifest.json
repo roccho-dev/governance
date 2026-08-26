@@ -1,0 +1,24 @@
+{
+  "authority": false,
+  "baseCommit": "9be6d7c1413b6c9ea15c06fbed2392f7fa64219b",
+  "bundleDigest": "sha256:2d595773f054dca44870677985db84063e4329d8312dec9c3fc133a7bcab77f6",
+  "carrierDigest": "sha256:4761945ef349030e45161870ee905a34504793d7e4fe6bc052ed279f13ba9fd2",
+  "chunks": [
+    "part-000",
+    "part-001",
+    "part-002",
+    "part-003",
+    "part-004",
+    "part-005",
+    "part-006",
+    "part-007",
+    "part-008",
+    "part-009",
+    "part-010",
+    "part-011"
+  ],
+  "schema": "exact-git-bundle-import/1",
+  "targetBranch": "feat/adrs-318-decisionctl",
+  "targetCommit": "01271e7c674575da41cb2c217bd1f116f26e4791",
+  "targetTree": "63322ac300fe143848494282eae00c45c8ddec81"
+}
