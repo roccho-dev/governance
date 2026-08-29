@@ -21,13 +21,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
-      - name: Materialize exact candidate
+      - name: Materialize exact non-workflow candidate
         env:
           BASE_SHA: 9be6d7c1413b6c9ea15c06fbed2392f7fa64219b
-          EXPECTED_TREE: aae076151f4c3b0758619c3e6202797ee04ab2b6
+          EXPECTED_TREE: 348c96a734e79684bffa7c059f1902fcc4f36250
           ARCHIVE_SHA256: 7b150d32bc3d9c98373254532c76544e6d47d21e25a0e76c27d1aaf1e8a15aa2
           TARGET_BRANCH: feat/gov-release-package-output-transport-260829
-          COMMIT_MESSAGE: "feat: carry exact gov package output in releases"
+          COMMIT_MESSAGE: "feat: prepare exact gov package output release contract"
         run: |
           set -euo pipefail
           transport="$RUNNER_TEMP/materializer"
@@ -57,6 +57,7 @@ jobs:
           while IFS= read -r path; do
             test -z "$path" || rm -f -- "$path"
           done < "$transport/delete.txt"
+          git checkout "$BASE_SHA" -- .github/workflows/gov-release.yml
           git add -A
           observed_tree="$(git write-tree)"
           test "$observed_tree" = "$EXPECTED_TREE"
