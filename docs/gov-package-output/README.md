@@ -66,3 +66,15 @@ cutover, accepted ADRS meaning, or final merge authority.
 - ADRS remains meaning authority.
 - This packet is evidence and projection output.
 - A green packet is not final merge authority unless consumed by final join after accepted cutover.
+
+## Exact release transport
+
+`gov-release.yml` publishes the complete evaluated `gov-package-output` tree as
+`gov-package-output.tar.gz` beside its unchanged `govNixOutputDescriptor.v1`.
+The archive is transport only. Consumers extract it and must reproduce the exact
+`narHash` from `gov-nix-output-descriptor.json` before reading any packet member,
+including `package-obligations.jsonl` when that accepted release provides it.
+
+No archive filename, GitHub asset identity, or download URL becomes semantic or
+selection authority. The content-addressed release manifest and extracted NAR hash
+remain the identity boundary.
