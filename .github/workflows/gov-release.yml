@@ -215,6 +215,10 @@ jobs:
             --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579" \
             .#gov-package-output)
           nix path-info --json "$out_path" > nix-path-info.json
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
+            -C "$out_path" -cf gov-package-output.tar .
+          gzip -n gov-package-output.tar
+          sha256sum gov-package-output.tar.gz > gov-package-output.tar.gz.sha256
           nar_hash=$(python3 - <<'PY'
           import json
           value=json.load(open('nix-path-info.json'))
@@ -269,6 +273,8 @@ jobs:
             gov-release-manifest-validation.json
             gov-engine-descriptor.json
             gov-nix-output-descriptor.json
+            gov-package-output.tar.gz
+            gov-package-output.tar.gz.sha256
             nix-path-info.json
           if-no-files-found: error
 
@@ -283,6 +289,9 @@ jobs:
         with:
           name: gov-release-evaluated-bundle
           path: release-bundle
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: extra-experimental-features = nix-command flakes
       - name: Independently verify evaluated release bytes
         env:
           ENGINE_SHA: ${{ github.sha }}
@@ -329,6 +338,17 @@ jobs:
           assert command['acceptedDecisionDigest']==manifest['acceptedDecisionDigest']
           assert authorization['commandDigest']==digest(command)
           PY
+          (cd release-bundle && sha256sum -c gov-package-output.tar.gz.sha256)
+          rm -rf release-output-readback
+          mkdir release-output-readback
+          python3 - <<'PY'
+          import tarfile
+          with tarfile.open('release-bundle/gov-package-output.tar.gz', 'r:gz') as archive:
+              archive.extractall('release-output-readback', filter='data')
+          PY
+          expected_nar_hash=$(python3 -c "import json; print(json.load(open('release-bundle/gov-nix-output-descriptor.json'))['narHash'])")
+          observed_nar_hash=$(nix hash path --type sha256 release-output-readback)
+          test "$observed_nar_hash" = "$expected_nar_hash"
       - name: Fetch and validate all published predecessor releases
         env:
           GH_TOKEN: ${{ github.token }}
@@ -419,10 +439,27 @@ jobs:
             release-bundle/accepted-decision.json \
             release-bundle/gov-engine-descriptor.json \
             release-bundle/gov-nix-output-descriptor.json \
+            release-bundle/gov-package-output.tar.gz \
+            release-bundle/gov-package-output.tar.gz.sha256 \
             release-bundle/gov-release-owner-authorization-transport.json
           mkdir draft-readback
           gh release download "$tag" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir draft-readback
+          gh release download "$tag" --repo "$REPOSITORY" --pattern gov-nix-output-descriptor.json --dir draft-readback
+          gh release download "$tag" --repo "$REPOSITORY" --pattern gov-package-output.tar.gz --dir draft-readback
+          gh release download "$tag" --repo "$REPOSITORY" --pattern gov-package-output.tar.gz.sha256 --dir draft-readback
           cmp release-bundle/gov-release-manifest.json draft-readback/gov-release-manifest.json
+          cmp release-bundle/gov-nix-output-descriptor.json draft-readback/gov-nix-output-descriptor.json
+          cmp release-bundle/gov-package-output.tar.gz draft-readback/gov-package-output.tar.gz
+          cmp release-bundle/gov-package-output.tar.gz.sha256 draft-readback/gov-package-output.tar.gz.sha256
+          (cd draft-readback && sha256sum -c gov-package-output.tar.gz.sha256)
+          mkdir draft-readback/output
+          python3 - <<'PY'
+          import tarfile
+          with tarfile.open('draft-readback/gov-package-output.tar.gz', 'r:gz') as archive:
+              archive.extractall('draft-readback/output', filter='data')
+          PY
+          expected_nar_hash=$(python3 -c "import json; print(json.load(open('draft-readback/gov-nix-output-descriptor.json'))['narHash'])")
+          test "$(nix hash path --type sha256 draft-readback/output)" = "$expected_nar_hash"
           python3 - <<'PY'
           import hashlib,json,os
           from pathlib import Path
@@ -466,9 +503,24 @@ jobs:
           gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-release-manifest.json --dir published-readback
           gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-release-owner-authorization-transport.json --dir published-readback
           gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-release-readback-receipt.json --dir published-readback
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-nix-output-descriptor.json --dir published-readback
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-package-output.tar.gz --dir published-readback
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" --pattern gov-package-output.tar.gz.sha256 --dir published-readback
           cmp release-bundle/gov-release-manifest.json published-readback/gov-release-manifest.json
           cmp release-bundle/gov-release-owner-authorization-transport.json published-readback/gov-release-owner-authorization-transport.json
+          cmp release-bundle/gov-nix-output-descriptor.json published-readback/gov-nix-output-descriptor.json
+          cmp release-bundle/gov-package-output.tar.gz published-readback/gov-package-output.tar.gz
+          cmp release-bundle/gov-package-output.tar.gz.sha256 published-readback/gov-package-output.tar.gz.sha256
           cmp gov-release-readback-receipt.json published-readback/gov-release-readback-receipt.json
+          (cd published-readback && sha256sum -c gov-package-output.tar.gz.sha256)
+          mkdir published-readback/output
+          python3 - <<'PY'
+          import tarfile
+          with tarfile.open('published-readback/gov-package-output.tar.gz', 'r:gz') as archive:
+              archive.extractall('published-readback/output', filter='data')
+          PY
+          expected_nar_hash=$(python3 -c "import json; print(json.load(open('published-readback/gov-nix-output-descriptor.json'))['narHash'])")
+          test "$(nix hash path --type sha256 published-readback/output)" = "$expected_nar_hash"
           python3 - <<'PY'
           import hashlib,json,os
           from pathlib import Path
@@ -492,5 +544,8 @@ jobs:
             release-bundle/gov-release-manifest.json
             release-bundle/gov-release-identity.v1.json
             release-bundle/gov-release-owner-authorization-transport.json
+            release-bundle/gov-nix-output-descriptor.json
+            release-bundle/gov-package-output.tar.gz
+            release-bundle/gov-package-output.tar.gz.sha256
             gov-release-readback-receipt.json
           if-no-files-found: error
