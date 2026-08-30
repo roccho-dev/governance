@@ -36,11 +36,11 @@ jobs:
           if not parts:
               raise SystemExit('carrier-parts-missing')
           expected_parts = {
-              'payload.part.00': (13000, '59485a52a818ba12360123531df0626a141a6016cd6f6616c8f29f6eff43ac87'),
-              'payload.part.01': (13000, '55c2c83f8b2de9572b34cd51f1a2a1b1952ffc02f25b61696e919962cf2dc7cd'),
-              'payload.part.02': (13000, 'd77f1dcd7192f1cb4355bd5c754fd86865cf448948c1841428a79d94d53f5b5d'),
-              'payload.part.03': (13000, '9e04129f11d84dc85bbab2d5b7fe9be2063eef7eed7803bef6bd8e96d4d4d57e'),
-              'payload.part.04': (128, '104009c851a92659d334fb894c003710b21da20d4bfc92d4f52ce2f3b7033e96'),
+              'payload.part.00': (13000, 'f6f844b3b8e4081dbb4a256179222e511010d992b0150d49c97d0ab4da06bcb0'),
+              'payload.part.01': (13000, '41416160c9601232ef9f1c4d098b7399d2cf00254c67316a9b3f4cac92a7a745'),
+              'payload.part.02': (13000, 'e2bfdbb366e7326c6b62afa41fd2a456cf0611551fec6db56c60caf445fa3a61'),
+              'payload.part.03': (13000, '97f8d4fb52081b1e4d86782388249a6c3f1abd7cb80acdc2ffde63bce89c87aa'),
+              'payload.part.04': (148, '98d9cdcbbf8ec56df5593a7cf0e044b8661cc89647cbf26b2577b36b8678e832'),
           }
           for part in parts:
               data = part.read_bytes()
