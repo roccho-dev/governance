@@ -26,6 +26,8 @@ It is evidence for governance joins, not meaning authority.
 | `provider-ci.jsonl` | provider CI rows relevant to governance output |
 | `findings.jsonl` | blocking and non-blocking diagnostics |
 | `admission.jsonl` | organization-active admission rows |
+| `package-obligations.jsonl` | exact provider-neutral package obligations materialized from the bounded ADRS source fixture |
+| `package-obligations-materialization.json` | deterministic source/output digest and scope receipt; non-authority |
 | `input-manifest.jsonl` | producer source input closure and `inputLockDigest` source |
 | `producer-provenance.json` | producer repo/rev/digest and recomputable output digest claim |
 
@@ -73,8 +75,12 @@ cutover, accepted ADRS meaning, or final merge authority.
 `gov-package-output.tar.gz` beside its unchanged `govNixOutputDescriptor.v1`.
 The archive is transport only. Consumers extract it and must reproduce the exact
 `narHash` from `gov-nix-output-descriptor.json` before reading any packet member,
-including `package-obligations.jsonl` when that accepted release provides it.
+including the mandatory `package-obligations.jsonl` and its materialization receipt.
 
 No archive filename, GitHub asset identity, or download URL becomes semantic or
 selection authority. The content-addressed release manifest and extracted NAR hash
 remain the identity boundary.
+
+## Current fixture boundary
+
+The checked-in ADRS source fixture is the exact package-obligation input for this bounded proof only. It is validated, materialized, archived, and read back byte-for-byte. It does not replace accepted ADRS authority or authorize a production cutover.

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tools.package_obligations.tests.test_fixture tools.package_obligations.tests.test_materialize tools.package_obligations.tests.test_join
 python3 tools/gov_release/identity.py selftest
 python3 -m unittest discover -s tools/gov_release/tests -p 'test_*.py'
 python3 tools/check-gov-release-integration.py selftest --json

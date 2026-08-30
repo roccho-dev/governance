@@ -18,6 +18,8 @@
     "readmeProjectionReceipt.jsonl",
     "provider-ci.jsonl",
     "findings.jsonl",
-    "admission.jsonl"
+    "admission.jsonl",
+    "package-obligations.jsonl",
+    "package-obligations-materialization.json"
   ]
 }
