@@ -35,6 +35,21 @@ jobs:
           parts = sorted(ingress.glob('payload.part.*'))
           if not parts:
               raise SystemExit('carrier-parts-missing')
+          expected_parts = {
+              'payload.part.00': (13000, '59485a52a818ba12360123531df0626a141a6016cd6f6616c8f29f6eff43ac87'),
+              'payload.part.01': (13000, '55c2c83f8b2de9572b34cd51f1a2a1b1952ffc02f25b61696e919962cf2dc7cd'),
+              'payload.part.02': (13000, 'd77f1dcd7192f1cb4355bd5c754fd86865cf448948c1841428a79d94d53f5b5d'),
+              'payload.part.03': (13000, '9e04129f11d84dc85bbab2d5b7fe9be2063eef7eed7803bef6bd8e96d4d4d57e'),
+              'payload.part.04': (128, '104009c851a92659d334fb894c003710b21da20d4bfc92d4f52ce2f3b7033e96'),
+          }
+          for part in parts:
+              data = part.read_bytes()
+              actual = (len(data), hashlib.sha256(data).hexdigest())
+              print(f'carrier-part:{part.name}:bytes={actual[0]}:sha256={actual[1]}')
+              if expected_parts.get(part.name) != actual:
+                  raise SystemExit(f'carrier-part-mismatch:{part.name}')
+          if set(expected_parts) != {part.name for part in parts}:
+              raise SystemExit('carrier-part-set-mismatch')
           carrier = b''.join(p.read_bytes() for p in parts)
           if hashlib.sha256(carrier).hexdigest() != manifest['payload_b64_sha256']:
               raise SystemExit('carrier-text-sha256-mismatch')
@@ -59,17 +74,13 @@ jobs:
                           continue
                       if not member.isreg():
                           raise SystemExit(f'non-regular-member:{member.name}')
-                      rel = path.as_posix().removeprefix('./')
-                      regular.append(rel)
+                      regular.append(path.as_posix().removeprefix('./'))
                   if set(regular) != set(expected):
                       raise SystemExit('carrier-member-set-mismatch')
                   tf.extractall(extracted)
 
-              source_root = extracted
-              if (extracted / '.').exists():
-                  source_root = extracted
               for rel, row in expected.items():
-                  src = source_root / rel
+                  src = extracted / rel
                   data = src.read_bytes()
                   if len(data) != row['bytes']:
                       raise SystemExit(f'bytes-mismatch:{rel}')
@@ -85,10 +96,7 @@ jobs:
 
           changed = set(subprocess.check_output(['git', 'diff', '--name-only', base], text=True).splitlines())
           if changed != set(expected):
-              extra = sorted(changed - set(expected))
-              missing = sorted(set(expected) - changed)
-              raise SystemExit(f'final-path-set-mismatch:extra={extra}:missing={missing}')
-
+              raise SystemExit(f'final-path-set-mismatch:extra={sorted(changed-set(expected))}:missing={sorted(set(expected)-changed)}')
           for rel, row in expected.items():
               path = root / rel
               data = path.read_bytes()
