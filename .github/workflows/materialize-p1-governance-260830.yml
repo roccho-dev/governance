@@ -6,7 +6,7 @@ on:
       - feat/p1-canon-tdd-final-260830
     paths:
       - .github/workflows/materialize-p1-governance-260830.yml
-      - .transport/p1-governance.patch.gz.b64
+      - .transport/p1-governance.patch.gz.b64.part*
 
 permissions:
   contents: write
@@ -32,18 +32,32 @@ jobs:
         run: |
           set -euo pipefail
 
-          carrier="$GITHUB_WORKSPACE/.transport/p1-governance.patch.gz.b64"
-          test "$(sha256sum "$carrier" | cut -d' ' -f1)" = "$CARRIER_SHA256"
-
           tmp="$RUNNER_TEMP/p1-governance"
           target="$tmp/target"
           mkdir -p "$tmp"
 
-          base64 --decode "$carrier" > "$tmp/change.patch.gz"
+          cd "$GITHUB_WORKSPACE/.transport"
+          sha256sum --check <<'SUMS'
+          8bcf81750e0e7296c1f23e285a3f3dd5e6b6f27ad1b00aad3bf015d0705978ba  p1-governance.patch.gz.b64.part00
+          e174040def28cebdfee3b9eec0b90e1c671034f90c842b8c48b789746238bade  p1-governance.patch.gz.b64.part01
+          9784adf4f720f690b41522073e120da4e401c402bd4cb5542ca671a092e58380  p1-governance.patch.gz.b64.part02
+          d467aa662e6a9702b6df6fc4690da9ad16a636aaa92264bc1eda26c857f5f12c  p1-governance.patch.gz.b64.part03
+          3483ae17615177735e3c9a7db30b6f7feaf243421b25e9b336d5e07a732cfc20  p1-governance.patch.gz.b64.part04
+          f6dc02217ab60b951935d81eeeb21513e7d01144ed418f7cd1dec5b263b68a5a  p1-governance.patch.gz.b64.part05
+          b8c375a5252e00e49aa17e63a0c3672cb5f9473af3a9d5e0cf9e182123aa024e  p1-governance.patch.gz.b64.part06
+          SUMS
+
+          parts=(p1-governance.patch.gz.b64.part*)
+          test "${#parts[@]}" -eq 7
+          cat "${parts[@]}" > "$tmp/change.patch.gz.b64"
+          test "$(sha256sum "$tmp/change.patch.gz.b64" | cut -d' ' -f1)" = "$CARRIER_SHA256"
+
+          base64 --decode "$tmp/change.patch.gz.b64" > "$tmp/change.patch.gz"
           test "$(sha256sum "$tmp/change.patch.gz" | cut -d' ' -f1)" = "$GZIP_SHA256"
           gzip --decompress --stdout "$tmp/change.patch.gz" > "$tmp/change.patch"
           test "$(sha256sum "$tmp/change.patch" | cut -d' ' -f1)" = "$PATCH_SHA256"
 
+          cd "$GITHUB_WORKSPACE"
           git cat-file -e "$BASE_COMMIT^{commit}"
           git worktree add --detach "$target" "$BASE_COMMIT"
           cd "$target"
