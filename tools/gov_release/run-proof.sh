@@ -3,6 +3,22 @@ set -euo pipefail
 
 python3 tools/gov_release/identity.py selftest
 python3 tools/build-control-surface-bundle.py selftest
+
+organization_a="$(mktemp -d)"
+organization_b="$(mktemp -d)"
+python3 tools/build-internal-organization-map.py selftest
+python3 tools/build-internal-organization-map.py build \
+  --source docs/internal-organization-map/source.jsonl \
+  --out "$organization_a/control-surface.bundle.json" \
+  --receipt "$organization_a/receipt.json"
+python3 tools/build-internal-organization-map.py build \
+  --source docs/internal-organization-map/source.jsonl \
+  --out "$organization_b/control-surface.bundle.json" \
+  --receipt "$organization_b/receipt.json"
+cmp "$organization_a/control-surface.bundle.json" "$organization_b/control-surface.bundle.json"
+cmp "$organization_a/receipt.json" "$organization_b/receipt.json"
+rm -rf "$organization_a" "$organization_b"
+
 python3 -m unittest discover -s tools/gov_release/tests -p 'test_*.py'
 python3 tools/check-gov-release-integration.py selftest --json
 python3 tools/check-gov-release-integration.py canary --json
@@ -22,7 +38,7 @@ python3 tools/approval-receipt-verifier.py manifest > "$manifest_a"
 python3 tools/approval-receipt-verifier.py manifest > "$manifest_b"
 cmp "$manifest_a" "$manifest_b"
 
-python3 - "$first" "$manifest_a" <<'PY'
+python3 - "$first" "$manifest_a" <<'PY2'
 import hashlib,json,sys
 from pathlib import Path
 selftest=json.load(open(sys.argv[1]))
@@ -58,7 +74,7 @@ assert set(fixture)==set(schema['required'])
 assert fixture['kind']=='githubApprovalEvidence.v1' and fixture['status']=='COMPLETE'
 assert fixture['adapter_manifest_digest']==identity['opsAdapterManifestDigest']
 assert 'providerApprovalEvidence.v1' not in json.dumps(fixture)
-PY
+PY2
 
 ! grep -Ei '(^|[[:space:]])(import|from)[[:space:]]+(github|requests|httpx|urllib)' tools/approval-receipt-verifier.py
 ! grep -q 'providerApprovalEvidence.v1' tools/approval-receipt-verifier.py
@@ -73,7 +89,7 @@ nix-build --impure --expr '
 cmp "$first" "$result/nix-selftest.json"
 cmp "$manifest_a" "$result/nix-manifest.json"
 cat "$first"
-python3 - "$first" <<'PY'
+python3 - "$first" <<'PY2'
 import json,sys
 approval=json.load(open(sys.argv[1]))
 print(json.dumps({
@@ -89,4 +105,4 @@ print(json.dumps({
     'mergedOpsBound':True,
   },
 },sort_keys=True,separators=(',',':')))
-PY
+PY2
