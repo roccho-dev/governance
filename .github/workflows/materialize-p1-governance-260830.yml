@@ -77,39 +77,64 @@ jobs:
 
           remote_commit="$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | cut -f1)"
           test "$remote_commit" = "$target_commit"
-          git fetch --no-tags origin "$TARGET_BRANCH"
+          git fetch --no-tags origin "refs/heads/$TARGET_BRANCH"
           remote_tree="$(git rev-parse FETCH_HEAD^{tree})"
           test "$remote_tree" = "$EXPECTED_TREE"
 
-          python3 - "$tmp/materialization-receipt.json" <<'PY'
-          import hashlib, json, os, sys
+          python3 - \
+            "$tmp/materialization-receipt.json" \
+            "$BASE_COMMIT" \
+            "$TARGET_BRANCH" \
+            "$target_commit" \
+            "$EXPECTED_TREE" \
+            "$remote_commit" \
+            "$remote_tree" \
+            "$CARRIER_SHA256" \
+            "$GZIP_SHA256" \
+            "$PATCH_SHA256" \
+            "$tmp/focused-tests.log" \
+            "$tmp/gov-release-tests.log" <<'PY'
+          import hashlib, json, sys
           from pathlib import Path
 
           def digest(path):
               return "sha256:" + hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
+          (
+              output,
+              base_commit,
+              target_branch,
+              target_commit,
+              target_tree,
+              remote_commit,
+              remote_tree,
+              carrier_sha,
+              gzip_sha,
+              patch_sha,
+              focused_log,
+              release_log,
+          ) = sys.argv[1:]
+
           value = {
               "kind": "governance.p1SourceMaterializationReceipt.v1",
-              "baseCommit": os.environ["BASE_COMMIT"],
-              "targetBranch": os.environ["TARGET_BRANCH"],
-              "targetCommit": os.environ["target_commit"],
-              "targetTree": os.environ["EXPECTED_TREE"],
-              "remoteCommit": os.environ["remote_commit"],
-              "remoteTree": os.environ["remote_tree"],
-              "carrierSha256": "sha256:" + os.environ["CARRIER_SHA256"],
-              "gzipSha256": "sha256:" + os.environ["GZIP_SHA256"],
-              "patchSha256": "sha256:" + os.environ["PATCH_SHA256"],
-              "focusedTests": digest(os.environ["tmp"] + "/focused-tests.log"),
-              "govReleaseTests": digest(os.environ["tmp"] + "/gov-release-tests.log"),
+              "baseCommit": base_commit,
+              "targetBranch": target_branch,
+              "targetCommit": target_commit,
+              "targetTree": target_tree,
+              "remoteCommit": remote_commit,
+              "remoteTree": remote_tree,
+              "carrierSha256": "sha256:" + carrier_sha,
+              "gzipSha256": "sha256:" + gzip_sha,
+              "patchSha256": "sha256:" + patch_sha,
+              "focusedTests": digest(focused_log),
+              "govReleaseTests": digest(release_log),
               "canonicalGreenEmitted": False,
           }
-          Path(sys.argv[1]).write_text(json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+          Path(output).write_text(
+              json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
           PY
-        env:
-          target_commit: ${{ env.target_commit }}
-          remote_commit: ${{ env.remote_commit }}
-          remote_tree: ${{ env.remote_tree }}
-          tmp: ${{ runner.temp }}/p1-governance
 
       - name: Upload source materialization evidence
         uses: actions/upload-artifact@v4
