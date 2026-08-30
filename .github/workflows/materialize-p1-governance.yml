@@ -1,0 +1,116 @@
+name: Materialize P1 Governance source
+
+on:
+  push:
+    branches:
+      - feat/p1-rule-evolution-canon-tdd-260830
+    paths:
+      - .p1-ingress/**
+      - .github/workflows/materialize-p1-governance.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify carrier and materialize exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, json, os, shutil, subprocess, tarfile, tempfile
+          from pathlib import Path, PurePosixPath
+
+          root = Path.cwd()
+          ingress = root / '.p1-ingress'
+          manifest = json.loads((ingress / 'manifest.json').read_text(encoding='utf-8'))
+          base = manifest['base_commit']
+          subprocess.run(['git', 'merge-base', '--is-ancestor', base, 'HEAD'], check=True)
+
+          parts = sorted(ingress.glob('payload.part.*'))
+          if not parts:
+              raise SystemExit('carrier-parts-missing')
+          carrier = b''.join(p.read_bytes() for p in parts)
+          if hashlib.sha256(carrier).hexdigest() != manifest['payload_b64_sha256']:
+              raise SystemExit('carrier-text-sha256-mismatch')
+          payload = base64.b64decode(carrier, validate=True)
+          if hashlib.sha256(payload).hexdigest() != manifest['payload_sha256']:
+              raise SystemExit('carrier-payload-sha256-mismatch')
+
+          expected = {row['path']: row for row in manifest['files']}
+          with tempfile.TemporaryDirectory() as td:
+              temp = Path(td)
+              archive = temp / 'payload.tar.gz'
+              archive.write_bytes(payload)
+              extracted = temp / 'root'
+              extracted.mkdir()
+              with tarfile.open(archive, 'r:gz') as tf:
+                  regular = []
+                  for member in tf.getmembers():
+                      path = PurePosixPath(member.name)
+                      if path.is_absolute() or '..' in path.parts:
+                          raise SystemExit(f'unsafe-path:{member.name}')
+                      if member.isdir():
+                          continue
+                      if not member.isreg():
+                          raise SystemExit(f'non-regular-member:{member.name}')
+                      rel = path.as_posix().removeprefix('./')
+                      regular.append(rel)
+                  if set(regular) != set(expected):
+                      raise SystemExit('carrier-member-set-mismatch')
+                  tf.extractall(extracted)
+
+              source_root = extracted
+              if (extracted / '.').exists():
+                  source_root = extracted
+              for rel, row in expected.items():
+                  src = source_root / rel
+                  data = src.read_bytes()
+                  if len(data) != row['bytes']:
+                      raise SystemExit(f'bytes-mismatch:{rel}')
+                  if hashlib.sha256(data).hexdigest() != row['sha256']:
+                      raise SystemExit(f'sha256-mismatch:{rel}')
+                  dst = root / rel
+                  dst.parent.mkdir(parents=True, exist_ok=True)
+                  dst.write_bytes(data)
+                  os.chmod(dst, 0o755 if row['mode'] == '100755' else 0o644)
+
+          shutil.rmtree(ingress)
+          (root / '.github/workflows/materialize-p1-governance.yml').unlink()
+
+          changed = set(subprocess.check_output(['git', 'diff', '--name-only', base], text=True).splitlines())
+          if changed != set(expected):
+              extra = sorted(changed - set(expected))
+              missing = sorted(set(expected) - changed)
+              raise SystemExit(f'final-path-set-mismatch:extra={extra}:missing={missing}')
+
+          for rel, row in expected.items():
+              path = root / rel
+              data = path.read_bytes()
+              if hashlib.sha256(data).hexdigest() != row['sha256']:
+                  raise SystemExit(f'final-sha256-mismatch:{rel}')
+              actual_mode = '100755' if os.access(path, os.X_OK) else '100644'
+              if actual_mode != row['mode']:
+                  raise SystemExit(f'final-mode-mismatch:{rel}')
+          PY
+          git diff --check
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest \
+            tools.package_obligations.tests.test_fixture \
+            tools.package_obligations.tests.test_materialize \
+            tools.package_obligations.tests.test_join \
+            tools.gov_release.tests.test_package_output \
+            tools.gov_release.tests.test_canon_tdd
+      - name: Commit exact source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: materialize P1 Canon TDD governance foundation'
+          git push origin HEAD:feat/p1-rule-evolution-canon-tdd-260830
