@@ -1,9 +1,12 @@
 from __future__ import annotations
-import importlib.util, json, pathlib, tempfile, unittest
+import importlib.util, json, pathlib, sys, tempfile, unittest
 
 HERE=pathlib.Path(__file__).resolve()
 spec=importlib.util.spec_from_file_location("decisionctl", HERE.parents[1]/"decisionctl.py")
-d=importlib.util.module_from_spec(spec); assert spec.loader; spec.loader.exec_module(d)
+d=importlib.util.module_from_spec(spec)
+assert spec.loader
+sys.modules[spec.name]=d
+spec.loader.exec_module(d)
 
 def e(event_id, decision_id="ADR-1", kind="propose", seq=1, actor="author", dtype="architecture", **kw):
     v={"schema":d.EVENT_SCHEMA,"event_id":event_id,"decision_id":decision_id,
