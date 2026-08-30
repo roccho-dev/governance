@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"","decision_type":"architecture","event_id":"empty-decision-id","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Empty decision identity must fail","title":"Empty identity"}

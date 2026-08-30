@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-page-index-null","decision_type":"architecture","event_id":"page-index-null","kind":"propose","page_index":null,"schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Null page index excluded","title":"Null page index excluded"}

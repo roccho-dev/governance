@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-provider-null","decision_type":"architecture","event_id":"provider-null","kind":"propose","provider":null,"schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Null provider excluded","title":"Null provider excluded"}

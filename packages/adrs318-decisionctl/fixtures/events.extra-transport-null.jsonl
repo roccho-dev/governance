@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-transport-null","decision_type":"architecture","event_id":"transport-null","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Null transport excluded","title":"Null transport excluded","transport":null}

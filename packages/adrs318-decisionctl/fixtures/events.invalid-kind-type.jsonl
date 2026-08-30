@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-kind-type","decision_type":"architecture","event_id":"kind-type","kind":1,"schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Non-string kind must fail","title":"Kind type"}

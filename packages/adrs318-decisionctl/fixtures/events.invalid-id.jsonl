@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR invalid space","decision_type":"architecture","event_id":"invalid-id","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Invalid identity must fail","title":"Invalid identity"}

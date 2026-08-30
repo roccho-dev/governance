@@ -1,0 +1,3 @@
+{"actor":"author","decision_id":"ADR-318-revoked","decision_type":"policy","event_id":"revoked-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Revoked fixture","title":"Revoked fixture"}
+{"actor":"owner","decision_id":"ADR-318-revoked","decision_type":"policy","event_id":"revoked-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Revoked fixture","title":"Revoked fixture"}
+{"actor":"owner","decision_id":"ADR-318-revoked","decision_type":"policy","event_id":"revoked-event","kind":"revoke","schema":"adrs.lifecycleEvent.v1","seq":3,"summary":"Revoked fixture","title":"Revoked fixture"}
