@@ -186,10 +186,15 @@ EOF
 EOF
         '';
       mkGovPackageOutput = pkgs:
-        pkgs.runCommand "governance-gov-package-output" { nativeBuildInputs = [ pkgs.coreutils pkgs.gnugrep ]; } ''
+        pkgs.runCommand "governance-gov-package-output" { nativeBuildInputs = [ pkgs.coreutils pkgs.gnugrep pkgs.python3 ]; } ''
           set -euo pipefail
           mkdir -p "$out"
           cp ${self}/docs/gov-package-output/* "$out/"
+          python3 ${self}/tools/materialize-package-obligations.py materialize \
+            --fixture ${self}/fixtures/adrs-package-obligations/v1 \
+            --out-dir "$TMPDIR/package-obligations"
+          cp "$TMPDIR/package-obligations/package-obligations.jsonl" "$out/"
+          cp "$TMPDIR/package-obligations/package-obligations-materialization.json" "$out/"
 
           for file in \
             manifest.json \
@@ -200,7 +205,9 @@ EOF
             readmeProjectionReceipt.jsonl \
             provider-ci.jsonl \
             findings.jsonl \
-            admission.jsonl
+            admission.jsonl \
+            package-obligations.jsonl \
+            package-obligations-materialization.json
           do
             test -s "$out/$file"
           done
@@ -218,6 +225,9 @@ EOF
           grep -q '"kind":"govProviderCiRow.v1"' "$out/provider-ci.jsonl"
           grep -q '"kind":"govPackageFinding.v1"' "$out/findings.jsonl"
           grep -q '"kind":"govPackageAdmission.v1"' "$out/admission.jsonl"
+          python3 ${self}/tools/check-gov-package-output-release.py directory \
+            --path "$out" \
+            --fixture ${self}/fixtures/adrs-package-obligations/v1
         '';
     in
     {
@@ -384,6 +394,12 @@ same
           returnCondition = "packages.readme-artifact/README.md and committed README.md are byte-identical while preserving the non-authority boundary";
           expires = "2026-08-31";
         };
+        canon-tdd-final-selftest = pkgs.runCommand "canon-tdd-final-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          cd ${self}
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tools.gov_release.tests.test_canon_tdd
+          touch "$out"
+        '';
         gov-package-output = pkgs.runCommand "gov-package-output-check" { } ''
           set -euo pipefail
           test -s ${govPackageOutput}/manifest.json
