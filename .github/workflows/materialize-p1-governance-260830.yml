@@ -1,0 +1,123 @@
+name: Materialize P1 Governance Source 260830
+
+on:
+  push:
+    branches:
+      - feat/p1-canon-tdd-final-260830
+    paths:
+      - .github/workflows/materialize-p1-governance-260830.yml
+      - .transport/p1-governance.patch.gz.b64
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Restore exact clean target and prove source tree
+        shell: bash
+        env:
+          BASE_COMMIT: 6b20ba62e5b84de7549cc1df801af453dec03a38
+          TARGET_BRANCH: pr/p1-canon-tdd-final-260830
+          EXPECTED_TREE: a8fe79b11fdaf9bfa4658462a660263bfcf4e434
+          CARRIER_SHA256: 71a254363814bd97e2b0983b8af9827836cee9a7070563ccab09c40fe6793aac
+          GZIP_SHA256: b44c190073c5127a9f813ad9ed90cdcc810e8af2e49ed064649f5d21c348fde0
+          PATCH_SHA256: fc094a44bd635ca8b9a73f6a6b40c86cd142289b30723b40997494b34bfe982b
+        run: |
+          set -euo pipefail
+
+          carrier="$GITHUB_WORKSPACE/.transport/p1-governance.patch.gz.b64"
+          test "$(sha256sum "$carrier" | cut -d' ' -f1)" = "$CARRIER_SHA256"
+
+          tmp="$RUNNER_TEMP/p1-governance"
+          target="$tmp/target"
+          mkdir -p "$tmp"
+
+          base64 --decode "$carrier" > "$tmp/change.patch.gz"
+          test "$(sha256sum "$tmp/change.patch.gz" | cut -d' ' -f1)" = "$GZIP_SHA256"
+          gzip --decompress --stdout "$tmp/change.patch.gz" > "$tmp/change.patch"
+          test "$(sha256sum "$tmp/change.patch" | cut -d' ' -f1)" = "$PATCH_SHA256"
+
+          git cat-file -e "$BASE_COMMIT^{commit}"
+          git worktree add --detach "$target" "$BASE_COMMIT"
+          cd "$target"
+
+          git apply --index "$tmp/change.patch"
+          git diff --cached --check
+
+          actual_tree="$(git write-tree)"
+          test "$actual_tree" = "$EXPECTED_TREE"
+
+          export PYTHONDONTWRITEBYTECODE=1
+          python3 -m unittest \
+            tools.package_obligations.tests.test_fixture \
+            tools.package_obligations.tests.test_materialize \
+            tools.package_obligations.tests.test_join \
+            tools.gov_release.tests.test_canon_tdd \
+            tools.gov_release.tests.test_package_output \
+            2>&1 | tee "$tmp/focused-tests.log"
+          python3 -m unittest discover -s tools/gov_release/tests -p 'test_*.py' \
+            2>&1 | tee "$tmp/gov-release-tests.log"
+
+          git config user.name roccho
+          git config user.email 40359643+roccho-dev@users.noreply.github.com
+          export GIT_AUTHOR_DATE=2026-08-30T03:45:00Z
+          export GIT_COMMITTER_DATE=2026-08-30T03:45:00Z
+          git commit -m "feat: enforce final-only Canon TDD P1 closure"
+
+          target_commit="$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD^{tree})" = "$EXPECTED_TREE"
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH" --force
+
+          remote_commit="$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | cut -f1)"
+          test "$remote_commit" = "$target_commit"
+          git fetch --no-tags origin "$TARGET_BRANCH"
+          remote_tree="$(git rev-parse FETCH_HEAD^{tree})"
+          test "$remote_tree" = "$EXPECTED_TREE"
+
+          python3 - "$tmp/materialization-receipt.json" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+
+          def digest(path):
+              return "sha256:" + hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+          value = {
+              "kind": "governance.p1SourceMaterializationReceipt.v1",
+              "baseCommit": os.environ["BASE_COMMIT"],
+              "targetBranch": os.environ["TARGET_BRANCH"],
+              "targetCommit": os.environ["target_commit"],
+              "targetTree": os.environ["EXPECTED_TREE"],
+              "remoteCommit": os.environ["remote_commit"],
+              "remoteTree": os.environ["remote_tree"],
+              "carrierSha256": "sha256:" + os.environ["CARRIER_SHA256"],
+              "gzipSha256": "sha256:" + os.environ["GZIP_SHA256"],
+              "patchSha256": "sha256:" + os.environ["PATCH_SHA256"],
+              "focusedTests": digest(os.environ["tmp"] + "/focused-tests.log"),
+              "govReleaseTests": digest(os.environ["tmp"] + "/gov-release-tests.log"),
+              "canonicalGreenEmitted": False,
+          }
+          Path(sys.argv[1]).write_text(json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+          PY
+        env:
+          target_commit: ${{ env.target_commit }}
+          remote_commit: ${{ env.remote_commit }}
+          remote_tree: ${{ env.remote_tree }}
+          tmp: ${{ runner.temp }}/p1-governance
+
+      - name: Upload source materialization evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-governance-source-materialization
+          path: |
+            ${{ runner.temp }}/p1-governance/materialization-receipt.json
+            ${{ runner.temp }}/p1-governance/focused-tests.log
+            ${{ runner.temp }}/p1-governance/gov-release-tests.log
+          if-no-files-found: error
+          retention-days: 7
