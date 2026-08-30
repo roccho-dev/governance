@@ -25,7 +25,8 @@ jobs:
         env:
           BASE_COMMIT: 6b20ba62e5b84de7549cc1df801af453dec03a38
           TARGET_BRANCH: pr/p1-canon-tdd-final-260830
-          EXPECTED_TREE: a8fe79b11fdaf9bfa4658462a660263bfcf4e434
+          FULL_EXPECTED_TREE: a8fe79b11fdaf9bfa4658462a660263bfcf4e434
+          TARGET_EXPECTED_TREE: 8dc59b2aeda5c9605e16308e4da298e0964d17ab
           CARRIER_SHA256: 71a254363814bd97e2b0983b8af9827836cee9a7070563ccab09c40fe6793aac
           GZIP_SHA256: b44c190073c5127a9f813ad9ed90cdcc810e8af2e49ed064649f5d21c348fde0
           PATCH_SHA256: fc094a44bd635ca8b9a73f6a6b40c86cd142289b30723b40997494b34bfe982b
@@ -64,9 +65,7 @@ jobs:
 
           git apply --index "$tmp/change.patch"
           git diff --cached --check
-
-          actual_tree="$(git write-tree)"
-          test "$actual_tree" = "$EXPECTED_TREE"
+          test "$(git write-tree)" = "$FULL_EXPECTED_TREE"
 
           export PYTHONDONTWRITEBYTECODE=1
           python3 -m unittest \
@@ -79,30 +78,38 @@ jobs:
           python3 -m unittest discover -s tools/gov_release/tests -p 'test_*.py' \
             2>&1 | tee "$tmp/gov-release-tests.log"
 
+          # GitHub Actions' token cannot update workflow files. Keep the source
+          # commit clean and add the verified workflow through the normal user
+          # GitHub write boundary after this exact source branch exists.
+          git restore --source="$BASE_COMMIT" --staged --worktree \
+            .github/workflows/gov-release.yml
+          test "$(git write-tree)" = "$TARGET_EXPECTED_TREE"
+
           git config user.name roccho
           git config user.email 40359643+roccho-dev@users.noreply.github.com
           export GIT_AUTHOR_DATE=2026-08-30T03:45:00Z
           export GIT_COMMITTER_DATE=2026-08-30T03:45:00Z
-          git commit -m "feat: enforce final-only Canon TDD P1 closure"
+          git commit -m "feat: add P1 obligations and final-only Canon TDD core"
 
           target_commit="$(git rev-parse HEAD)"
-          test "$(git rev-parse HEAD^{tree})" = "$EXPECTED_TREE"
+          test "$(git rev-parse HEAD^{tree})" = "$TARGET_EXPECTED_TREE"
           git push origin "HEAD:refs/heads/$TARGET_BRANCH" --force
 
           remote_commit="$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | cut -f1)"
           test "$remote_commit" = "$target_commit"
           git fetch --no-tags origin "refs/heads/$TARGET_BRANCH"
           remote_tree="$(git rev-parse FETCH_HEAD^{tree})"
-          test "$remote_tree" = "$EXPECTED_TREE"
+          test "$remote_tree" = "$TARGET_EXPECTED_TREE"
 
           python3 - \
             "$tmp/materialization-receipt.json" \
             "$BASE_COMMIT" \
             "$TARGET_BRANCH" \
             "$target_commit" \
-            "$EXPECTED_TREE" \
+            "$TARGET_EXPECTED_TREE" \
             "$remote_commit" \
             "$remote_tree" \
+            "$FULL_EXPECTED_TREE" \
             "$CARRIER_SHA256" \
             "$GZIP_SHA256" \
             "$PATCH_SHA256" \
@@ -122,6 +129,7 @@ jobs:
               target_tree,
               remote_commit,
               remote_tree,
+              full_tree,
               carrier_sha,
               gzip_sha,
               patch_sha,
@@ -137,6 +145,8 @@ jobs:
               "targetTree": target_tree,
               "remoteCommit": remote_commit,
               "remoteTree": remote_tree,
+              "verifiedFullCandidateTree": full_tree,
+              "workflowPendingNormalGitHubWrite": True,
               "carrierSha256": "sha256:" + carrier_sha,
               "gzipSha256": "sha256:" + gzip_sha,
               "patchSha256": "sha256:" + patch_sha,
