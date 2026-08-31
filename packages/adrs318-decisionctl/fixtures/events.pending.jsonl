@@ -1,0 +1,3 @@
+{"actor":"author","decision_id":"ADR-318-pending","decision_type":"architecture","event_id":"pending-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Pending fixture","title":"Pending fixture"}
+{"actor":"owner","decision_id":"ADR-318-pending","decision_type":"architecture","event_id":"pending-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Pending fixture","title":"Pending fixture"}
+{"actor":"owner","decision_id":"ADR-318-pending","decision_type":"architecture","event_id":"pending-amend","kind":"amend","schema":"adrs.lifecycleEvent.v1","seq":3,"summary":"Pending fixture","title":"Pending fixture"}

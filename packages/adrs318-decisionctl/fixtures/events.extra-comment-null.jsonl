@@ -1,0 +1,1 @@
+{"actor":"author","comment_id":null,"decision_id":"ADR-comment-null","decision_type":"architecture","event_id":"comment-null","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Null comment ID excluded","title":"Null comment ID excluded"}
