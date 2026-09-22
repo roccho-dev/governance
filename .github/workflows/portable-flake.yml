@@ -1,0 +1,71 @@
+name: portable-flake
+
+on:
+  pull_request:
+    paths:
+      - flake.nix
+      - flake.lock
+      - .github/workflows/portable-flake.yml
+  push:
+    branches: [proposals]
+    paths:
+      - flake.nix
+      - flake.lock
+      - .github/workflows/portable-flake.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Validate ADRS reader
+        env:
+          CLIENT_ID: ${{ vars.ADRS_READER_CLIENT_ID }}
+          PRIVATE_KEY: ${{ secrets.ADRS_READER_PRIVATE_KEY }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.ADRS_READER_CLIENT_ID }}
+          private-key: ${{ secrets.ADRS_READER_PRIVATE_KEY }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+            access-tokens = github.com=${{ steps.adrs-token.outputs.token }}
+
+      - name: Prove portable exact flake closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e flake.lock
+          ! grep -R -F 'ssh://100.124.250.91/' flake.nix
+          grep -F 'github:roccho-dev/adrs/a8fc9e8e04d53f1d783317059e4421c8dc724d01' flake.nix
+          grep -F 'github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579' flake.nix
+          grep -F 'github:NixOS/nixpkgs/a799d3e3886da994fa307f817a6bc705ae538eeb' flake.nix
+
+          nix flake show --json --no-write-lock-file > "$RUNNER_TEMP/flake-show.json"
+
+          python3 - "$RUNNER_TEMP/flake-show.json" <<'PY'
+          import json, pathlib, sys
+          show=json.loads(pathlib.Path(sys.argv[1]).read_text())
+          packages=show.get("packages",{}).get("x86_64-linux",{})
+          expected={"bootstrap-input","readme-artifact","gov-package-output","claim-admission-check"}
+          missing=sorted(expected-set(packages))
+          if missing:
+              raise SystemExit(f"missing packages: {missing}")
+          PY
