@@ -291,9 +291,24 @@ jobs:
           cache-dependency-path: tools/contract-modeling/requirements.txt
       - name: Install pinned dependencies
         run: python3 -m pip install --disable-pip-version-check -r tools/contract-modeling/requirements.txt
+      - name: Validate ADRS reader for portable flake proof
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: portable-adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
       - uses: cachix/install-nix-action@v31
         with:
-          extra_nix_config: extra-experimental-features = nix-command flakes
+          extra_nix_config: |
+            extra-experimental-features = nix-command flakes
+            access-tokens = github.com=${{ steps.portable-adrs-token.outputs.token }}
       - name: Verify exact candidate
         env:
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -301,6 +316,21 @@ jobs:
       - name: Run Nix and ADRS candidate regression
         run: |
           set -euo pipefail
+
+          # Independent GitHub-only reconstruction: no host-private lock/path.
+          test ! -e flake.lock
+          ! grep -R -F 'ssh://100.124.250.91/' flake.nix
+          nix flake show --json --no-write-lock-file > "$RUNNER_TEMP/portable-flake-show.json"
+          python3 - "$RUNNER_TEMP/portable-flake-show.json" <<'PY'
+          import json, pathlib, sys
+          show=json.loads(pathlib.Path(sys.argv[1]).read_text())
+          packages=show.get("packages",{}).get("x86_64-linux",{})
+          expected={"bootstrap-input","readme-artifact","gov-package-output","claim-admission-check"}
+          missing=sorted(expected-set(packages))
+          if missing:
+              raise SystemExit(f"missing packages: {missing}")
+          PY
+
           nix flake check -L --no-write-lock-file \
             --override-input adrsRecords "path:$PWD/evidence/accepted-adrs" \
             --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579"

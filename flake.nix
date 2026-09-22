@@ -2,13 +2,13 @@
   description = "governance: non-authority pure projection and continuity checks";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/a799d3e3886da994fa307f817a6bc705ae538eeb";
     adrsRecords = {
-      url = "github:roccho-dev/adrs/main";
+      url = "github:roccho-dev/adrs/a8fc9e8e04d53f1d783317059e4421c8dc724d01";
       flake = false;
     };
     uiLib = {
-      url = "github:roccho-dev/ui/proposals";
+      url = "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579";
       flake = false;
     };
   };
