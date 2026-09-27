@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-source-url","decision_type":"architecture","event_id":"source-url","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"source_url":"https://github.com/roccho-dev/adrs/issues/318","summary":"Source URL excluded","title":"Source URL excluded"}

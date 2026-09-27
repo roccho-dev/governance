@@ -1,0 +1,3 @@
+{"actor":"author","decision_id":"ADR-same-kind","decision_type":"architecture","event_id":"same-kind-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Same-kind duplicate sequence","title":"Same-kind duplicate sequence"}
+{"actor":"owner","decision_id":"ADR-same-kind","decision_type":"architecture","event_id":"same-kind-accept-a","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Same-kind duplicate sequence","title":"Same-kind duplicate sequence"}
+{"actor":"owner","decision_id":"ADR-same-kind","decision_type":"architecture","event_id":"same-kind-accept-b","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Same-kind duplicate sequence","title":"Same-kind duplicate sequence"}

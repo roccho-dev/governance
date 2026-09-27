@@ -1,0 +1,2 @@
+{"actor":"author","decision_id":"ADR-amend-transition","decision_type":"architecture","event_id":"amend-transition-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Amend before accept must fail","title":"Amend transition"}
+{"actor":"owner","decision_id":"ADR-amend-transition","decision_type":"architecture","event_id":"amend-transition-amend","kind":"amend","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Amend before accept must fail","title":"Amend transition"}

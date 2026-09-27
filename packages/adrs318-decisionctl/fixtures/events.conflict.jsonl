@@ -1,0 +1,3 @@
+{"actor":"author","decision_id":"ADR-318-conflict","decision_type":"architecture","event_id":"conflict-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Conflict fixture","title":"Conflict fixture"}
+{"actor":"owner","decision_id":"ADR-318-conflict","decision_type":"architecture","event_id":"conflict-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Conflict fixture","title":"Conflict fixture"}
+{"actor":"owner","decision_id":"ADR-318-conflict","decision_type":"architecture","event_id":"conflict-reject","kind":"reject","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Conflict fixture","title":"Conflict fixture"}

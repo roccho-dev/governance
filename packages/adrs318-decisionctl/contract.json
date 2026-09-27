@@ -1,0 +1,1 @@
+{"authority":false,"input":{"eventSchema":"adrs.lifecycleEvent.v1","grantSchema":"adrs.authorityGrant.v1"},"nonGoals":["hosting","authentication","physical URLs","cutover","legacy retirement"],"outputs":{"authority":"adrs.authorityResult.v1","current":"adrs.currentDecision.v1","routes":"adrs.logicalRoutes.v1","view":"adrs.decisionView.v1"},"schema":"adrs.decisionctlContract.v1"}

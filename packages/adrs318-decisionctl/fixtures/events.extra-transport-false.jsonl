@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-transport-false","decision_type":"architecture","event_id":"transport-false","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"False transport excluded","title":"False transport excluded","transport":false}

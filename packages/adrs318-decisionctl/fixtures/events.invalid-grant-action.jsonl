@@ -1,0 +1,1 @@
+{"actions":["approve"],"actor":"owner","decision_types":["*"],"schema":"adrs.authorityGrant.v1","valid":true}

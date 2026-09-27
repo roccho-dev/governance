@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":1,"decision_type":"architecture","event_id":"decision-id-number","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Numeric decision ID must fail","title":"Decision ID number"}

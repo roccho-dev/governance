@@ -1,0 +1,1 @@
+{"actions":["accept","amend","reject","revoke","supersede"],"actor":"owner","decision_types":["*"],"grant_id":"fixture-owner","schema":"adrs.authorityGrant.v1","valid":true}

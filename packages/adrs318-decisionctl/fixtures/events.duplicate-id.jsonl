@@ -1,0 +1,2 @@
+{"actor":"author","decision_id":"ADR-dup-a","decision_type":"architecture","event_id":"duplicate-event","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Duplicate fixture A","title":"Duplicate fixture A"}
+{"actor":"author","decision_id":"ADR-dup-b","decision_type":"policy","event_id":"duplicate-event","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Duplicate fixture B","title":"Duplicate fixture B"}
