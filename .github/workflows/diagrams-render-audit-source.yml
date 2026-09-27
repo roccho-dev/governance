@@ -1,0 +1,141 @@
+name: Diagrams render-audit source snapshot
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/diagrams-render-audit-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: 3855dd6ec09b1254ab21c99095027c8e9401657e
+          path: diagrams
+          persist-credentials: false
+      - name: Bind source and create deterministic archive
+        run: |
+          set -euo pipefail
+          test "$(git -C diagrams rev-parse HEAD)" = 3855dd6ec09b1254ab21c99095027c8e9401657e
+          rm -rf diagrams/.git
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf diagrams-source-3855dd6.tar.gz diagrams
+          sha256sum diagrams-source-3855dd6.tar.gz > diagrams-source-3855dd6.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diagrams-source-3855dd6
+          path: |
+            diagrams-source-3855dd6.tar.gz
+            diagrams-source-3855dd6.sha256
+          if-no-files-found: error
+
+  adrs-source:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: b92102d78eb2fe428b1a23b974e451dd7fd027ff
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - name: Bind ADRS source and create deterministic archive
+        run: |
+          set -euo pipefail
+          test "$(git -C adrs rev-parse HEAD)" = b92102d78eb2fe428b1a23b974e451dd7fd027ff
+          rm -rf adrs/.git
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf adrs-source-b92102d.tar.gz adrs
+          sha256sum adrs-source-b92102d.tar.gz > adrs-source-b92102d.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adrs-source-b92102d
+          path: |
+            adrs-source-b92102d.tar.gz
+            adrs-source-b92102d.sha256
+          if-no-files-found: error
+
+  runtime-image:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Resolve exact Playwright OCI, browser, font and Python wheels
+        run: |
+          set -euo pipefail
+          image='mcr.microsoft.com/playwright/python:v1.58.0-noble'
+          docker pull "$image"
+          mkdir -p render-runtime/wheels
+          docker image inspect "$image" > render-runtime/image-inspect.json
+          docker image inspect --format '{{index .RepoDigests 0}}' "$image" > render-runtime/image-digest.txt
+
+          docker run --rm -v "$PWD/render-runtime:/out" "$image" bash -lc '
+            set -euo pipefail
+            chrome=$(find /ms-playwright -type f -path "*/chrome-linux*/chrome" -perm -111 | sort | head -1)
+            test -n "$chrome"
+            font=$(fc-match -f "%{file}\n" "DejaVu Sans" | head -1)
+            test -f "$font"
+            printf "%s\n" "$chrome" > /out/browser-path.txt
+            "$chrome" --version > /out/browser-version.txt
+            sha256sum "$chrome" > /out/browser-sha256.txt
+            printf "%s\n" "$font" > /out/font-path.txt
+            fc-match -f "%{family}\n" "DejaVu Sans" | head -1 > /out/font-family.txt
+            sha256sum "$font" > /out/font-sha256.txt
+            cp /etc/os-release /out/os-release
+            python --version > /out/python-version.txt 2>&1
+          '
+
+          python -m pip download --only-binary=:all: --dest render-runtime/wheels 'playwright==1.58.0'
+          (cd render-runtime/wheels && sha256sum * | sort) > render-runtime/wheel-sha256.txt
+
+          python - <<'PY' > render-runtime/manifest.json
+          import hashlib,json,pathlib
+          root=pathlib.Path('render-runtime')
+          wheel_rows=[]
+          for line in (root/'wheel-sha256.txt').read_text().splitlines():
+              digest,name=line.split(None,1)
+              wheel_rows.append({'file':name.strip(),'sha256':'sha256:'+digest})
+          result={
+            'kind':'renderAuditRuntimeImagePin.v2',
+            'imageTag':'mcr.microsoft.com/playwright/python:v1.58.0-noble',
+            'imageDigest':(root/'image-digest.txt').read_text().strip(),
+            'imageInspectSha256':'sha256:'+hashlib.sha256((root/'image-inspect.json').read_bytes()).hexdigest(),
+            'osReleaseSha256':'sha256:'+hashlib.sha256((root/'os-release').read_bytes()).hexdigest(),
+            'pythonVersion':(root/'python-version.txt').read_text().strip(),
+            'browser':{
+              'path':(root/'browser-path.txt').read_text().strip(),
+              'version':(root/'browser-version.txt').read_text().strip(),
+              'sha256':'sha256:'+(root/'browser-sha256.txt').read_text().split()[0],
+            },
+            'font':{
+              'path':(root/'font-path.txt').read_text().strip(),
+              'family':(root/'font-family.txt').read_text().strip(),
+              'sha256':'sha256:'+(root/'font-sha256.txt').read_text().split()[0],
+            },
+            'pythonWheels':wheel_rows,
+          }
+          print(json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: render-audit-runtime-lock-v1.58.0
+          path: render-runtime
+          if-no-files-found: error
