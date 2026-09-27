@@ -1,0 +1,114 @@
+name: Diagrams next source snapshot
+
+on:
+  pull_request:
+    branches: [proposals]
+    paths:
+      - .github/workflows/diagrams-next-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/diagrams
+          ref: a293e39890aee692f70d4e8d114d4081733a937b
+          path: diagrams
+          persist-credentials: false
+      - name: Bind source and create deterministic archive
+        run: |
+          set -euo pipefail
+          test "$(git -C diagrams rev-parse HEAD)" = a293e39890aee692f70d4e8d114d4081733a937b
+          rm -rf diagrams/.git
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf diagrams-source-a293e398.tar.gz diagrams
+          sha256sum diagrams-source-a293e398.tar.gz > diagrams-source-a293e398.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diagrams-source-a293e398
+          path: |
+            diagrams-source-a293e398.tar.gz
+            diagrams-source-a293e398.sha256
+          if-no-files-found: error
+
+  adrs-source:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate ADRS reader identity
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - id: adrs-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: adrs
+          permission-contents: read
+      - uses: actions/checkout@v6
+        with:
+          repository: roccho-dev/adrs
+          ref: 2ae2830c211057274e0900440ea7b9a1c9e0e9ad
+          path: adrs
+          token: ${{ steps.adrs-token.outputs.token }}
+          persist-credentials: false
+      - name: Bind ADRS source and create deterministic archive
+        run: |
+          set -euo pipefail
+          test "$(git -C adrs rev-parse HEAD)" = 2ae2830c211057274e0900440ea7b9a1c9e0e9ad
+          rm -rf adrs/.git
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf adrs-source-2ae2830.tar.gz adrs
+          sha256sum adrs-source-2ae2830.tar.gz > adrs-source-2ae2830.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adrs-source-2ae2830
+          path: |
+            adrs-source-2ae2830.tar.gz
+            adrs-source-2ae2830.sha256
+          if-no-files-found: error
+
+  viewer-runtime:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: jgraph/drawio
+          ref: v30.0.4
+          path: drawio
+          persist-credentials: false
+      - name: Bind official runtime bytes
+        run: |
+          set -euo pipefail
+          mkdir -p viewer-runtime
+          cp drawio/src/main/webapp/js/viewer-static.min.js viewer-runtime/
+          cp drawio/LICENSE viewer-runtime/LICENSE
+          git -C drawio rev-parse HEAD > viewer-runtime/upstream-commit.txt
+          printf '%s\n' 'v30.0.4' > viewer-runtime/upstream-tag.txt
+          sha256sum viewer-runtime/viewer-static.min.js viewer-runtime/LICENSE > viewer-runtime/SHA256SUMS.txt
+          python - <<'PY' > viewer-runtime/manifest.json
+          import hashlib,json,pathlib
+          root=pathlib.Path('viewer-runtime')
+          result={
+            'kind':'drawioViewerRuntimePin.v1',
+            'repository':'jgraph/drawio',
+            'tag':'v30.0.4',
+            'commit':(root/'upstream-commit.txt').read_text().strip(),
+            'viewerPath':'src/main/webapp/js/viewer-static.min.js',
+            'viewerSha256':'sha256:'+hashlib.sha256((root/'viewer-static.min.js').read_bytes()).hexdigest(),
+            'licenseSha256':'sha256:'+hashlib.sha256((root/'LICENSE').read_bytes()).hexdigest(),
+          }
+          print(json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: drawio-viewer-runtime-v30.0.4
+          path: viewer-runtime
+          if-no-files-found: error
