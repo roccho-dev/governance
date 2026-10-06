@@ -13,7 +13,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import re
 import subprocess
 import sys
@@ -570,22 +569,32 @@ def _approved_target_selection(
     if bytes_digest(raw) != admitted_digest:
         raise ClosureError("approved-target-admission-digest-mismatch")
     packet = load_json(path)
-    closed(packet, ("kind", "selected_deploy_revision", "envs_revision", "target"))
+    closed(packet, (
+        "kind", "selected_deploy_revision", "envs_revision",
+        "source", "target_digest", "target",
+    ))
     if packet["kind"] != APPROVED_TARGET_KIND:
         raise ClosureError("approved-target-kind")
+    try:
+        source(packet["source"])
+    except InputError as exc:
+        raise ClosureError("approved-target-source-identity") from exc
     if exact_revision(packet["selected_deploy_revision"], "approved-target-deploy-revision") != selected_deploy_revision:
         raise ClosureError("approved-target-selected-deploy-mismatch")
     if exact_revision(packet["envs_revision"], "approved-target-envs-revision") != envs_revision:
         raise ClosureError("approved-target-envs-revision-mismatch")
     spec = _ops_expectation_spec(ops_repo_root, node, packet["target"])
     target = spec["target"]
+    if packet["target_digest"] != digest(target):
+        raise ClosureError("approved-target-digest-mismatch")
     return target, {
         "kind": APPROVED_TARGET_KIND,
         "status": "ADMITTED_INPUT",
         "digest": admitted_digest,
         "selected_deploy_revision": selected_deploy_revision,
         "envs_revision": envs_revision,
-        "target_digest": digest(target),
+        "source": packet["source"],
+        "target_digest": packet["target_digest"],
     }
 
 
@@ -633,34 +642,6 @@ def _evidence_inputs(
 
     authority["evidence"] = trusted
     return observations, receipts, trusted, None
-
-
-def pinned_source_environment() -> tuple[Path, Path, Path, str, str, str]:
-    required = (
-        "CONTRACT_DRIFT_OPS_ROOT",
-        "CONTRACT_DRIFT_ENVS_ROOT",
-        "CONTRACT_DRIFT_NODE",
-        "CONTRACT_DRIFT_OPS_REVISION",
-        "CONTRACT_DRIFT_ENVS_REVISION",
-        "CONTRACT_DRIFT_SELECTED_DEPLOY_REVISION",
-    )
-    values = {name: os.environ.get(name) for name in required}
-    if any(not values[name] for name in required):
-        raise ClosureError("nix-pinned-acquisition-environment-missing")
-    if values["CONTRACT_DRIFT_OPS_REVISION"] != OPS_CANONICAL_REVISION:
-        raise ClosureError("nix-pinned-ops-revision-mismatch")
-    if values["CONTRACT_DRIFT_ENVS_REVISION"] != ENVS_CANONICAL_REVISION:
-        raise ClosureError("nix-pinned-envs-revision-mismatch")
-    if values["CONTRACT_DRIFT_SELECTED_DEPLOY_REVISION"] != SELECTED_DEPLOY_REVISION:
-        raise ClosureError("nix-pinned-selected-deploy-mismatch")
-    return (
-        Path(values["CONTRACT_DRIFT_OPS_ROOT"]),
-        Path(values["CONTRACT_DRIFT_ENVS_ROOT"]),
-        Path(values["CONTRACT_DRIFT_NODE"]),
-        values["CONTRACT_DRIFT_OPS_REVISION"],
-        values["CONTRACT_DRIFT_ENVS_REVISION"],
-        values["CONTRACT_DRIFT_SELECTED_DEPLOY_REVISION"],
-    )
 
 
 def acquire_bounded(
@@ -973,6 +954,68 @@ def acquisition_selftest(
         raise ClosureError("new-adrs-source-became-required-input")
     cases.append("no-new-adrs-cue-adoption-input")
 
+    approved_target_source = fixture_source("approved-target-source", "fixture/approval")
+    approved_target_packet = {
+        "kind": APPROVED_TARGET_KIND,
+        "selected_deploy_revision": SELECTED_DEPLOY_REVISION,
+        "envs_revision": envs_revision,
+        "source": approved_target_source,
+        "target_digest": digest(target),
+        "target": target,
+    }
+    with tempfile.TemporaryDirectory(prefix="governance-approved-target-selftest-") as raw:
+        target_path = Path(raw) / "approved-target.json"
+        target_path.write_bytes(canonical(approved_target_packet))
+        admitted = bytes_digest(target_path.read_bytes())
+        selected, provenance = _approved_target_selection(
+            target_path, admitted, envs_revision, SELECTED_DEPLOY_REVISION, ops_repo_root, node
+        )
+        if selected != target or provenance.get("status") != "ADMITTED_INPUT":
+            raise ClosureError("approved-target-positive")
+        cases.append("approved-target-provenance-positive")
+
+        try:
+            _approved_target_selection(
+                target_path, "sha256:" + ("f" * 64), envs_revision,
+                SELECTED_DEPLOY_REVISION, ops_repo_root, node
+            )
+        except ClosureError as exc:
+            if str(exc) != "approved-target-admission-digest-mismatch":
+                raise
+        else:
+            raise ClosureError("approved-target-unbound-admitted")
+        cases.append("approved-target-byte-admission-mismatch-rejected")
+
+        wrong = json.loads(json.dumps(approved_target_packet))
+        wrong["target_digest"] = "sha256:" + ("e" * 64)
+        target_path.write_bytes(canonical(wrong))
+        try:
+            _approved_target_selection(
+                target_path, bytes_digest(target_path.read_bytes()), envs_revision,
+                SELECTED_DEPLOY_REVISION, ops_repo_root, node
+            )
+        except ClosureError as exc:
+            if str(exc) != "approved-target-digest-mismatch":
+                raise
+        else:
+            raise ClosureError("approved-target-semantic-digest-mismatch-admitted")
+        cases.append("approved-target-semantic-digest-mismatch-rejected")
+
+        wrong = json.loads(json.dumps(approved_target_packet))
+        wrong["selected_deploy_revision"] = "d" * 40
+        target_path.write_bytes(canonical(wrong))
+        try:
+            _approved_target_selection(
+                target_path, bytes_digest(target_path.read_bytes()), envs_revision,
+                SELECTED_DEPLOY_REVISION, ops_repo_root, node
+            )
+        except ClosureError as exc:
+            if str(exc) != "approved-target-selected-deploy-mismatch":
+                raise
+        else:
+            raise ClosureError("approved-target-wrong-deploy-admitted")
+        cases.append("approved-target-selected-deploy-mismatch-rejected")
+
     evidence_exports = {name: json.loads(json.dumps(normalized[name])) for name in COLLECTIONS}
     provided_contract = evidence_exports["provided"]["rows"][0]["contract"]
     evidence_ref = "fixture.projection.receipt"
@@ -1278,14 +1321,6 @@ def main(argv: list[str] | None = None) -> int:
     acquire_parser.add_argument("--target", type=Path)
     acquire_parser.add_argument("--out", type=Path, required=True)
 
-    pinned_parser = sub.add_parser("acquire-pinned")
-    pinned_parser.add_argument("--approved-target", type=Path)
-    pinned_parser.add_argument("--admitted-target-digest")
-    pinned_parser.add_argument("--observations", type=Path)
-    pinned_parser.add_argument("--receipts", type=Path)
-    pinned_parser.add_argument("--evidence-admission", type=Path)
-    pinned_parser.add_argument("--out", type=Path, required=True)
-
     compose_parser = sub.add_parser("compose")
     compose_parser.add_argument("--authority", type=Path, required=True)
     for name in COLLECTIONS:
@@ -1308,31 +1343,6 @@ def main(argv: list[str] | None = None) -> int:
             result = acquire_bounded(
                 args.ops_root, args.envs_root, args.node, args.ops_revision, args.envs_revision, target,
                 input_grade="fixture",
-            )
-            args.out.write_bytes(canonical(result) + b"\n")
-            sys.stdout.buffer.write(canonical(result) + b"\n")
-            return {"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}.get(result["status"], 3)
-        if args.command == "acquire-pinned":
-            ops_root, envs_root, node, ops_revision, envs_revision, deploy_revision = pinned_source_environment()
-            target, target_provenance = _approved_target_selection(
-                args.approved_target,
-                args.admitted_target_digest,
-                envs_revision,
-                deploy_revision,
-                ops_root,
-                node,
-            )
-            observations = load_json(args.observations) if args.observations else None
-            receipts = load_json(args.receipts) if args.receipts else None
-            evidence = load_json(args.evidence_admission) if args.evidence_admission else None
-            result = acquire_bounded(
-                ops_root, envs_root, node, ops_revision, envs_revision, target,
-                input_grade="source",
-                target_provenance=target_provenance,
-                observations=observations,
-                receipts=receipts,
-                evidence_admission=evidence,
-                selected_deploy_revision=deploy_revision,
             )
             args.out.write_bytes(canonical(result) + b"\n")
             sys.stdout.buffer.write(canonical(result) + b"\n")

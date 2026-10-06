@@ -108,19 +108,23 @@ The normalized R/P packet is passed to the existing
 `bin/contract_drift_phase2.py::compose()`, which invokes the one pinned ops
 `contract-diff` implementation.
 
-Production acquisition is exposed through the Nix-built `contract-drift-acquire`
-entry. That wrapper fixes the ops/envs source roots and revisions at evaluation
-time; callers cannot supply `--ops-root`, `--envs-root`, or claimed source
-revisions. The raw Python `acquire-fixture` command remains available only for
-fixture/development checks and always emits fixture-grade composition.
+Production acquisition is exposed only through the Nix-built
+`contract-drift-acquire` entry. Nix generates its Python runner with literal
+ops/envs store roots, exact canonical revisions and the selected DEPLOY revision;
+callers cannot supply or override those values. The checked-in Python CLI exposes
+only `acquire-fixture` for direct acquisition, and that path always emits
+fixture-grade composition. There is no checked-in raw source-grade acquisition
+subcommand.
 
 A source-grade target is never accepted as raw target JSON. Production accepts
 an optional closed `governance.voiceUiApprovedTargetSelection.v1` packet only
-when its exact bytes match an independently admitted digest and it binds:
+when its exact packet bytes match an independently admitted digest and it binds:
 
 ```text
 selected_deploy_revision = bce3daab76c9a4565902205cc59bb443f6e68009
 envs_revision            = c1a7658f142c82af4ad5cdeba23ee893ef662868
+source                    = exact repository/revision/path/content-digest identity
+target_digest             = canonical sha256(target)
 target                    = closed Workers target validated by the canonical ops contract
 ```
 

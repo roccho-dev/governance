@@ -140,14 +140,69 @@ ${helpText}
           exec ${pkgs.python3}/bin/python3 ${self}/tools/claim-admission-check.py "$@"
         '';
       mkContractDriftAcquireProgram = pkgs:
+        let
+          runner = pkgs.writeText "contract-drift-acquire.py" ''
+            import argparse
+            import importlib.util
+            import sys
+            from pathlib import Path
+
+            module_path = Path(r"${self}/tools/contract-modeling/bin/contract_drift_phase2.py")
+            spec = importlib.util.spec_from_file_location("contract_drift_phase2", module_path)
+            if spec is None or spec.loader is None:
+                raise SystemExit(3)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            parser = argparse.ArgumentParser()
+            parser.add_argument("--approved-target", type=Path)
+            parser.add_argument("--admitted-target-digest")
+            parser.add_argument("--observations", type=Path)
+            parser.add_argument("--receipts", type=Path)
+            parser.add_argument("--evidence-admission", type=Path)
+            parser.add_argument("--out", type=Path, required=True)
+            args = parser.parse_args()
+
+            ops_root = Path(r"${opsContractDiff}")
+            envs_root = Path(r"${envsContractProjection}")
+            node = Path(r"${pkgs.nodejs}/bin/node")
+            ops_revision = "8c44728263a02c5d693d41078021af876420d4a4"
+            envs_revision = "c1a7658f142c82af4ad5cdeba23ee893ef662868"
+            deploy_revision = "bce3daab76c9a4565902205cc59bb443f6e68009"
+
+            try:
+                target, target_provenance = module._approved_target_selection(
+                    args.approved_target,
+                    args.admitted_target_digest,
+                    envs_revision,
+                    deploy_revision,
+                    ops_root,
+                    node,
+                )
+                observations = module.load_json(args.observations) if args.observations else None
+                receipts = module.load_json(args.receipts) if args.receipts else None
+                evidence = module.load_json(args.evidence_admission) if args.evidence_admission else None
+                result = module.acquire_bounded(
+                    ops_root, envs_root, node, ops_revision, envs_revision, target,
+                    input_grade="source",
+                    target_provenance=target_provenance,
+                    observations=observations,
+                    receipts=receipts,
+                    evidence_admission=evidence,
+                    selected_deploy_revision=deploy_revision,
+                )
+            except (module.ClosureError, OSError, TypeError, KeyError, RecursionError):
+                sys.stderr.write("contract-drift-acquire: invalid or unavailable admitted input\n")
+                raise SystemExit(3)
+
+            encoded = module.canonical(result) + b"\n"
+            args.out.write_bytes(encoded)
+            sys.stdout.buffer.write(encoded)
+            raise SystemExit({"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}.get(result["status"], 3))
+          '';
+        in
         pkgs.writeShellScriptBin "contract-drift-acquire" ''
-          export CONTRACT_DRIFT_OPS_ROOT=${opsContractDiff}
-          export CONTRACT_DRIFT_ENVS_ROOT=${envsContractProjection}
-          export CONTRACT_DRIFT_NODE=${pkgs.nodejs}/bin/node
-          export CONTRACT_DRIFT_OPS_REVISION=8c44728263a02c5d693d41078021af876420d4a4
-          export CONTRACT_DRIFT_ENVS_REVISION=c1a7658f142c82af4ad5cdeba23ee893ef662868
-          export CONTRACT_DRIFT_SELECTED_DEPLOY_REVISION=bce3daab76c9a4565902205cc59bb443f6e68009
-          exec ${pkgs.python3}/bin/python3 ${self}/tools/contract-modeling/bin/contract_drift_phase2.py acquire-pinned "$@"
+          exec ${pkgs.python3}/bin/python3 ${runner} "$@"
         '';
       repoConventionChecksFor = pkgs:
         import ./nix/repo-convention-checks.nix { inherit pkgs; governanceSrc = self; };
