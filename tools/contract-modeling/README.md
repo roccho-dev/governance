@@ -75,9 +75,12 @@ adoption prerequisite.
 Canonical source pins for this slice are:
 
 ```text
-ops/proposals  = 8c6dd62148ba9a83e97e1f5fe881d4f1b590751f
-envs/proposals = 616944b59ede38ea524cb6cddbe3119f8113676e
+ops/proposals  = 8c44728263a02c5d693d41078021af876420d4a4
+envs/proposals = c1a7658f142c82af4ad5cdeba23ee893ef662868
+selected DEPLOY = bce3daab76c9a4565902205cc59bb443f6e68009
 ```
+
+These are distinct identities. The current ops source owns requirement projection; the selected DEPLOY revision identifies the already-reviewed execution tuple. Neither is substituted for the other, and envs `c1a7658...` is not aliased to its older source/review SHAs.
 
 These are merge/canonical identities. They are intentionally not replaced by
 the older review-PR heads even when their source trees are byte-equal.
@@ -105,6 +108,34 @@ The normalized R/P packet is passed to the existing
 `bin/contract_drift_phase2.py::compose()`, which invokes the one pinned ops
 `contract-diff` implementation.
 
+Production acquisition is exposed through the Nix-built `contract-drift-acquire`
+entry. That wrapper fixes the ops/envs source roots and revisions at evaluation
+time; callers cannot supply `--ops-root`, `--envs-root`, or claimed source
+revisions. The raw Python `acquire-fixture` command remains available only for
+fixture/development checks and always emits fixture-grade composition.
+
+A source-grade target is never accepted as raw target JSON. Production accepts
+an optional closed `governance.voiceUiApprovedTargetSelection.v1` packet only
+when its exact bytes match an independently admitted digest and it binds:
+
+```text
+selected_deploy_revision = bce3daab76c9a4565902205cc59bb443f6e68009
+envs_revision            = c1a7658f142c82af4ad5cdeba23ee893ef662868
+target                    = closed Workers target validated by the canonical ops contract
+```
+
+If that provenance-bearing target input is absent, acquisition is `UNKNOWN`;
+shape-valid fixture/invented target JSON cannot enter the production source-grade
+path.
+
+Already-produced observations and receipts may be supplied as closed normalized
+packets together with an admitted `receipt id -> sha256(receipt)` map. The
+acquisition layer performs no provider effect. Missing O/H remains
+`EVIDENCE_MISSING`; incomplete or unadmitted evidence provenance becomes
+`UNKNOWN`; admitted but mismatched attempt/epoch/source/target/slot/grade remains
+typed `EVIDENCE_DRIFT` in the existing ops comparator. A valid admitted H can
+remove `EVIDENCE_MISSING` without hiding independent contract drift.
+
 The source-level O/H inventory is empty unless real observations/receipts are
 provided by their own later boundary. Therefore missing required evidence
 remains `EVIDENCE_MISSING`; file/name presence is never promoted to real proof.
@@ -120,8 +151,12 @@ source bytes:
 - stage/consumer/capability drift keeps the same K and never becomes supply loss;
 - true stable-relation absence becomes `SUPPLY_MISSING`;
 - required evidence absence remains `EVIDENCE_MISSING`;
-- unavailable target is `UNKNOWN`;
+- unavailable approved target is `UNKNOWN`;
+- raw fixture target cannot mint production source-grade acquisition;
+- source root/revision is fixed by the Nix production wrapper;
 - source identity mismatch is rejected;
+- closed O/H intake removes `EVIDENCE_MISSING` only with admitted receipt digest provenance;
+- untrusted evidence is `UNKNOWN`, while attempt/source/target mismatches remain typed drift;
 - identical exact inputs replay byte-identically;
 - candidate/source labels never set final admission;
 - #543/#544, new ADRS/CUE source families, workflow revival and provider effects

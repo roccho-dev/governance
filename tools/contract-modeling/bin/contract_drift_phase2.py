@@ -264,6 +264,10 @@ SELECTED_CONSUMER_BOUNDARY = "ops.voice-ui.consumer"
 SELECTED_SCOPE_ID = "ops-envs.voice-ui-jev-api"
 SELECTED_EPOCH = "canonical-source-v1"
 OPS_REQUIREMENT_PATH = "packages/voice-ui-target-runtime/modules/input-contracts.mjs"
+OPS_CANONICAL_REVISION = "8c44728263a02c5d693d41078021af876420d4a4"
+ENVS_CANONICAL_REVISION = "c1a7658f142c82af4ad5cdeba23ee893ef662868"
+SELECTED_DEPLOY_REVISION = "bce3daab76c9a4565902205cc59bb443f6e68009"
+APPROVED_TARGET_KIND = "governance.voiceUiApprovedTargetSelection.v1"
 
 
 def exact_revision(value: Any, label: str) -> str:
@@ -539,6 +543,125 @@ def _empty_export(source_value: dict[str, Any]) -> dict[str, Any]:
     return {"source": json.loads(json.dumps(source_value)), "rows": []}
 
 
+def _approved_target_selection(
+    path: Path | None,
+    admitted_digest: str | None,
+    envs_revision: str,
+    selected_deploy_revision: str,
+    ops_repo_root: Path,
+    node: Path,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    if path is None:
+        return None, {
+            "kind": APPROVED_TARGET_KIND,
+            "status": "UNKNOWN",
+            "reason": "approved-target-unavailable",
+            "selected_deploy_revision": selected_deploy_revision,
+            "envs_revision": envs_revision,
+        }
+    if admitted_digest is None or not DIGEST.fullmatch(admitted_digest):
+        raise ClosureError("approved-target-admission-digest-required")
+    if path.is_symlink():
+        raise ClosureError("approved-target-symlink")
+    raw = path.read_bytes()
+    if len(raw) > MAX_BYTES:
+        raise ClosureError("approved-target-too-large")
+    if bytes_digest(raw) != admitted_digest:
+        raise ClosureError("approved-target-admission-digest-mismatch")
+    packet = load_json(path)
+    closed(packet, ("kind", "selected_deploy_revision", "envs_revision", "target"))
+    if packet["kind"] != APPROVED_TARGET_KIND:
+        raise ClosureError("approved-target-kind")
+    if exact_revision(packet["selected_deploy_revision"], "approved-target-deploy-revision") != selected_deploy_revision:
+        raise ClosureError("approved-target-selected-deploy-mismatch")
+    if exact_revision(packet["envs_revision"], "approved-target-envs-revision") != envs_revision:
+        raise ClosureError("approved-target-envs-revision-mismatch")
+    spec = _ops_expectation_spec(ops_repo_root, node, packet["target"])
+    target = spec["target"]
+    return target, {
+        "kind": APPROVED_TARGET_KIND,
+        "status": "ADMITTED_INPUT",
+        "digest": admitted_digest,
+        "selected_deploy_revision": selected_deploy_revision,
+        "envs_revision": envs_revision,
+        "target_digest": digest(target),
+    }
+
+
+def _evidence_inputs(
+    authority: dict[str, Any],
+    required_source: dict[str, Any],
+    provided_source: dict[str, Any],
+    observations: dict[str, Any] | None,
+    receipts: dict[str, Any] | None,
+    evidence_admission: dict[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, str], str | None]:
+    supplied = [observations is not None, receipts is not None, evidence_admission is not None]
+    if any(supplied) and not all(supplied):
+        return _empty_export(required_source), _empty_export(provided_source), {}, "evidence-input-incomplete"
+    if not any(supplied):
+        return _empty_export(required_source), _empty_export(provided_source), {}, None
+
+    validate_export(observations)
+    validate_export(receipts)
+    if not isinstance(evidence_admission, dict):
+        raise ClosureError("evidence-admission-object-required")
+    trusted: dict[str, str] = {}
+    for ref, value_digest in evidence_admission.items():
+        token(ref)
+        if not isinstance(value_digest, str) or not DIGEST.fullmatch(value_digest):
+            raise ClosureError("evidence-admission-digest")
+        trusted[ref] = value_digest
+
+    receipt_rows = {row["id"]: row for row in receipts["rows"] if isinstance(row, dict) and isinstance(row.get("id"), str)}
+    required_refs: set[str] = set()
+    for row in observations["rows"]:
+        if not isinstance(row, dict):
+            raise ClosureError("observation-row-shape")
+        refs = row.get("refs")
+        if not isinstance(refs, dict):
+            raise ClosureError("observation-refs-shape")
+        for ref in refs.values():
+            token(ref)
+            required_refs.add(ref)
+    if not required_refs <= set(trusted):
+        return observations, receipts, trusted, "evidence-provenance-unadmitted"
+    for ref in required_refs & set(receipt_rows):
+        if trusted.get(ref) != digest(receipt_rows[ref]):
+            return observations, receipts, trusted, "evidence-provenance-digest-mismatch"
+
+    authority["evidence"] = trusted
+    return observations, receipts, trusted, None
+
+
+def pinned_source_environment() -> tuple[Path, Path, Path, str, str, str]:
+    required = (
+        "CONTRACT_DRIFT_OPS_ROOT",
+        "CONTRACT_DRIFT_ENVS_ROOT",
+        "CONTRACT_DRIFT_NODE",
+        "CONTRACT_DRIFT_OPS_REVISION",
+        "CONTRACT_DRIFT_ENVS_REVISION",
+        "CONTRACT_DRIFT_SELECTED_DEPLOY_REVISION",
+    )
+    values = {name: os.environ.get(name) for name in required}
+    if any(not values[name] for name in required):
+        raise ClosureError("nix-pinned-acquisition-environment-missing")
+    if values["CONTRACT_DRIFT_OPS_REVISION"] != OPS_CANONICAL_REVISION:
+        raise ClosureError("nix-pinned-ops-revision-mismatch")
+    if values["CONTRACT_DRIFT_ENVS_REVISION"] != ENVS_CANONICAL_REVISION:
+        raise ClosureError("nix-pinned-envs-revision-mismatch")
+    if values["CONTRACT_DRIFT_SELECTED_DEPLOY_REVISION"] != SELECTED_DEPLOY_REVISION:
+        raise ClosureError("nix-pinned-selected-deploy-mismatch")
+    return (
+        Path(values["CONTRACT_DRIFT_OPS_ROOT"]),
+        Path(values["CONTRACT_DRIFT_ENVS_ROOT"]),
+        Path(values["CONTRACT_DRIFT_NODE"]),
+        values["CONTRACT_DRIFT_OPS_REVISION"],
+        values["CONTRACT_DRIFT_ENVS_REVISION"],
+        values["CONTRACT_DRIFT_SELECTED_DEPLOY_REVISION"],
+    )
+
+
 def acquire_bounded(
     ops_repo_root: Path,
     envs_root: Path,
@@ -546,9 +669,23 @@ def acquire_bounded(
     ops_revision: str,
     envs_revision: str,
     target: dict[str, Any] | None,
+    *,
+    input_grade: str = "fixture",
+    target_provenance: dict[str, Any] | None = None,
+    observations: dict[str, Any] | None = None,
+    receipts: dict[str, Any] | None = None,
+    evidence_admission: dict[str, Any] | None = None,
+    selected_deploy_revision: str | None = None,
 ) -> dict[str, Any]:
     exact_revision(ops_revision, "ops-revision-must-be-exact")
     exact_revision(envs_revision, "envs-revision-must-be-exact")
+    if input_grade not in {"fixture", "source"}:
+        raise ClosureError("acquisition-input-grade")
+    if input_grade == "source":
+        if ops_revision != OPS_CANONICAL_REVISION or envs_revision != ENVS_CANONICAL_REVISION:
+            raise ClosureError("source-grade-canonical-revision-mismatch")
+        if selected_deploy_revision != SELECTED_DEPLOY_REVISION:
+            raise ClosureError("source-grade-selected-deploy-mismatch")
     sources = {
         "ops": _ops_source_identity(ops_repo_root, ops_revision),
         "envs": _envs_source_identity(envs_root, envs_revision),
@@ -565,6 +702,23 @@ def acquire_bounded(
                 "consumer_boundary": SELECTED_CONSUMER_BOUNDARY,
                 "id": selected_obligation_id(),
             },
+            "input_grade": input_grade,
+            "target_provenance": target_provenance,
+            "selected_deploy_revision": selected_deploy_revision,
+            "provider_effect": False,
+            "final_admission": False,
+        }
+
+    if input_grade == "source" and (not isinstance(target_provenance, dict) or target_provenance.get("status") != "ADMITTED_INPUT"):
+        return {
+            "kind": "governance.contractDriftAcquisition.v1",
+            "authority": False,
+            "status": "UNKNOWN",
+            "reason": "approved-target-provenance-unavailable",
+            "sources": sources,
+            "input_grade": input_grade,
+            "target_provenance": target_provenance,
+            "selected_deploy_revision": selected_deploy_revision,
             "provider_effect": False,
             "final_admission": False,
         }
@@ -596,20 +750,40 @@ def acquire_bounded(
             "final_admission": False,
         }
     validate_acquired_sources(required, provided, ops_repo_root, envs_root, ops_revision, envs_revision)
+    normalized_observations, normalized_receipts, trusted_evidence, evidence_error = _evidence_inputs(
+        authority,
+        required["source"],
+        provided["source"],
+        observations,
+        receipts,
+        evidence_admission,
+    )
+    if evidence_error is not None:
+        return {
+            "kind": "governance.contractDriftAcquisition.v1",
+            "authority": False,
+            "status": "UNKNOWN",
+            "reason": evidence_error,
+            "sources": {"ops": required["source"], "envs": provided["source"]},
+            "selector": selector,
+            "input_grade": input_grade,
+            "target_provenance": target_provenance,
+            "selected_deploy_revision": selected_deploy_revision,
+            "provider_effect": False,
+            "final_admission": False,
+        }
     exports = {
         "required": required,
         "provided": provided,
-        # This slice inventories canonical public source only. Real O/H remains
-        # a separate input/effect boundary and is never inferred from file presence.
-        "observations": _empty_export(required["source"]),
-        "receipts": _empty_export(provided["source"]),
+        "observations": normalized_observations,
+        "receipts": normalized_receipts,
     }
     closure = compose(
         authority,
         exports,
         ops_repo_root.resolve() / "packages" / "contract-diff",
         ops_revision,
-        "source",
+        input_grade,
     )
     return {
         "kind": "governance.contractDriftAcquisition.v1",
@@ -617,8 +791,11 @@ def acquire_bounded(
         "status": closure["status"],
         "sources": {"ops": required["source"], "envs": provided["source"]},
         "selector": selector,
+        "input_grade": input_grade,
+        "target_provenance": target_provenance,
+        "selected_deploy_revision": selected_deploy_revision,
         "universe_derivation": "runtime-requirement-spec-plus-stable-selection-before-required-acquisition",
-        "evidence_boundary": "canonical-public-source-only; real provider observations/receipts are separate",
+        "evidence_boundary": "already-produced observations/receipts are accepted only with closed packets and admitted receipt digests; no provider effect occurs here",
         "normalized": {"authority": authority, **exports},
         "closure": closure,
         "provider_effect": False,
@@ -680,7 +857,7 @@ def acquisition_selftest(
             "tags": [],
         },
     }
-    result = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, target)
+    result = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, target, input_grade="fixture")
     if result["sources"]["ops"]["revision"] != ops_revision or result["sources"]["envs"]["revision"] != envs_revision:
         raise ClosureError("canonical-merge-provenance-not-retained")
     cases = ["canonical-merge-provenance-retained"]
@@ -759,7 +936,7 @@ def acquisition_selftest(
         raise ClosureError("true-relation-absence-not-supply-missing")
     cases.append("stable-relation-absence-is-supply-missing")
 
-    unknown = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, None)
+    unknown = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, None, input_grade="fixture")
     if unknown["status"] != "UNKNOWN" or unknown["reason"] != "target-input-unavailable":
         raise ClosureError("missing-target-not-unknown")
     cases.append("missing-target-is-unknown")
@@ -786,7 +963,7 @@ def acquisition_selftest(
         raise ClosureError("acquisition-self-promoted")
     cases.append("acquisition-never-final-admission")
 
-    again = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, target)
+    again = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, target, input_grade="fixture")
     if canonical(result) != canonical(again):
         raise ClosureError("acquisition-not-deterministic")
     cases.append("same-exact-input-byte-identical")
@@ -795,11 +972,115 @@ def acquisition_selftest(
         raise ClosureError("new-adrs-source-became-required-input")
     cases.append("no-new-adrs-cue-adoption-input")
 
+    evidence_exports = {name: json.loads(json.dumps(normalized[name])) for name in COLLECTIONS}
+    provided_contract = evidence_exports["provided"]["rows"][0]["contract"]
+    evidence_ref = "fixture.projection.receipt"
+    attempt = "attempt-1"
+    evidence_exports["observations"] = {
+        "source": fixture_source("observations", "fixture/evidence"),
+        "rows": [{
+            "id": selected_obligation_id(),
+            "attempt": attempt,
+            "epoch": SELECTED_EPOCH,
+            "refs": {"projection": evidence_ref},
+        }],
+    }
+    evidence_receipt = {
+        "id": evidence_ref,
+        "obligation_id": selected_obligation_id(),
+        "role": "projection",
+        "attempt": attempt,
+        "epoch": SELECTED_EPOCH,
+        "source": evidence_exports["provided"]["source"],
+        "target": provided_contract["target"],
+        "slot": provided_contract["slot"],
+        "operation": "cloudflare_workers_secret_put",
+        "status": "PASS",
+        "readback": "PASS",
+        "grade": "real",
+    }
+    evidence_exports["receipts"] = {
+        "source": fixture_source("receipts", "fixture/evidence"),
+        "rows": [evidence_receipt],
+    }
+    evidence_authority = json.loads(json.dumps(normalized["authority"]))
+    observed, received, trusted, error = _evidence_inputs(
+        evidence_authority,
+        evidence_exports["required"]["source"],
+        evidence_exports["provided"]["source"],
+        evidence_exports["observations"],
+        evidence_exports["receipts"],
+        {evidence_ref: digest(evidence_receipt)},
+    )
+    if error is not None:
+        raise ClosureError("valid-evidence-input-rejected")
+    with_evidence = compose(
+        evidence_authority,
+        {
+            "required": evidence_exports["required"],
+            "provided": evidence_exports["provided"],
+            "observations": observed,
+            "receipts": received,
+        },
+        ops_repo_root.resolve() / "packages" / "contract-diff",
+        ops_revision,
+        "fixture",
+    )
+    if _finding(with_evidence, "EVIDENCE_MISSING"):
+        raise ClosureError("valid-evidence-did-not-close-missing")
+    cases.append("closed-o-h-input-can-remove-evidence-missing")
+
+    _, _, _, missing_trust = _evidence_inputs(
+        json.loads(json.dumps(normalized["authority"])),
+        evidence_exports["required"]["source"],
+        evidence_exports["provided"]["source"],
+        evidence_exports["observations"],
+        evidence_exports["receipts"],
+        {},
+    )
+    if missing_trust != "evidence-provenance-unadmitted":
+        raise ClosureError("untrusted-evidence-not-unknown")
+    cases.append("untrusted-evidence-provenance-is-unknown")
+
+    wrong_receipt = json.loads(json.dumps(evidence_receipt))
+    wrong_receipt["attempt"] = "attempt-2"
+    drift_exports = json.loads(json.dumps(evidence_exports))
+    drift_exports["receipts"]["rows"] = [wrong_receipt]
+    drift_authority = json.loads(json.dumps(normalized["authority"]))
+    observed, received, _, error = _evidence_inputs(
+        drift_authority,
+        drift_exports["required"]["source"],
+        drift_exports["provided"]["source"],
+        drift_exports["observations"],
+        drift_exports["receipts"],
+        {evidence_ref: digest(wrong_receipt)},
+    )
+    if error is not None:
+        raise ClosureError("drift-evidence-input-rejected-before-comparator")
+    drift_result = compose(
+        drift_authority,
+        {
+            "required": drift_exports["required"],
+            "provided": drift_exports["provided"],
+            "observations": observed,
+            "receipts": received,
+        },
+        ops_repo_root.resolve() / "packages" / "contract-diff",
+        ops_revision,
+        "fixture",
+    )
+    if not any(item.get("kind") == "EVIDENCE_DRIFT" and item.get("field") == "attempt"
+               for item in drift_result.get("diff", {}).get("findings", [])):
+        raise ClosureError("wrong-attempt-not-evidence-drift")
+    cases.append("wrong-attempt-is-evidence-drift")
+
     report = {
         "kind": "governance.contractDriftAcquisition.selftest.v1",
         "status": "pass",
         "authority": False,
         "fixture_target_only": True,
+        "raw_acquire_grade": "fixture",
+        "production_entry": "nix-pinned-wrapper",
         "canonical_sources": {
             "ops": result["sources"]["ops"],
             "envs": result["sources"]["envs"],
@@ -987,7 +1268,7 @@ def main(argv: list[str] | None = None) -> int:
     acquisition_test.add_argument("--ops-revision", required=True)
     acquisition_test.add_argument("--envs-revision", required=True)
 
-    acquire_parser = sub.add_parser("acquire")
+    acquire_parser = sub.add_parser("acquire-fixture")
     acquire_parser.add_argument("--ops-root", type=Path, required=True)
     acquire_parser.add_argument("--envs-root", type=Path, required=True)
     acquire_parser.add_argument("--node", type=Path, required=True)
@@ -995,6 +1276,14 @@ def main(argv: list[str] | None = None) -> int:
     acquire_parser.add_argument("--envs-revision", required=True)
     acquire_parser.add_argument("--target", type=Path)
     acquire_parser.add_argument("--out", type=Path, required=True)
+
+    pinned_parser = sub.add_parser("acquire-pinned")
+    pinned_parser.add_argument("--approved-target", type=Path)
+    pinned_parser.add_argument("--admitted-target-digest")
+    pinned_parser.add_argument("--observations", type=Path)
+    pinned_parser.add_argument("--receipts", type=Path)
+    pinned_parser.add_argument("--evidence-admission", type=Path)
+    pinned_parser.add_argument("--out", type=Path, required=True)
 
     compose_parser = sub.add_parser("compose")
     compose_parser.add_argument("--authority", type=Path, required=True)
@@ -1013,14 +1302,40 @@ def main(argv: list[str] | None = None) -> int:
             return acquisition_selftest(
                 args.ops_root, args.envs_root, args.node, args.ops_revision, args.envs_revision
             )
-        if args.command == "acquire":
+        if args.command == "acquire-fixture":
             target = load_json(args.target) if args.target else None
             result = acquire_bounded(
-                args.ops_root, args.envs_root, args.node, args.ops_revision, args.envs_revision, target
+                args.ops_root, args.envs_root, args.node, args.ops_revision, args.envs_revision, target,
+                input_grade="fixture",
             )
             args.out.write_bytes(canonical(result) + b"\n")
             sys.stdout.buffer.write(canonical(result) + b"\n")
-            return 4 if result["status"] == "UNKNOWN" else 0
+            return {"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}.get(result["status"], 3)
+        if args.command == "acquire-pinned":
+            ops_root, envs_root, node, ops_revision, envs_revision, deploy_revision = pinned_source_environment()
+            target, target_provenance = _approved_target_selection(
+                args.approved_target,
+                args.admitted_target_digest,
+                envs_revision,
+                deploy_revision,
+                ops_root,
+                node,
+            )
+            observations = load_json(args.observations) if args.observations else None
+            receipts = load_json(args.receipts) if args.receipts else None
+            evidence = load_json(args.evidence_admission) if args.evidence_admission else None
+            result = acquire_bounded(
+                ops_root, envs_root, node, ops_revision, envs_revision, target,
+                input_grade="source",
+                target_provenance=target_provenance,
+                observations=observations,
+                receipts=receipts,
+                evidence_admission=evidence,
+                selected_deploy_revision=deploy_revision,
+            )
+            args.out.write_bytes(canonical(result) + b"\n")
+            sys.stdout.buffer.write(canonical(result) + b"\n")
+            return {"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}.get(result["status"], 3)
         authority = load_json(args.authority)
         exports = {name: load_json(getattr(args, name)) for name in COLLECTIONS}
         result = compose(authority, exports, args.ops_root, args.ops_revision, args.authority_grade)
