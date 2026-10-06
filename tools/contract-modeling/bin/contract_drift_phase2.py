@@ -91,8 +91,9 @@ def source(value: Any) -> None:
     token(value["path"])
     if not HEX40.fullmatch(str(value["revision"])) or not DIGEST.fullmatch(str(value["digest"])):
         raise ClosureError("invalid-source-identity")
-    if value["path"].startswith("/") or ".." in value["path"].split("/"):
-        raise ClosureError("source-path-escape")
+    # Reject aliases before exact authority-path comparison; never normalize silently.
+    if any(part in {"", ".", ".."} for part in value["path"].split("/")):
+        raise ClosureError("source-path-not-canonical")
 
 
 def row_digest(rows: list[dict[str, Any]]) -> str:
@@ -363,16 +364,37 @@ def selftest(ops_root: Path, ops_revision: str) -> int:
         raise ClosureError("v27-comparator-source")
     cases.append("v27-one-exact-ops-comparator")
 
-    sealed = json.loads(json.dumps(authority))
-    sealed["source"]["path"] = SEALED_234_SEED
-    try:
-        compose(sealed, base, ops_root, ops_revision, "fixture")
-    except ClosureError as exc:
-        if str(exc) != "sealed-234-seed-is-not-contract-drift-authority":
-            raise
-    else:
-        raise ClosureError("v28-sealed-seed-accepted")
-    cases.append("v28-sealed-seed-preserved")
+    for case, source_path, expected in (
+        ("v28-sealed-seed-preserved", SEALED_234_SEED,
+         "sealed-234-seed-is-not-contract-drift-authority"),
+        ("v28-dot-alias-rejected", "contract_modeling/v1/./source-seed.jsonl",
+         "source-path-not-canonical"),
+        ("v28-empty-segment-rejected", "contract_modeling//v1/source-seed.jsonl",
+         "source-path-not-canonical"),
+        ("v28-trailing-separator-rejected", SEALED_234_SEED + "/",
+         "source-path-not-canonical"),
+        ("v28-parent-segment-rejected", "contract_modeling/v1/../v1/source-seed.jsonl",
+         "source-path-not-canonical"),
+        ("v28-absolute-path-rejected", "/" + SEALED_234_SEED,
+         "invalid-identifier"),
+    ):
+        sealed = json.loads(json.dumps(authority))
+        sealed["source"]["path"] = source_path
+        try:
+            compose(sealed, base, ops_root, ops_revision, "fixture")
+        except ClosureError as exc:
+            if str(exc) != expected:
+                raise
+        else:
+            raise ClosureError("v28-sealed-seed-accepted")
+        cases.append(case)
+
+    # A valid nested path is not confused with the sealed seed or its aliases.
+    nested = json.loads(json.dumps(authority))
+    nested["source"]["path"] = "contract_modeling/v2/contract-drift.json"
+    if compose(nested, base, ops_root, ops_revision, "fixture")["status"] != "CLOSED":
+        raise ClosureError("v28-canonical-path-rejected")
+    cases.append("v28-canonical-nested-path-accepted")
 
     first = canonical(compose(authority, base, ops_root, ops_revision, "fixture"))
     second = canonical(compose(authority, base, ops_root, ops_revision, "fixture"))
