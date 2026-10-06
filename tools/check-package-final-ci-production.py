@@ -32,6 +32,10 @@ EXPECTED_REPOS = {
     "roccho-dev/ui": "positive-feature-consumer",
     "roccho-dev/ops": "migration-consumer-known-mismatch",
 }
+EXPECTED_PRODUCERS = {
+    "roccho-dev/ui": ("final CI consumer", ".github/workflows/final-ci-consumer.yml"),
+    "roccho-dev/ops": ("nix-check", ".github/workflows/nix-check.yml"),
+}
 STALE_EVIDENCE_FIELDS = {"candidateHead", "mergeCommit", "receiptRunId", "receiptArtifactDigest", "receiptStatus"}
 
 
@@ -113,8 +117,9 @@ def validate_rollout(value: dict[str, Any], identity: dict[str, Any]) -> dict[st
         need(row.get("role") == role, f"rollout-role:{repository}")
         need(row.get("branch") == "proposals", f"rollout-branch:{repository}")
         need(row.get("claimPath") == "governance/final-ci-claim.v1.json", f"rollout-claim-path:{repository}")
-        need(row.get("workflowName") == "final CI consumer", f"rollout-workflow-name:{repository}")
-        need(row.get("workflowPath") == ".github/workflows/final-ci-consumer.yml", f"rollout-workflow-path:{repository}")
+        workflow_name, workflow_path = EXPECTED_PRODUCERS[repository]
+        need(row.get("workflowName") == workflow_name, f"rollout-workflow-name:{repository}")
+        need(row.get("workflowPath") == workflow_path, f"rollout-workflow-path:{repository}")
         need(row.get("artifactName") == "final-ci-consumer-receipt", f"rollout-artifact-name:{repository}")
         need(row.get("receiptPath") == "final-ci-consumer-receipt.json", f"rollout-receipt-path:{repository}")
         need(DIGEST.fullmatch(str(row.get("acceptedBundleDigest", ""))) is not None, f"bundle:{repository}")
@@ -148,7 +153,7 @@ def validate_live_packet(packet: dict[str, Any], expected: dict[str, dict[str, A
         need(row.get("runHeadSha") == head, f"live-run-head:{repository}")
         need(row.get("runEvent") == "push", f"live-run-event:{repository}")
         need(row.get("runConclusion") == "success", f"live-run-conclusion:{repository}")
-        need(row.get("workflowName") == contract["workflowName"] or row.get("workflowPath") == contract["workflowPath"], f"live-workflow:{repository}")
+        need(row.get("workflowName") == contract["workflowName"] and row.get("workflowPath") == contract["workflowPath"], f"live-workflow:{repository}")
         need(isinstance(row.get("runId"), int) and row["runId"] > 0, f"live-run-id:{repository}")
         need(isinstance(row.get("artifactId"), int) and row["artifactId"] > 0, f"live-artifact-id:{repository}")
         need(row.get("artifactName") == contract["artifactName"], f"live-artifact-name:{repository}")
@@ -299,6 +304,8 @@ def selftest() -> dict[str, Any]:
             ("run-head", lambda rollout_value, packet_value: packet_value["repositories"][0].update(runHeadSha="e" * 40), "live-run-head"),
             ("claim-digest", lambda rollout_value, packet_value: packet_value["repositories"][0].update(claimDigest="bad"), "live-claim-digest"),
             ("failed-run", lambda rollout_value, packet_value: packet_value["repositories"][0].update(runConclusion="failure"), "live-run-conclusion"),
+            ("wrong-workflow-name", lambda rollout_value, packet_value: packet_value["repositories"][0].update(workflowName="wrong-name"), "live-workflow"),
+            ("wrong-workflow-path", lambda rollout_value, packet_value: packet_value["repositories"][0].update(workflowPath=".github/workflows/wrong.yml"), "live-workflow"),
             ("missing-live-repo", lambda rollout_value, packet_value: packet_value["repositories"].pop(), "live-cardinality"),
             ("checked-in-evidence", lambda rollout_value, packet_value: rollout_value["repositories"][0].update(candidateHead="b" * 40), "checked-in-live-evidence"),
         ]

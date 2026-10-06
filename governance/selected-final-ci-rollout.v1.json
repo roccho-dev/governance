@@ -18,8 +18,8 @@
       "role": "migration-consumer-known-mismatch",
       "snapshotPath": "governance/evidence/ops/final-ci-consumer-receipt.zip.b64",
       "sourceClosureDigest": "sha256:a8fc9e8e04d53f1d783317059e4421c8dc724d01",
-      "workflowName": "final CI consumer",
-      "workflowPath": ".github/workflows/final-ci-consumer.yml"
+      "workflowName": "nix-check",
+      "workflowPath": ".github/workflows/nix-check.yml"
     },
     {
       "acceptedBundleDigest": "sha256:8106d85404e636a9797dfb8e0a1f6343db8a7867ff904577f682e5d82ad9b314",
