@@ -1,0 +1,454 @@
+#!/usr/bin/env python3
+"""Thin Phase 2 composition around the exact ops contract-diff primitive.
+
+ADRS owns meaning. This adapter validates already admitted A/S/U-shaped inputs,
+builds the finite inventory, and invokes the one ops comparator implementation.
+The existing governance compiler/gate alone owns provenance admission, final
+grade, residuals, and closure receipt. This module contains no
+supply/contract/evidence comparison algorithm and performs no
+network, provider, credential, clock, latest, or effect operation.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from typing import Any
+
+MAX_BYTES = 2 * 1024 * 1024
+HEX40 = re.compile(r"^[0-9a-f]{40}$")
+DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,255}$")
+COLLECTIONS = ("required", "provided", "observations", "receipts")
+SEALED_234_SEED = "contract_modeling/v1/source-seed.jsonl"
+
+
+class ClosureError(ValueError):
+    pass
+
+
+def canonical(value: Any) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+
+
+def digest(value: Any) -> str:
+    return "sha256:" + hashlib.sha256(canonical(value)).hexdigest()
+
+
+def bytes_digest(value: bytes) -> str:
+    return "sha256:" + hashlib.sha256(value).hexdigest()
+
+
+def object_pairs(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ClosureError("duplicate-property")
+        out[key] = value
+    return out
+
+
+def load_json(path: Path) -> Any:
+    if path.is_symlink():
+        raise ClosureError("symlink-input")
+    with path.open("rb") as stream:
+        raw = stream.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES:
+        raise ClosureError("input-too-large")
+    try:
+        return json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=object_pairs,
+            parse_constant=lambda _: (_ for _ in ()).throw(ClosureError("nonfinite-number")),
+        )
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ClosureError("invalid-json") from exc
+
+
+def closed(value: Any, required: tuple[str, ...], optional: tuple[str, ...] = ()) -> None:
+    if not isinstance(value, dict):
+        raise ClosureError("object-required")
+    keys = set(value)
+    if not set(required) <= keys <= set(required) | set(optional):
+        raise ClosureError("closed-schema-required")
+
+
+def token(value: Any) -> None:
+    if not isinstance(value, str) or not TOKEN.fullmatch(value):
+        raise ClosureError("invalid-identifier")
+
+
+def source(value: Any) -> None:
+    closed(value, ("repository", "revision", "path", "digest"))
+    token(value["repository"])
+    token(value["path"])
+    if not HEX40.fullmatch(str(value["revision"])) or not DIGEST.fullmatch(str(value["digest"])):
+        raise ClosureError("invalid-source-identity")
+    # Reject aliases before exact authority-path comparison; never normalize silently.
+    if any(part in {"", ".", ".."} for part in value["path"].split("/")):
+        raise ClosureError("source-path-not-canonical")
+
+
+def row_digest(rows: list[dict[str, Any]]) -> str:
+    if not isinstance(rows, list) or len(rows) > 10000:
+        raise ClosureError("row-limit-or-schema")
+    identities = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str):
+            raise ClosureError("row-id-required")
+        token(row["id"])
+        identities.append(row["id"])
+    if len(set(identities)) != len(identities):
+        raise ClosureError("duplicate-row-id")
+    return digest(sorted(rows, key=lambda row: row["id"]))
+
+
+def validate_authority(value: Any) -> None:
+    closed(value, ("kind", "source", "scope", "obligations", "evidence"))
+    if value["kind"] != "governance.contractDriftAuthorityProjection.v1":
+        raise ClosureError("authority-kind")
+    source(value["source"])
+    if value["source"]["path"] == SEALED_234_SEED:
+        raise ClosureError("sealed-234-seed-is-not-contract-drift-authority")
+    scope = value["scope"]
+    closed(scope, ("id", "epoch", "allow_empty", "excluded_ids"))
+    token(scope["id"])
+    token(scope["epoch"])
+    if type(scope["allow_empty"]) is not bool or not isinstance(scope["excluded_ids"], list):
+        raise ClosureError("scope-schema")
+    for identity in scope["excluded_ids"]:
+        token(identity)
+    if len(set(scope["excluded_ids"])) != len(scope["excluded_ids"]):
+        raise ClosureError("duplicate-exclusion")
+    if not isinstance(value["obligations"], list) or len(value["obligations"]) > 10000:
+        raise ClosureError("obligation-schema")
+    seen = set()
+    for row in value["obligations"]:
+        closed(row, ("id", "obligation_digest", "profile"))
+        token(row["id"])
+        if row["id"] in seen:
+            raise ClosureError("duplicate-obligation")
+        seen.add(row["id"])
+        if not DIGEST.fullmatch(str(row["obligation_digest"])) or not isinstance(row["profile"], list):
+            raise ClosureError("obligation-schema")
+    if not isinstance(value["evidence"], dict):
+        raise ClosureError("evidence-schema")
+    for ref, value_digest in value["evidence"].items():
+        token(ref)
+        if not DIGEST.fullmatch(str(value_digest)):
+            raise ClosureError("evidence-schema")
+
+
+def validate_export(value: Any) -> None:
+    closed(value, ("source", "rows"))
+    source(value["source"])
+    row_digest(value["rows"])
+
+
+def comparator_identity(ops_root: Path, ops_revision: str) -> dict[str, Any]:
+    if not HEX40.fullmatch(ops_revision):
+        raise ClosureError("ops-revision-must-be-exact")
+    root = ops_root.resolve()
+    core = root / "core.py"
+    cli = root / "bin" / "contract-diff.py"
+    for path in (core, cli):
+        if not path.is_file() or path.is_symlink():
+            raise ClosureError("ops-comparator-source-missing")
+    identity = {
+        "repository": "roccho-dev/ops",
+        "revision": ops_revision,
+        "path": "packages/contract-diff",
+        "core_digest": bytes_digest(core.read_bytes()),
+        "cli_digest": bytes_digest(cli.read_bytes()),
+    }
+    identity["source_digest"] = digest(identity)
+    return identity
+
+
+def invoke_diff(
+    ops_root: Path,
+    packet: dict[str, Any],
+    admission: dict[str, Any],
+) -> dict[str, Any]:
+    cli = ops_root.resolve() / "bin" / "contract-diff.py"
+    with tempfile.TemporaryDirectory(prefix="governance-contract-drift-") as raw:
+        root = Path(raw)
+        packet_path, admission_path = root / "packet.json", root / "admission.json"
+        packet_path.write_bytes(canonical(packet))
+        admission_path.write_bytes(canonical(admission))
+        result = subprocess.run(
+            [sys.executable, str(cli), "--input", str(packet_path), "--admission", str(admission_path)],
+            cwd=root,
+            env={},
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    if result.returncode not in {0, 2, 3, 4} or result.stderr:
+        raise ClosureError("ops-comparator-execution-failed")
+    try:
+        value = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise ClosureError("ops-comparator-output-invalid") from exc
+    if not isinstance(value, dict) or value.get("kind") != "contractDiffResult.v1" or value.get("authority") is not False:
+        raise ClosureError("ops-comparator-output-contract")
+    return value
+
+
+def compose(
+    authority: dict[str, Any],
+    exports: dict[str, dict[str, Any]],
+    ops_root: Path,
+    ops_revision: str,
+    authority_grade: str,
+) -> dict[str, Any]:
+    if authority_grade not in {"fixture", "source"}:
+        raise ClosureError("authority-grade")
+    validate_authority(authority)
+    if set(exports) != set(COLLECTIONS):
+        raise ClosureError("collection-set")
+    for value in exports.values():
+        validate_export(value)
+    scope = authority["scope"]
+    packet = {"kind": "contractDiffInput.v1", **exports}
+    inventory = {
+        key: {
+            "source": exports[key]["source"],
+            "rows_digest": row_digest(exports[key]["rows"]),
+            "count": len(exports[key]["rows"]),
+        }
+        for key in COLLECTIONS
+    }
+    admission = {
+        "kind": "contractDiffAdmission.v1",
+        "scope": {
+            "id": scope["id"],
+            "authority": authority["source"],
+            "epoch": scope["epoch"],
+            "allow_empty": scope["allow_empty"],
+            "grade": authority_grade,
+            "excluded_ids": scope["excluded_ids"],
+        },
+        "universe": authority["obligations"],
+        "inventory": inventory,
+        "evidence": authority["evidence"],
+    }
+    comparator = comparator_identity(ops_root, ops_revision)
+    diff = invoke_diff(ops_root, packet, admission)
+    return {
+        "kind": "governance.contractDriftClosure.v1",
+        "authority": False,
+        "phase": "phase2",
+        "scope": scope["id"],
+        "input_grade": authority_grade,
+        "status": diff["status"],
+        "final_admission": False,
+        "claim_ceiling": "candidate-diff-only; existing governance gate must admit authority and final closure",
+        "authority_source": authority["source"],
+        "comparator": comparator,
+        "diff": diff,
+    }
+
+
+def fixture_source(label: str, repository: str = "fixture/repo") -> dict[str, Any]:
+    return {
+        "repository": repository,
+        "revision": "a" * 40,
+        "path": label + ".json",
+        "digest": digest(label),
+    }
+
+
+def selftest(ops_root: Path, ops_revision: str) -> int:
+    profile: list[dict[str, Any]] = []
+    semantic = digest("accepted-contract-meaning")
+    obligation = {"id": "fixture.contract-drift", "obligation_digest": semantic, "profile": profile}
+    workers = {
+        "obligation_digest": semantic,
+        "capability": "jev-api",
+        "consumer": "roccho-dev/ops",
+        "stage": "dev",
+        "target": {"provider": "cloudflare-workers", "resource": "voice-ui", "account": None},
+        "slot": "JEV_API_KEY",
+        "binding": "jev-api",
+        "profile": profile,
+    }
+    authority = {
+        "kind": "governance.contractDriftAuthorityProjection.v1",
+        "source": fixture_source("contract-drift-authority", "roccho-dev/adrs"),
+        "scope": {"id": "fixture.contract-drift", "epoch": "fixture-epoch", "allow_empty": False, "excluded_ids": []},
+        "obligations": [obligation],
+        "evidence": {},
+    }
+
+    def export(name: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        repository = {"required": "roccho-dev/ops", "provided": "roccho-dev/envs"}.get(name, "fixture/evidence")
+        return {"source": fixture_source(name, repository), "rows": rows}
+
+    required_row = {"id": obligation["id"], "contract": workers}
+    base = {
+        "required": export("required", [required_row]),
+        "provided": export("provided", [{"id": obligation["id"], "contract": dict(workers)}]),
+        "observations": export("observations", []),
+        "receipts": export("receipts", []),
+    }
+    cases = []
+
+    closed_result = compose(authority, base, ops_root, ops_revision, "fixture")
+    if closed_result["status"] != "CLOSED" or closed_result["final_admission"] is not False:
+        raise ClosureError("fixture-closed-boundary")
+    cases.append("fixture-closed-not-final-admission")
+
+    # Even a caller-supplied source grade cannot self-promote the candidate to
+    # final governance admission. The existing governance gate must admit it.
+    source_labeled = compose(authority, base, ops_root, ops_revision, "source")
+    if source_labeled["status"] != "CLOSED" or source_labeled["final_admission"] is not False:
+        raise ClosureError("source-label-self-admitted")
+    cases.append("source-label-does-not-grant-final-admission")
+
+    v24 = {key: json.loads(json.dumps(value)) for key, value in base.items()}
+    v24["required"]["rows"] = []
+    result = compose(authority, v24, ops_root, ops_revision, "fixture")
+    if result["status"] != "OPEN" or not any(
+        finding.get("kind") == "COVERAGE_GAP" for finding in result["diff"].get("findings", [])
+    ):
+        raise ClosureError("v24-accepted-universe-missing-required")
+    cases.append("v24-authority-universe-catches-missing-r")
+
+    v25 = {key: json.loads(json.dumps(value)) for key, value in base.items()}
+    orphan = json.loads(json.dumps(v25["provided"]["rows"][0]))
+    orphan["id"] = "fixture.orphan"
+    v25["provided"]["rows"].append(orphan)
+    result = compose(authority, v25, ops_root, ops_revision, "fixture")
+    if result["status"] != "INVALID":
+        raise ClosureError("v25-orphan-projection")
+    cases.append("v25-orphan-rejected")
+
+    v26 = {key: json.loads(json.dumps(value)) for key, value in base.items()}
+    v26["provided"]["rows"][0]["contract"]["target"] = {
+        "provider": "cloudflare-pages", "resource": "voice-ui", "account": None
+    }
+    result = compose(authority, v26, ops_root, ops_revision, "fixture")
+    if result["status"] != "OPEN" or not any(
+        finding.get("kind") == "CONTRACT_DRIFT" and finding.get("field") == "target"
+        for finding in result["diff"].get("findings", [])
+    ):
+        raise ClosureError("v26-typed-drift")
+    cases.append("v26-typed-drift-from-ops-primitive")
+
+    evidence_authority = json.loads(json.dumps(authority))
+    evidence_profile = [{"role": "projection", "operation": "cloudflare_workers_secret_put", "readback": True, "grade": "fixture"}]
+    evidence_authority["obligations"][0]["profile"] = evidence_profile
+    evidence_exports = {key: json.loads(json.dumps(value)) for key, value in base.items()}
+    for key in ("required", "provided"):
+        evidence_exports[key]["rows"][0]["contract"]["profile"] = evidence_profile
+    result = compose(evidence_authority, evidence_exports, ops_root, ops_revision, "fixture")
+    if result["status"] != "OPEN" or not any(
+        finding.get("kind") == "EVIDENCE_MISSING" for finding in result["diff"].get("findings", [])
+    ):
+        raise ClosureError("v26-evidence-edge")
+    cases.append("v26-evidence-edge-typed")
+
+    identity = closed_result["comparator"]
+    if identity["revision"] != ops_revision or identity["repository"] != "roccho-dev/ops":
+        raise ClosureError("v27-comparator-pin")
+    if not DIGEST.fullmatch(identity["source_digest"]):
+        raise ClosureError("v27-comparator-source")
+    cases.append("v27-one-exact-ops-comparator")
+
+    for case, source_path, expected in (
+        ("v28-sealed-seed-preserved", SEALED_234_SEED,
+         "sealed-234-seed-is-not-contract-drift-authority"),
+        ("v28-dot-alias-rejected", "contract_modeling/v1/./source-seed.jsonl",
+         "source-path-not-canonical"),
+        ("v28-empty-segment-rejected", "contract_modeling//v1/source-seed.jsonl",
+         "source-path-not-canonical"),
+        ("v28-trailing-separator-rejected", SEALED_234_SEED + "/",
+         "source-path-not-canonical"),
+        ("v28-parent-segment-rejected", "contract_modeling/v1/../v1/source-seed.jsonl",
+         "source-path-not-canonical"),
+        ("v28-absolute-path-rejected", "/" + SEALED_234_SEED,
+         "invalid-identifier"),
+    ):
+        sealed = json.loads(json.dumps(authority))
+        sealed["source"]["path"] = source_path
+        try:
+            compose(sealed, base, ops_root, ops_revision, "fixture")
+        except ClosureError as exc:
+            if str(exc) != expected:
+                raise
+        else:
+            raise ClosureError("v28-sealed-seed-accepted")
+        cases.append(case)
+
+    # A valid nested path is not confused with the sealed seed or its aliases.
+    nested = json.loads(json.dumps(authority))
+    nested["source"]["path"] = "contract_modeling/v2/contract-drift.json"
+    if compose(nested, base, ops_root, ops_revision, "fixture")["status"] != "CLOSED":
+        raise ClosureError("v28-canonical-path-rejected")
+    cases.append("v28-canonical-nested-path-accepted")
+
+    first = canonical(compose(authority, base, ops_root, ops_revision, "fixture"))
+    second = canonical(compose(authority, base, ops_root, ops_revision, "fixture"))
+    if first != second:
+        raise ClosureError("determinism")
+    cases.append("deterministic-replay")
+
+    report = {
+        "kind": "governance.contractDriftPhase2.selftest.v1",
+        "status": "pass",
+        "authority": False,
+        "fixture_only": True,
+        "case_count": len(cases),
+        "cases": cases,
+        "ops_comparator": comparator_identity(ops_root, ops_revision),
+        "provider_effect": False,
+        "accepted_540_authority_claimed": False,
+        "final_admission_claimed": False,
+    }
+    sys.stdout.buffer.write(canonical(report) + b"\n")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    selftest_parser = sub.add_parser("selftest")
+    selftest_parser.add_argument("--ops-root", type=Path, required=True)
+    selftest_parser.add_argument("--ops-revision", required=True)
+
+    compose_parser = sub.add_parser("compose")
+    compose_parser.add_argument("--authority", type=Path, required=True)
+    for name in COLLECTIONS:
+        compose_parser.add_argument("--" + name, type=Path, required=True)
+    compose_parser.add_argument("--ops-root", type=Path, required=True)
+    compose_parser.add_argument("--ops-revision", required=True)
+    compose_parser.add_argument("--authority-grade", choices=["fixture", "source"], required=True)
+    compose_parser.add_argument("--out", type=Path, required=True)
+
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "selftest":
+            return selftest(args.ops_root, args.ops_revision)
+        authority = load_json(args.authority)
+        exports = {name: load_json(getattr(args, name)) for name in COLLECTIONS}
+        result = compose(authority, exports, args.ops_root, args.ops_revision, args.authority_grade)
+        args.out.write_bytes(canonical(result) + b"\n")
+        sys.stdout.buffer.write(canonical(result) + b"\n")
+        return {"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}[result["status"]]
+    except (ClosureError, OSError, TypeError, KeyError, RecursionError) as exc:
+        sys.stderr.write("contract-drift-phase2: invalid or unavailable admitted input\n")
+        return 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
