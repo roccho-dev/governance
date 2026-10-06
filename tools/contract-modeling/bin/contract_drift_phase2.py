@@ -258,6 +258,485 @@ def compose(
     }
 
 
+
+SELECTED_BINDING = "jev-api"
+SELECTED_CONSUMER_BOUNDARY = "ops.voice-ui.consumer"
+SELECTED_SCOPE_ID = "ops-envs.voice-ui-jev-api"
+SELECTED_EPOCH = "canonical-source-v1"
+OPS_REQUIREMENT_PATH = "packages/voice-ui-target-runtime/modules/input-contracts.mjs"
+
+
+def exact_revision(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not HEX40.fullmatch(value):
+        raise ClosureError(label)
+    return value
+
+
+def selected_obligation_id() -> str:
+    value = digest({"binding": SELECTED_BINDING, "consumer_boundary": SELECTED_CONSUMER_BOUNDARY})
+    return "contract-drift:" + value.removeprefix("sha256:")
+
+
+def _run_json(argv: list[str], label: str, cwd: Path | None = None) -> dict[str, Any]:
+    try:
+        result = subprocess.run(
+            argv,
+            cwd=cwd,
+            env={},
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ClosureError(label) from exc
+    if result.returncode != 0 or result.stderr or len(result.stdout.encode("utf-8")) > MAX_BYTES:
+        raise ClosureError(label)
+    try:
+        value = json.loads(
+            result.stdout,
+            object_pairs_hook=object_pairs,
+            parse_constant=lambda _: (_ for _ in ()).throw(ClosureError(label)),
+        )
+    except json.JSONDecodeError as exc:
+        raise ClosureError(label) from exc
+    if not isinstance(value, dict):
+        raise ClosureError(label)
+    return value
+
+
+def _ops_source_identity(ops_repo_root: Path, ops_revision: str) -> dict[str, Any]:
+    revision = exact_revision(ops_revision, "ops-revision-must-be-exact")
+    module = ops_repo_root.resolve() / OPS_REQUIREMENT_PATH
+    if not module.is_file() or module.is_symlink():
+        raise ClosureError("ops-requirement-source-missing")
+    return {
+        "repository": "roccho-dev/ops",
+        "revision": revision,
+        "path": OPS_REQUIREMENT_PATH,
+        "digest": bytes_digest(module.read_bytes()),
+    }
+
+
+def _project_ops_once(
+    ops_repo_root: Path,
+    node: Path,
+    target: dict[str, Any],
+    obligation_digest: str,
+    ops_revision: str,
+) -> dict[str, Any]:
+    expected_source = _ops_source_identity(ops_repo_root, ops_revision)
+    if not node.is_file():
+        raise ClosureError("node-executable-missing")
+    request = {
+        "target": target,
+        "obligation": {
+            "id": selected_obligation_id(),
+            "obligation_digest": obligation_digest,
+            "binding": SELECTED_BINDING,
+        },
+    }
+    helper_text = """import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+const [modulePath, requestPath, revision] = process.argv.slice(2);
+const { projectRequirements } = await import(pathToFileURL(modulePath).href);
+const request = JSON.parse(readFileSync(requestPath, "utf8"));
+process.stdout.write(JSON.stringify(projectRequirements(request.target, request.obligation, revision)));
+"""
+    with tempfile.TemporaryDirectory(prefix="governance-contract-drift-ops-") as raw:
+        root = Path(raw)
+        request_path = root / "request.json"
+        helper = root / "project.mjs"
+        request_path.write_bytes(canonical(request))
+        helper.write_text(helper_text, encoding="utf-8")
+        value = _run_json(
+            [
+                str(node),
+                str(helper),
+                str(ops_repo_root.resolve() / OPS_REQUIREMENT_PATH),
+                str(request_path),
+                ops_revision,
+            ],
+            "ops-requirement-acquisition-failed",
+            root,
+        )
+    validate_export(value)
+    if value["source"] != expected_source or len(value["rows"]) != 1:
+        raise ClosureError("ops-requirement-source-identity")
+    if value["rows"][0].get("id") != selected_obligation_id():
+        raise ClosureError("ops-requirement-obligation-id")
+    return value
+
+
+def derive_required(
+    ops_repo_root: Path,
+    node: Path,
+    target: dict[str, Any],
+    ops_revision: str,
+) -> dict[str, Any]:
+    placeholder = "sha256:" + ("0" * 64)
+    first = _project_ops_once(ops_repo_root, node, target, placeholder, ops_revision)
+    contract = json.loads(json.dumps(first["rows"][0]["contract"]))
+    if contract.pop("obligation_digest", None) != placeholder:
+        raise ClosureError("ops-placeholder-digest-not-preserved")
+    meaning = digest(contract)
+    required = _project_ops_once(ops_repo_root, node, target, meaning, ops_revision)
+    final_contract = json.loads(json.dumps(required["rows"][0]["contract"]))
+    if final_contract.pop("obligation_digest", None) != meaning or final_contract != contract:
+        raise ClosureError("ops-semantic-projection-not-deterministic")
+    return required
+
+
+def _project_envs(
+    envs_root: Path,
+    selector: dict[str, Any] | None,
+    envs_revision: str,
+) -> dict[str, Any]:
+    revision = exact_revision(envs_revision, "envs-revision-must-be-exact")
+    root = envs_root.resolve()
+    adapter = root / "adapters" / "contract_projection.py"
+    if not adapter.is_file() or adapter.is_symlink():
+        raise ClosureError("envs-projection-source-missing")
+    selection = {"obligations": [] if selector is None else [selector]}
+    with tempfile.TemporaryDirectory(prefix="governance-contract-drift-envs-") as raw:
+        selection_path = Path(raw) / "selection.json"
+        selection_path.write_bytes(canonical(selection))
+        value = _run_json(
+            [
+                sys.executable,
+                str(adapter),
+                "--root",
+                str(root),
+                "--selection",
+                str(selection_path),
+                "--revision",
+                revision,
+            ],
+            "envs-provision-acquisition-failed",
+            root,
+        )
+    validate_export(value)
+    return value
+
+
+def _envs_source_identity(envs_root: Path, envs_revision: str) -> dict[str, Any]:
+    value = _project_envs(envs_root, None, envs_revision)
+    if value["rows"]:
+        raise ClosureError("empty-envs-source-projection-produced-rows")
+    return value["source"]
+
+
+def validate_acquired_sources(
+    required: dict[str, Any],
+    provided: dict[str, Any],
+    ops_repo_root: Path,
+    envs_root: Path,
+    ops_revision: str,
+    envs_revision: str,
+) -> None:
+    validate_export(required)
+    validate_export(provided)
+    if required["source"] != _ops_source_identity(ops_repo_root, ops_revision):
+        raise ClosureError("ops-acquisition-source-mismatch")
+    if provided["source"] != _envs_source_identity(envs_root, envs_revision):
+        raise ClosureError("envs-acquisition-source-mismatch")
+
+
+def _selector(required: dict[str, Any]) -> dict[str, Any]:
+    if len(required["rows"]) != 1:
+        raise ClosureError("required-row-cardinality")
+    row = required["rows"][0]
+    contract = row.get("contract")
+    if not isinstance(contract, dict):
+        raise ClosureError("required-contract-shape")
+    meaning = contract.get("obligation_digest")
+    profile = contract.get("profile")
+    if not isinstance(meaning, str) or not DIGEST.fullmatch(meaning) or not isinstance(profile, list):
+        raise ClosureError("required-contract-meaning")
+    return {
+        "id": selected_obligation_id(),
+        "obligation_digest": meaning,
+        "binding": SELECTED_BINDING,
+        "consumer_boundary": SELECTED_CONSUMER_BOUNDARY,
+        "profile": profile,
+    }
+
+
+def _authority_from_required(required: dict[str, Any]) -> dict[str, Any]:
+    selector = _selector(required)
+    return {
+        "kind": "governance.contractDriftAuthorityProjection.v1",
+        "source": required["source"],
+        "scope": {
+            "id": SELECTED_SCOPE_ID,
+            "epoch": SELECTED_EPOCH,
+            "allow_empty": False,
+            "excluded_ids": [],
+        },
+        "obligations": [{
+            "id": selector["id"],
+            "obligation_digest": selector["obligation_digest"],
+            "profile": selector["profile"],
+        }],
+        "evidence": {},
+    }
+
+
+def _empty_export(source_value: dict[str, Any]) -> dict[str, Any]:
+    return {"source": json.loads(json.dumps(source_value)), "rows": []}
+
+
+def acquire_bounded(
+    ops_repo_root: Path,
+    envs_root: Path,
+    node: Path,
+    ops_revision: str,
+    envs_revision: str,
+    target: dict[str, Any] | None,
+) -> dict[str, Any]:
+    exact_revision(ops_revision, "ops-revision-must-be-exact")
+    exact_revision(envs_revision, "envs-revision-must-be-exact")
+    sources = {
+        "ops": _ops_source_identity(ops_repo_root, ops_revision),
+        "envs": _envs_source_identity(envs_root, envs_revision),
+    }
+    if target is None:
+        return {
+            "kind": "governance.contractDriftAcquisition.v1",
+            "authority": False,
+            "status": "UNKNOWN",
+            "reason": "target-input-unavailable",
+            "sources": sources,
+            "selector": {
+                "binding": SELECTED_BINDING,
+                "consumer_boundary": SELECTED_CONSUMER_BOUNDARY,
+                "id": selected_obligation_id(),
+            },
+            "provider_effect": False,
+            "final_admission": False,
+        }
+
+    required = derive_required(ops_repo_root, node, target, ops_revision)
+    selector = _selector(required)
+    provided = _project_envs(envs_root, selector, envs_revision)
+    validate_acquired_sources(required, provided, ops_repo_root, envs_root, ops_revision, envs_revision)
+    authority = _authority_from_required(required)
+    exports = {
+        "required": required,
+        "provided": provided,
+        # This slice inventories canonical public source only. Real O/H remains
+        # a separate input/effect boundary and is never inferred from file presence.
+        "observations": _empty_export(required["source"]),
+        "receipts": _empty_export(provided["source"]),
+    }
+    closure = compose(
+        authority,
+        exports,
+        ops_repo_root.resolve() / "packages" / "contract-diff",
+        ops_revision,
+        "source",
+    )
+    return {
+        "kind": "governance.contractDriftAcquisition.v1",
+        "authority": False,
+        "status": closure["status"],
+        "sources": {"ops": required["source"], "envs": provided["source"]},
+        "selector": selector,
+        "evidence_boundary": "canonical-public-source-only; real provider observations/receipts are separate",
+        "normalized": {"authority": authority, **exports},
+        "closure": closure,
+        "provider_effect": False,
+        "final_admission": False,
+    }
+
+
+def _finding(result: dict[str, Any], kind: str, field: str | None = None) -> bool:
+    findings = result.get("diff", {}).get("findings", [])
+    return any(
+        item.get("kind") == kind and (field is None or item.get("field") == field)
+        for item in findings
+        if isinstance(item, dict)
+    )
+
+
+def _synthetic_envs_projection(
+    envs_root: Path,
+    selector: dict[str, Any],
+    mutate,
+) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(prefix="governance-contract-drift-envs-synthetic-") as raw:
+        root = Path(raw)
+        (root / "adapters").mkdir()
+        (root / "contracts").mkdir()
+        (root / "adapters" / "contract_projection.py").write_bytes(
+            (envs_root.resolve() / "adapters" / "contract_projection.py").read_bytes()
+        )
+        bindings_path = envs_root.resolve() / "contracts" / "bindings.jsonl"
+        consumers_path = envs_root.resolve() / "contracts" / "provider-consumer.jsonl"
+        bindings = [json.loads(line) for line in bindings_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        consumers = [json.loads(line) for line in consumers_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        mutate(bindings, consumers)
+        (root / "contracts" / "bindings.jsonl").write_bytes(
+            b"\n".join(canonical(row) for row in bindings) + b"\n"
+        )
+        (root / "contracts" / "provider-consumer.jsonl").write_bytes(
+            b"\n".join(canonical(row) for row in consumers) + b"\n"
+        )
+        return _project_envs(root, selector, "b" * 40)
+
+
+def acquisition_selftest(
+    ops_repo_root: Path,
+    envs_root: Path,
+    node: Path,
+    ops_revision: str,
+    envs_revision: str,
+) -> int:
+    target = {
+        "provider": "cloudflare-workers",
+        "accountId": "0" * 32,
+        "workerName": "voice-ui-fixture",
+        "url": "https://voice-ui-fixture.fixture.workers.dev/",
+        "nativeDeploySettings": {
+            "workersDev": True,
+            "previewUrls": False,
+            "observability": {"enabled": False},
+            "tags": [],
+        },
+    }
+    result = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, target)
+    if result["sources"]["ops"]["revision"] != ops_revision or result["sources"]["envs"]["revision"] != envs_revision:
+        raise ClosureError("canonical-merge-provenance-not-retained")
+    cases = ["canonical-merge-provenance-retained"]
+
+    normalized = result["normalized"]
+    authority = normalized["authority"]
+    exports = {name: normalized[name] for name in COLLECTIONS}
+    if not _finding(result["closure"], "CONTRACT_DRIFT", "target"):
+        raise ClosureError("canonical-workers-pages-drift-missing")
+    if not _finding(result["closure"], "EVIDENCE_MISSING"):
+        raise ClosureError("canonical-required-evidence-missing-not-detected")
+    if exports["required"]["rows"][0]["id"] != exports["provided"]["rows"][0]["id"]:
+        raise ClosureError("stable-k-not-preserved")
+    cases.extend(["workers-pages-target-drift", "required-evidence-missing", "stable-k-across-r-p"])
+
+    missing_r = json.loads(json.dumps(exports))
+    missing_r["required"]["rows"] = []
+    missing_r_result = compose(
+        authority,
+        missing_r,
+        ops_repo_root.resolve() / "packages" / "contract-diff",
+        ops_revision,
+        "source",
+    )
+    if missing_r_result["status"] == "CLOSED" or not _finding(missing_r_result, "COVERAGE_GAP"):
+        raise ClosureError("missing-r-vacuous-pass")
+    cases.append("selected-relation-missing-r-is-not-vacuous")
+
+    def stage_drift(bindings, consumers):
+        next(row for row in consumers if row["id"] == SELECTED_CONSUMER_BOUNDARY)["stage"] = "stage-drift"
+
+    def consumer_drift(bindings, consumers):
+        next(row for row in consumers if row["id"] == SELECTED_CONSUMER_BOUNDARY)["repository"] = "roccho-dev/ops-drift"
+
+    def capability_drift(bindings, consumers):
+        next(row for row in bindings if row["id"] == SELECTED_BINDING)["capability"] = "jev-api-drift"
+        next(row for row in consumers if row["id"] == SELECTED_CONSUMER_BOUNDARY)["capability"] = "jev-api-drift"
+
+    for label, field, mutate in (
+        ("stage", "stage", stage_drift),
+        ("consumer", "consumer", consumer_drift),
+        ("capability", "capability", capability_drift),
+    ):
+        synthetic = _synthetic_envs_projection(envs_root, result["selector"], mutate)
+        changed = json.loads(json.dumps(exports))
+        changed["provided"] = synthetic
+        compared = compose(
+            authority,
+            changed,
+            ops_repo_root.resolve() / "packages" / "contract-diff",
+            ops_revision,
+            "source",
+        )
+        if not _finding(compared, "CONTRACT_DRIFT", field):
+            raise ClosureError("compared-field-drift-not-preserved")
+        if any(item.get("kind", "").startswith("SUPPLY_") for item in compared["diff"].get("findings", [])):
+            raise ClosureError("compared-field-drift-became-supply")
+        if synthetic["rows"][0]["id"] != selected_obligation_id():
+            raise ClosureError("synthetic-stable-k-changed")
+        cases.append(f"{label}-drift-same-k")
+
+    def relation_missing(bindings, consumers):
+        consumers[:] = [row for row in consumers if row["id"] != SELECTED_CONSUMER_BOUNDARY]
+
+    absent = _synthetic_envs_projection(envs_root, result["selector"], relation_missing)
+    missing_p = json.loads(json.dumps(exports))
+    missing_p["provided"] = absent
+    missing_p_result = compose(
+        authority,
+        missing_p,
+        ops_repo_root.resolve() / "packages" / "contract-diff",
+        ops_revision,
+        "source",
+    )
+    if not _finding(missing_p_result, "SUPPLY_MISSING"):
+        raise ClosureError("true-relation-absence-not-supply-missing")
+    cases.append("stable-relation-absence-is-supply-missing")
+
+    unknown = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, None)
+    if unknown["status"] != "UNKNOWN" or unknown["reason"] != "target-input-unavailable":
+        raise ClosureError("missing-target-not-unknown")
+    cases.append("missing-target-is-unknown")
+
+    tampered_required = json.loads(json.dumps(exports["required"]))
+    tampered_required["source"]["digest"] = "sha256:" + ("f" * 64)
+    try:
+        validate_acquired_sources(
+            tampered_required,
+            exports["provided"],
+            ops_repo_root,
+            envs_root,
+            ops_revision,
+            envs_revision,
+        )
+    except ClosureError as exc:
+        if str(exc) != "ops-acquisition-source-mismatch":
+            raise
+    else:
+        raise ClosureError("source-identity-mismatch-admitted")
+    cases.append("source-identity-mismatch-rejected")
+
+    if result["closure"]["final_admission"] is not False or result["final_admission"] is not False:
+        raise ClosureError("acquisition-self-promoted")
+    cases.append("acquisition-never-final-admission")
+
+    again = acquire_bounded(ops_repo_root, envs_root, node, ops_revision, envs_revision, target)
+    if canonical(result) != canonical(again):
+        raise ClosureError("acquisition-not-deterministic")
+    cases.append("same-exact-input-byte-identical")
+
+    if "roccho-dev/adrs" in canonical(result).decode("utf-8") or "contract-drift/authority-source" in canonical(result).decode("utf-8"):
+        raise ClosureError("new-adrs-source-became-required-input")
+    cases.append("no-new-adrs-cue-adoption-input")
+
+    report = {
+        "kind": "governance.contractDriftAcquisition.selftest.v1",
+        "status": "pass",
+        "authority": False,
+        "fixture_target_only": True,
+        "canonical_sources": {
+            "ops": result["sources"]["ops"],
+            "envs": result["sources"]["envs"],
+        },
+        "case_count": len(cases),
+        "cases": cases,
+        "provider_effect": False,
+        "final_admission_claimed": False,
+    }
+    sys.stdout.buffer.write(canonical(report) + b"\n")
+    return 0
+
 def fixture_source(label: str, repository: str = "fixture/repo") -> dict[str, Any]:
     return {
         "repository": repository,
@@ -426,6 +905,22 @@ def main(argv: list[str] | None = None) -> int:
     selftest_parser.add_argument("--ops-root", type=Path, required=True)
     selftest_parser.add_argument("--ops-revision", required=True)
 
+    acquisition_test = sub.add_parser("acquisition-selftest")
+    acquisition_test.add_argument("--ops-root", type=Path, required=True)
+    acquisition_test.add_argument("--envs-root", type=Path, required=True)
+    acquisition_test.add_argument("--node", type=Path, required=True)
+    acquisition_test.add_argument("--ops-revision", required=True)
+    acquisition_test.add_argument("--envs-revision", required=True)
+
+    acquire_parser = sub.add_parser("acquire")
+    acquire_parser.add_argument("--ops-root", type=Path, required=True)
+    acquire_parser.add_argument("--envs-root", type=Path, required=True)
+    acquire_parser.add_argument("--node", type=Path, required=True)
+    acquire_parser.add_argument("--ops-revision", required=True)
+    acquire_parser.add_argument("--envs-revision", required=True)
+    acquire_parser.add_argument("--target", type=Path)
+    acquire_parser.add_argument("--out", type=Path, required=True)
+
     compose_parser = sub.add_parser("compose")
     compose_parser.add_argument("--authority", type=Path, required=True)
     for name in COLLECTIONS:
@@ -439,6 +934,18 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "selftest":
             return selftest(args.ops_root, args.ops_revision)
+        if args.command == "acquisition-selftest":
+            return acquisition_selftest(
+                args.ops_root, args.envs_root, args.node, args.ops_revision, args.envs_revision
+            )
+        if args.command == "acquire":
+            target = load_json(args.target) if args.target else None
+            result = acquire_bounded(
+                args.ops_root, args.envs_root, args.node, args.ops_revision, args.envs_revision, target
+            )
+            args.out.write_bytes(canonical(result) + b"\n")
+            sys.stdout.buffer.write(canonical(result) + b"\n")
+            return 4 if result["status"] == "UNKNOWN" else 0
         authority = load_json(args.authority)
         exports = {name: load_json(getattr(args, name)) for name in COLLECTIONS}
         result = compose(authority, exports, args.ops_root, args.ops_revision, args.authority_grade)

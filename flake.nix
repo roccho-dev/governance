@@ -14,13 +14,19 @@
     # Phase 2 contract drift reuses the one reviewed comparator implementation.
     # flake=false imports only exact source; governance retains authority/closure ownership.
     opsContractDiff = {
-      url = "github:roccho-dev/ops/4daaf87b0706dfbfeb31a36659ef3ec3842ca1a2";
+      url = "github:roccho-dev/ops/8c6dd62148ba9a83e97e1f5fe881d4f1b590751f";
+      flake = false;
+    };
+    # #215 reads the merged canonical envs public contracts through the existing
+    # stable-ID projection. This input is source-only and performs no provider effect.
+    envsContractProjection = {
+      url = "github:roccho-dev/envs/616944b59ede38ea524cb6cddbe3119f8113676e";
       flake = false;
     };
   };
 
   outputs =
-    { self, nixpkgs, adrsRecords, uiLib, opsContractDiff }:
+    { self, nixpkgs, adrsRecords, uiLib, opsContractDiff, envsContractProjection }:
     let
       systems = [ "x86_64-linux" ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
@@ -344,11 +350,27 @@ same
           cd ${self}
           python3 tools/contract-modeling/bin/contract_drift_phase2.py selftest \
             --ops-root ${opsContractDiff}/packages/contract-diff \
-            --ops-revision 4daaf87b0706dfbfeb31a36659ef3ec3842ca1a2 \
+            --ops-revision 8c6dd62148ba9a83e97e1f5fe881d4f1b590751f \
             > "$TMPDIR/contract-drift-phase2.json"
           grep -q '"kind":"governance.contractDriftPhase2.selftest.v1"' "$TMPDIR/contract-drift-phase2.json"
           grep -q '"status":"pass"' "$TMPDIR/contract-drift-phase2.json"
           grep -q '"final_admission_claimed":false' "$TMPDIR/contract-drift-phase2.json"
+          touch "$out"
+        '';
+        contract-drift-acquisition = pkgs.runCommand "contract-drift-acquisition" { nativeBuildInputs = [ pkgs.python3 pkgs.nodejs ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/contract-modeling/bin/contract_drift_phase2.py acquisition-selftest \
+            --ops-root ${opsContractDiff} \
+            --envs-root ${envsContractProjection} \
+            --node ${pkgs.nodejs}/bin/node \
+            --ops-revision 8c6dd62148ba9a83e97e1f5fe881d4f1b590751f \
+            --envs-revision 616944b59ede38ea524cb6cddbe3119f8113676e \
+            > "$TMPDIR/contract-drift-acquisition.json"
+          grep -q '"kind":"governance.contractDriftAcquisition.selftest.v1"' "$TMPDIR/contract-drift-acquisition.json"
+          grep -q '"status":"pass"' "$TMPDIR/contract-drift-acquisition.json"
+          grep -q '"final_admission_claimed":false' "$TMPDIR/contract-drift-acquisition.json"
+          grep -q '"provider_effect":false' "$TMPDIR/contract-drift-acquisition.json"
           touch "$out"
         '';
         central-claim-drift-report-selftest = pkgs.runCommand "central-claim-drift-report-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
