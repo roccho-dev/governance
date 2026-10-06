@@ -114,6 +114,7 @@ def validate_rollout(rollout: dict[str, Any]) -> list[dict[str, Any]]:
         for field in fields:
             need(isinstance(row.get(field), str) and bool(row[field]), f"rollout-field:{row.get('repository')}:{field}")
         need(row.get("authority") is False, f"rollout-authority:{row.get('repository')}")
+        need(row.get("lifecycle") == "active", f"rollout-lifecycle:{row.get('repository')}")
     return rows
 
 
@@ -191,7 +192,7 @@ def capture_repository(api: GitHubApi, expected: dict[str, Any], root: Path) -> 
     validate_claim(claim, expected)
 
     runs = api.get_json(f"/repos/{repo}/actions/runs?{query(branch=branch, event='push', status='success', per_page=100)}")
-    candidates = [run for run in runs.get("workflow_runs", []) if run.get("head_sha") == head and run.get("conclusion") == "success" and run.get("event") == "push" and (run.get("name") == expected["workflowName"] or run.get("path") == expected["workflowPath"])]
+    candidates = [run for run in runs.get("workflow_runs", []) if run.get("head_sha") == head and run.get("conclusion") == "success" and run.get("event") == "push" and run.get("name") == expected["workflowName"] and run.get("path") == expected["workflowPath"]]
     need(bool(candidates), f"live-run-missing:{repo}")
     run = sorted(candidates, key=lambda value: int(value.get("id", 0)), reverse=True)[0]
     run_id = run.get("id")
@@ -295,11 +296,45 @@ def fake_fixture(rollout: dict[str, Any], root: Path) -> FakeApi:
     return FakeApi(routes)
 
 
+def route_b_candidate(rollout: dict[str, Any]) -> dict[str, Any]:
+    candidate = copy.deepcopy(rollout)
+    ops = next(row for row in candidate["repositories"] if row.get("repository") == "roccho-dev/ops")
+    ops["workflowName"] = "nix-check"
+    ops["workflowPath"] = ".github/workflows/nix-check.yml"
+    return candidate
+
+
+def mutate_fake_run(value: dict[str, Any], fake: FakeApi, *, name: str | None = None, path: str | None = None) -> None:
+    expected = next(row for row in value["repositories"] if row.get("repository") == "roccho-dev/ops")
+    route = f"/repos/{expected['repository']}/actions/runs?branch={expected['branch']}&event=push&status=success&per_page=100"
+    runs = fake.json_routes[route]["workflow_runs"]
+    need(len(runs) == 1, "selftest-run-cardinality")
+    if name is not None:
+        runs[0]["name"] = name
+    if path is not None:
+        runs[0]["path"] = path
+
+
+def mutate_fake_claim_lifecycle(value: dict[str, Any], fake: FakeApi, lifecycle: str) -> None:
+    expected = next(row for row in value["repositories"] if row.get("repository") == "roccho-dev/ops")
+    ref_route = f"/repos/{expected['repository']}/git/ref/heads/{expected['branch']}"
+    head = fake.json_routes[ref_route]["object"]["sha"]
+    claim_route = f"/repos/{expected['repository']}/contents/{expected['claimPath']}?ref={head}"
+    blob = fake.json_routes[claim_route]
+    claim = json.loads(base64.b64decode(blob["content"]))
+    claim["assertion"]["lifecycle"] = lifecycle
+    blob["content"] = base64.b64encode(canonical(claim).encode()).decode()
+
+
 def selftest(rollout: dict[str, Any]) -> dict[str, Any]:
     rejected = []
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp)
-        capture(rollout, fake_fixture(copy.deepcopy(rollout), root), root)
+        capture(rollout, fake_fixture(copy.deepcopy(rollout), root / "current-positive"), root / "current-positive")
+
+        route_b = route_b_candidate(rollout)
+        capture(route_b, fake_fixture(copy.deepcopy(route_b), root / "route-b-positive"), root / "route-b-positive")
+
         cases: list[tuple[str, Callable[[dict[str, Any], FakeApi, Path], None], str]] = [
             ("snapshot-digest", lambda value, fake, base: (base / value["repositories"][0]["snapshotPath"]).write_text(base64.b64encode(b"bad").decode()), "snapshot-live-digest-mismatch"),
             ("missing-run", lambda value, fake, base: fake.json_routes[f"/repos/{value['repositories'][0]['repository']}/actions/runs?branch={value['repositories'][0]['branch']}&event=push&status=success&per_page=100"].update(workflow_runs=[]), "live-run-missing"),
@@ -316,7 +351,37 @@ def selftest(rollout: dict[str, Any]) -> dict[str, Any]:
                 rejected.append({"case": name, "status": "rejected", "finding": str(exc)})
             else:
                 raise LiveError(f"false-green:{name}")
-    return {"kind": "governance.liveSelectedConsumerPacket.selftest.v2", "status": "pass", "positiveCases": 1, "destructiveCases": len(rejected), "cases": rejected, "authority": False}
+
+        route_cases: list[tuple[str, Callable[[dict[str, Any], FakeApi, Path], None], str]] = [
+            ("route-b-correct-name-wrong-path",
+             lambda value, fake, base: mutate_fake_run(value, fake, path=".github/workflows/not-nix-check.yml"),
+             "live-run-missing"),
+            ("route-b-wrong-name-correct-path",
+             lambda value, fake, base: mutate_fake_run(value, fake, name="not-nix-check"),
+             "live-run-missing"),
+            ("route-b-old-final-ci-producer",
+             lambda value, fake, base: mutate_fake_run(value, fake, name="final CI consumer", path=".github/workflows/final-ci-consumer.yml"),
+             "live-run-missing"),
+            ("route-b-active-claim-deferred-rollout",
+             lambda value, fake, base: next(row for row in value["repositories"] if row.get("repository") == "roccho-dev/ops").update(lifecycle="deferred"),
+             "rollout-lifecycle"),
+            ("route-b-deferred-claim-active-rollout",
+             lambda value, fake, base: mutate_fake_claim_lifecycle(value, fake, "deferred"),
+             "claim-lifecycle"),
+        ]
+        for name, mutate, expected_code in route_cases:
+            candidate, case_root = route_b_candidate(rollout), root / name
+            fake = fake_fixture(copy.deepcopy(candidate), case_root)
+            mutate(candidate, fake, case_root)
+            try:
+                capture(candidate, fake, case_root)
+            except LiveError as exc:
+                need(expected_code in str(exc), f"wrong-finding:{name}:{exc}")
+                rejected.append({"case": name, "status": "rejected", "finding": str(exc)})
+            else:
+                raise LiveError(f"false-green:{name}")
+
+    return {"kind": "governance.liveSelectedConsumerPacket.selftest.v2", "status": "pass", "positiveCases": 2, "destructiveCases": len(rejected), "cases": rejected, "authority": False}
 
 
 def main() -> int:
