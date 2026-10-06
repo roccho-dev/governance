@@ -11,10 +11,16 @@
       url = "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579";
       flake = false;
     };
+    # Phase 2 contract drift reuses the one reviewed comparator implementation.
+    # flake=false imports only exact source; governance retains authority/closure ownership.
+    opsContractDiff = {
+      url = "github:roccho-dev/ops/4daaf87b0706dfbfeb31a36659ef3ec3842ca1a2";
+      flake = false;
+    };
   };
 
   outputs =
-    { self, nixpkgs, adrsRecords, uiLib }:
+    { self, nixpkgs, adrsRecords, uiLib, opsContractDiff }:
     let
       systems = [ "x86_64-linux" ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
@@ -331,6 +337,17 @@ same
           python3 tools/check-ops-claim-adoption-selected-universe.py selftest > "$TMPDIR/ops-claim-adoption.json"
           grep -q '"kind": "governance.opsClaimAdoptionSelectedUniverse.selftest.v1"' "$TMPDIR/ops-claim-adoption.json"
           grep -q '"status": "pass"' "$TMPDIR/ops-claim-adoption.json"
+          touch "$out"
+        '';
+        contract-drift-phase2 = pkgs.runCommand "contract-drift-phase2" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/contract-modeling/bin/contract_drift_phase2.py selftest \
+            --ops-root ${opsContractDiff}/packages/contract-diff \
+            --ops-revision 4daaf87b0706dfbfeb31a36659ef3ec3842ca1a2 \
+            > "$TMPDIR/contract-drift-phase2.json"
+          grep -q '"kind":"governance.contractDriftPhase2.selftest.v1"' "$TMPDIR/contract-drift-phase2.json"
+          grep -q '"status":"pass"' "$TMPDIR/contract-drift-phase2.json"
           touch "$out"
         '';
         central-claim-drift-report-selftest = pkgs.runCommand "central-claim-drift-report-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''

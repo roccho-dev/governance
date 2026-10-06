@@ -63,3 +63,20 @@ CANDIDATE_SHA=$(git rev-parse HEAD) bash tools/contract-modeling/run-proof.sh
 
 Technical migration closure does not claim all-repository enforcement, business
 outcome achievement, or corporate-sale achievement.
+
+
+## Phase 2 contract-drift composition
+
+ADRS #540 Phase 2 extends this existing compiler boundary without creating a
+second comparator or semantic authority. The Nix check `contract-drift-phase2`
+pins the reviewed `roccho-dev/ops` comparator source at
+`4daaf87b0706dfbfeb31a36659ef3ec3842ca1a2` and invokes that implementation
+once through `bin/contract_drift_phase2.py`.
+
+The governance adapter owns only scope/universe provenance admission, exact input
+inventory construction, and final closure grading. It does not implement set
+difference, contract/evidence comparison, provider I/O, latest selection, or
+credential handling. The selftest is fixture-grade and proves V24-V28 failure
+classes mechanically; it is not an accepted #540 authority projection or #443
+real-provider proof. The sealed #234 `contract_modeling/v1/source-seed.jsonl`
+is explicitly not a #540 obligation source.
