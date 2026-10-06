@@ -348,6 +348,7 @@ same
             > "$TMPDIR/contract-drift-phase2.json"
           grep -q '"kind":"governance.contractDriftPhase2.selftest.v1"' "$TMPDIR/contract-drift-phase2.json"
           grep -q '"status":"pass"' "$TMPDIR/contract-drift-phase2.json"
+          grep -q '"final_admission_claimed":false' "$TMPDIR/contract-drift-phase2.json"
           touch "$out"
         '';
         central-claim-drift-report-selftest = pkgs.runCommand "central-claim-drift-report-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''

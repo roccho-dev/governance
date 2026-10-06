@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Thin Phase 2 composition around the exact ops contract-diff primitive.
 
-ADRS owns meaning. Governance admits A/S/U and complete finite inputs, invokes
-the one ops comparator implementation, and grades the returned closure. This
-module contains no supply/contract/evidence comparison algorithm and performs no
+ADRS owns meaning. This adapter validates already admitted A/S/U-shaped inputs,
+builds the finite inventory, and invokes the one ops comparator implementation.
+The existing governance compiler/gate alone owns provenance admission, final
+grade, residuals, and closure receipt. This module contains no
+supply/contract/evidence comparison algorithm and performs no
 network, provider, credential, clock, latest, or effect operation.
 """
 from __future__ import annotations
@@ -245,9 +247,10 @@ def compose(
         "authority": False,
         "phase": "phase2",
         "scope": scope["id"],
-        "grade": authority_grade,
+        "input_grade": authority_grade,
         "status": diff["status"],
-        "production_closed": authority_grade == "source" and diff["status"] == "CLOSED",
+        "final_admission": False,
+        "claim_ceiling": "candidate-diff-only; existing governance gate must admit authority and final closure",
         "authority_source": authority["source"],
         "comparator": comparator,
         "diff": diff,
@@ -299,9 +302,16 @@ def selftest(ops_root: Path, ops_revision: str) -> int:
     cases = []
 
     closed_result = compose(authority, base, ops_root, ops_revision, "fixture")
-    if closed_result["status"] != "CLOSED" or closed_result["production_closed"]:
+    if closed_result["status"] != "CLOSED" or closed_result["final_admission"] is not False:
         raise ClosureError("fixture-closed-boundary")
-    cases.append("fixture-closed-not-production")
+    cases.append("fixture-closed-not-final-admission")
+
+    # Even a caller-supplied source grade cannot self-promote the candidate to
+    # final governance admission. The existing governance gate must admit it.
+    source_labeled = compose(authority, base, ops_root, ops_revision, "source")
+    if source_labeled["status"] != "CLOSED" or source_labeled["final_admission"] is not False:
+        raise ClosureError("source-label-self-admitted")
+    cases.append("source-label-does-not-grant-final-admission")
 
     v24 = {key: json.loads(json.dumps(value)) for key, value in base.items()}
     v24["required"]["rows"] = []
@@ -380,6 +390,7 @@ def selftest(ops_root: Path, ops_revision: str) -> int:
         "ops_comparator": comparator_identity(ops_root, ops_revision),
         "provider_effect": False,
         "accepted_540_authority_claimed": False,
+        "final_admission_claimed": False,
     }
     sys.stdout.buffer.write(canonical(report) + b"\n")
     return 0
