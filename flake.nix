@@ -14,13 +14,19 @@
     # Phase 2 contract drift reuses the one reviewed comparator implementation.
     # flake=false imports only exact source; governance retains authority/closure ownership.
     opsContractDiff = {
-      url = "github:roccho-dev/ops/4daaf87b0706dfbfeb31a36659ef3ec3842ca1a2";
+      url = "github:roccho-dev/ops/8c44728263a02c5d693d41078021af876420d4a4";
+      flake = false;
+    };
+    # #215 reads the merged canonical envs public contracts through the existing
+    # stable-ID projection. This input is source-only and performs no provider effect.
+    envsContractProjection = {
+      url = "github:roccho-dev/envs/c1a7658f142c82af4ad5cdeba23ee893ef662868";
       flake = false;
     };
   };
 
   outputs =
-    { self, nixpkgs, adrsRecords, uiLib, opsContractDiff }:
+    { self, nixpkgs, adrsRecords, uiLib, opsContractDiff, envsContractProjection }:
     let
       systems = [ "x86_64-linux" ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
@@ -133,6 +139,71 @@ ${helpText}
         pkgs.writeShellScriptBin "claim-admission-check" ''
           exec ${pkgs.python3}/bin/python3 ${self}/tools/claim-admission-check.py "$@"
         '';
+      mkContractDriftAcquireProgram = pkgs:
+        let
+          runner = pkgs.writeText "contract-drift-acquire.py" ''
+            import argparse
+            import importlib.util
+            import sys
+            from pathlib import Path
+
+            module_path = Path(r"${self}/tools/contract-modeling/bin/contract_drift_phase2.py")
+            spec = importlib.util.spec_from_file_location("contract_drift_phase2", module_path)
+            if spec is None or spec.loader is None:
+                raise SystemExit(3)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            parser = argparse.ArgumentParser()
+            parser.add_argument("--approved-target", type=Path)
+            parser.add_argument("--admitted-target-digest")
+            parser.add_argument("--observations", type=Path)
+            parser.add_argument("--receipts", type=Path)
+            parser.add_argument("--evidence-admission", type=Path)
+            parser.add_argument("--out", type=Path, required=True)
+            args = parser.parse_args()
+
+            ops_root = Path(r"${opsContractDiff}")
+            envs_root = Path(r"${envsContractProjection}")
+            node = Path(r"${pkgs.nodejs}/bin/node")
+            ops_revision = "8c44728263a02c5d693d41078021af876420d4a4"
+            envs_revision = "c1a7658f142c82af4ad5cdeba23ee893ef662868"
+            deploy_revision = "bce3daab76c9a4565902205cc59bb443f6e68009"
+
+            try:
+                target, target_provenance = module._approved_target_selection(
+                    args.approved_target,
+                    args.admitted_target_digest,
+                    envs_revision,
+                    deploy_revision,
+                    ops_root,
+                    node,
+                )
+                observations = module.load_json(args.observations) if args.observations else None
+                receipts = module.load_json(args.receipts) if args.receipts else None
+                evidence = module.load_json(args.evidence_admission) if args.evidence_admission else None
+                result = module.acquire_bounded(
+                    ops_root, envs_root, node, ops_revision, envs_revision, target,
+                    input_grade="source",
+                    target_provenance=target_provenance,
+                    observations=observations,
+                    receipts=receipts,
+                    evidence_admission=evidence,
+                    selected_deploy_revision=deploy_revision,
+                )
+            except (module.ClosureError, OSError, TypeError, KeyError, RecursionError):
+                sys.stderr.write("contract-drift-acquire: invalid or unavailable admitted input\n")
+                raise SystemExit(3)
+
+            encoded = module.canonical(result) + b"\n"
+            args.out.write_bytes(encoded)
+            sys.stdout.buffer.write(encoded)
+            raise SystemExit({"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}.get(result["status"], 3))
+          '';
+        in
+        pkgs.writeShellScriptBin "contract-drift-acquire" ''
+          exec ${pkgs.python3}/bin/python3 ${runner} "$@"
+        '';
       repoConventionChecksFor = pkgs:
         import ./nix/repo-convention-checks.nix { inherit pkgs; governanceSrc = self; };
       readmeMaterializationChecksFor = pkgs:
@@ -230,7 +301,10 @@ EOF
       lib = forEachSystem (pkgs: {
         repoConventionChecks = repoConventionChecksFor pkgs;
       });
-      packages = forEachSystem (pkgs: let claimAdmissionCheckProgram = mkClaimAdmissionCheckProgram pkgs; in {
+      packages = forEachSystem (pkgs: let
+        claimAdmissionCheckProgram = mkClaimAdmissionCheckProgram pkgs;
+        contractDriftAcquireProgram = mkContractDriftAcquireProgram pkgs;
+      in {
         bootstrap-input = pkgs.runCommand "bootstrap-input" { } ''
           mkdir -p "$out"
           cat > "$out/bootstrap-input.json" <<'EOF'
@@ -240,10 +314,12 @@ EOF
         readme-artifact = mkReadmeArtifact pkgs;
         gov-package-output = mkGovPackageOutput pkgs;
         claim-admission-check = claimAdmissionCheckProgram;
+        contract-drift-acquire = contractDriftAcquireProgram;
       });
       apps = forEachSystem (pkgs: let
         helpApp = mkHelpApp pkgs;
         claimAdmissionCheckProgram = mkClaimAdmissionCheckProgram pkgs;
+        contractDriftAcquireProgram = mkContractDriftAcquireProgram pkgs;
       in {
         help = helpApp;
         default = helpApp;
@@ -251,9 +327,14 @@ EOF
           type = "app";
           program = "${claimAdmissionCheckProgram}/bin/claim-admission-check";
         };
+        contract-drift-acquire = {
+          type = "app";
+          program = "${contractDriftAcquireProgram}/bin/contract-drift-acquire";
+        };
       });
       checks = forEachSystem (pkgs: let
         readmeArtifact = mkReadmeArtifact pkgs;
+        contractDriftAcquireProgram = mkContractDriftAcquireProgram pkgs;
         govPackageOutput = mkGovPackageOutput pkgs;
         readmeMaterializationChecks = readmeMaterializationChecksFor pkgs;
         readmeMaterializationFixtureReadme = pkgs.writeText "README.md" ''
@@ -344,11 +425,50 @@ same
           cd ${self}
           python3 tools/contract-modeling/bin/contract_drift_phase2.py selftest \
             --ops-root ${opsContractDiff}/packages/contract-diff \
-            --ops-revision 4daaf87b0706dfbfeb31a36659ef3ec3842ca1a2 \
+            --ops-revision 8c44728263a02c5d693d41078021af876420d4a4 \
             > "$TMPDIR/contract-drift-phase2.json"
           grep -q '"kind":"governance.contractDriftPhase2.selftest.v1"' "$TMPDIR/contract-drift-phase2.json"
           grep -q '"status":"pass"' "$TMPDIR/contract-drift-phase2.json"
           grep -q '"final_admission_claimed":false' "$TMPDIR/contract-drift-phase2.json"
+          touch "$out"
+        '';
+        contract-drift-production-entry = pkgs.runCommand "contract-drift-production-entry" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          set -euo pipefail
+          set +e
+          ${contractDriftAcquireProgram}/bin/contract-drift-acquire \
+            --out "$TMPDIR/acquire.json" > "$TMPDIR/stdout.json"
+          rc=$?
+          set -e
+          test "$rc" -eq 4
+          cmp "$TMPDIR/acquire.json" "$TMPDIR/stdout.json"
+          python3 - "$TMPDIR/acquire.json" <<'PY'
+          import json, pathlib, sys
+          value=json.loads(pathlib.Path(sys.argv[1]).read_text())
+          assert value["status"]=="UNKNOWN"
+          assert value["reason"]=="target-input-unavailable"
+          assert value["input_grade"]=="source"
+          assert value["sources"]["ops"]["revision"]=="8c44728263a02c5d693d41078021af876420d4a4"
+          assert value["sources"]["envs"]["revision"]=="c1a7658f142c82af4ad5cdeba23ee893ef662868"
+          assert value["selected_deploy_revision"]=="bce3daab76c9a4565902205cc59bb443f6e68009"
+          assert value["provider_effect"] is False
+          assert value["final_admission"] is False
+          PY
+          touch "$out"
+        '';
+        contract-drift-acquisition = pkgs.runCommand "contract-drift-acquisition" { nativeBuildInputs = [ pkgs.python3 pkgs.nodejs ]; } ''
+          set -euo pipefail
+          cd ${self}
+          python3 tools/contract-modeling/bin/contract_drift_phase2.py acquisition-selftest \
+            --ops-root ${opsContractDiff} \
+            --envs-root ${envsContractProjection} \
+            --node ${pkgs.nodejs}/bin/node \
+            --ops-revision 8c44728263a02c5d693d41078021af876420d4a4 \
+            --envs-revision c1a7658f142c82af4ad5cdeba23ee893ef662868 \
+            > "$TMPDIR/contract-drift-acquisition.json"
+          grep -q '"kind":"governance.contractDriftAcquisition.selftest.v1"' "$TMPDIR/contract-drift-acquisition.json"
+          grep -q '"status":"pass"' "$TMPDIR/contract-drift-acquisition.json"
+          grep -q '"final_admission_claimed":false' "$TMPDIR/contract-drift-acquisition.json"
+          grep -q '"provider_effect":false' "$TMPDIR/contract-drift-acquisition.json"
           touch "$out"
         '';
         central-claim-drift-report-selftest = pkgs.runCommand "central-claim-drift-report-selftest" { nativeBuildInputs = [ pkgs.python3 ]; } ''
