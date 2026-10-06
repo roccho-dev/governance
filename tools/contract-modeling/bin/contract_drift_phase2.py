@@ -369,21 +369,113 @@ process.stdout.write(JSON.stringify(projectRequirements(request.target, request.
     return value
 
 
+def _ops_expectation_spec(
+    ops_repo_root: Path,
+    node: Path,
+    target: dict[str, Any],
+) -> dict[str, Any]:
+    if not node.is_file():
+        raise ClosureError("node-executable-missing")
+    module = ops_repo_root.resolve() / OPS_REQUIREMENT_PATH
+    helper_text = """import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+const [modulePath, targetPath] = process.argv.slice(2);
+const { PROJECTION_REQUIREMENTS, validateWorkersTarget } = await import(pathToFileURL(modulePath).href);
+const target = JSON.parse(readFileSync(targetPath, "utf8"));
+process.stdout.write(JSON.stringify({requirements: PROJECTION_REQUIREMENTS, target: validateWorkersTarget(target)}));
+"""
+    with tempfile.TemporaryDirectory(prefix="governance-contract-drift-spec-") as raw:
+        root = Path(raw)
+        target_path = root / "target.json"
+        helper = root / "spec.mjs"
+        target_path.write_bytes(canonical(target))
+        helper.write_text(helper_text, encoding="utf-8")
+        value = _run_json(
+            [str(node), str(helper), str(module), str(target_path)],
+            "ops-target-contract-invalid-or-unavailable",
+            root,
+        )
+    closed(value, ("requirements", "target"))
+    requirements = value["requirements"]
+    closed(
+        requirements,
+        ("kind", "stage", "capability", "provider", "slot", "sourceKind", "operation", "readbackKind"),
+    )
+    for item in requirements.values():
+        token(item)
+    if requirements["kind"] != "envs.projectionReceipt.v1":
+        raise ClosureError("ops-requirement-kind")
+    return value
+
+
+def derive_expectation(
+    ops_repo_root: Path,
+    node: Path,
+    target: dict[str, Any],
+    ops_revision: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    source_identity = _ops_source_identity(ops_repo_root, ops_revision)
+    spec = _ops_expectation_spec(ops_repo_root, node, target)
+    requirements = spec["requirements"]
+    selected_target = spec["target"]
+    profile = [{
+        "role": "projection",
+        "operation": requirements["operation"],
+        "readback": True,
+        "grade": "real",
+    }]
+    semantic_contract = {
+        "capability": requirements["capability"],
+        "consumer": "roccho-dev/ops",
+        "stage": requirements["stage"],
+        "target": {
+            "provider": requirements["provider"],
+            "resource": selected_target["workerName"],
+            "account": selected_target["accountId"],
+        },
+        "slot": requirements["slot"],
+        "binding": SELECTED_BINDING,
+        "profile": profile,
+    }
+    meaning = digest(semantic_contract)
+    expected_contract = {"obligation_digest": meaning, **semantic_contract}
+    selector = {
+        "id": selected_obligation_id(),
+        "obligation_digest": meaning,
+        "binding": SELECTED_BINDING,
+        "consumer_boundary": SELECTED_CONSUMER_BOUNDARY,
+        "profile": profile,
+    }
+    authority = {
+        "kind": "governance.contractDriftAuthorityProjection.v1",
+        "source": source_identity,
+        "scope": {
+            "id": SELECTED_SCOPE_ID,
+            "epoch": SELECTED_EPOCH,
+            "allow_empty": False,
+            "excluded_ids": [],
+        },
+        "obligations": [{
+            "id": selector["id"],
+            "obligation_digest": meaning,
+            "profile": profile,
+        }],
+        "evidence": {},
+    }
+    validate_authority(authority)
+    return authority, selector, expected_contract
+
+
 def derive_required(
     ops_repo_root: Path,
     node: Path,
     target: dict[str, Any],
     ops_revision: str,
+    expected_contract: dict[str, Any],
 ) -> dict[str, Any]:
-    placeholder = "sha256:" + ("0" * 64)
-    first = _project_ops_once(ops_repo_root, node, target, placeholder, ops_revision)
-    contract = json.loads(json.dumps(first["rows"][0]["contract"]))
-    if contract.pop("obligation_digest", None) != placeholder:
-        raise ClosureError("ops-placeholder-digest-not-preserved")
-    meaning = digest(contract)
+    meaning = expected_contract["obligation_digest"]
     required = _project_ops_once(ops_repo_root, node, target, meaning, ops_revision)
-    final_contract = json.loads(json.dumps(required["rows"][0]["contract"]))
-    if final_contract.pop("obligation_digest", None) != meaning or final_contract != contract:
+    if required["rows"][0].get("contract") != expected_contract:
         raise ClosureError("ops-semantic-projection-not-deterministic")
     return required
 
@@ -443,46 +535,6 @@ def validate_acquired_sources(
         raise ClosureError("envs-acquisition-source-mismatch")
 
 
-def _selector(required: dict[str, Any]) -> dict[str, Any]:
-    if len(required["rows"]) != 1:
-        raise ClosureError("required-row-cardinality")
-    row = required["rows"][0]
-    contract = row.get("contract")
-    if not isinstance(contract, dict):
-        raise ClosureError("required-contract-shape")
-    meaning = contract.get("obligation_digest")
-    profile = contract.get("profile")
-    if not isinstance(meaning, str) or not DIGEST.fullmatch(meaning) or not isinstance(profile, list):
-        raise ClosureError("required-contract-meaning")
-    return {
-        "id": selected_obligation_id(),
-        "obligation_digest": meaning,
-        "binding": SELECTED_BINDING,
-        "consumer_boundary": SELECTED_CONSUMER_BOUNDARY,
-        "profile": profile,
-    }
-
-
-def _authority_from_required(required: dict[str, Any]) -> dict[str, Any]:
-    selector = _selector(required)
-    return {
-        "kind": "governance.contractDriftAuthorityProjection.v1",
-        "source": required["source"],
-        "scope": {
-            "id": SELECTED_SCOPE_ID,
-            "epoch": SELECTED_EPOCH,
-            "allow_empty": False,
-            "excluded_ids": [],
-        },
-        "obligations": [{
-            "id": selector["id"],
-            "obligation_digest": selector["obligation_digest"],
-            "profile": selector["profile"],
-        }],
-        "evidence": {},
-    }
-
-
 def _empty_export(source_value: dict[str, Any]) -> dict[str, Any]:
     return {"source": json.loads(json.dumps(source_value)), "rows": []}
 
@@ -517,11 +569,33 @@ def acquire_bounded(
             "final_admission": False,
         }
 
-    required = derive_required(ops_repo_root, node, target, ops_revision)
-    selector = _selector(required)
+    # U/K/profile are fixed before attempting R acquisition so a missing/empty
+    # requirement projection cannot erase the selected obligation.
+    authority, selector, expected_contract = derive_expectation(
+        ops_repo_root, node, target, ops_revision
+    )
     provided = _project_envs(envs_root, selector, envs_revision)
+    try:
+        required = derive_required(
+            ops_repo_root, node, target, ops_revision, expected_contract
+        )
+    except ClosureError:
+        return {
+            "kind": "governance.contractDriftAcquisition.v1",
+            "authority": False,
+            "status": "UNKNOWN",
+            "reason": "required-acquisition-unavailable",
+            "sources": sources,
+            "selector": selector,
+            "normalized": {
+                "authority": authority,
+                "required": _empty_export(sources["ops"]),
+                "provided": provided,
+            },
+            "provider_effect": False,
+            "final_admission": False,
+        }
     validate_acquired_sources(required, provided, ops_repo_root, envs_root, ops_revision, envs_revision)
-    authority = _authority_from_required(required)
     exports = {
         "required": required,
         "provided": provided,
@@ -543,6 +617,7 @@ def acquire_bounded(
         "status": closure["status"],
         "sources": {"ops": required["source"], "envs": provided["source"]},
         "selector": selector,
+        "universe_derivation": "runtime-requirement-spec-plus-stable-selection-before-required-acquisition",
         "evidence_boundary": "canonical-public-source-only; real provider observations/receipts are separate",
         "normalized": {"authority": authority, **exports},
         "closure": closure,

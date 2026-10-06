@@ -95,9 +95,12 @@ The obligation key is derived from those stable IDs only. Compared values such
 as consumer, stage, capability, provider and target are not used to rediscover
 the envs row and are not embedded into K.
 
-The semantic digest is derived deterministically from the contract emitted by
-the existing ops requirement generator (excluding only its digest field), then
-fed back to the same generator and to the existing envs stable-ID selector.
+The selected K/U/profile is derived **before R acquisition** from the existing
+runtime requirement constants, the stable technical selector and the target
+validated by the existing ops runtime target validator. The semantic digest is
+therefore fixed before the requirement row exists. That digest is then passed
+to the existing ops requirement generator and to the existing envs stable-ID
+selector. A missing/empty R cannot erase U or vacuously close coverage.
 The normalized R/P packet is passed to the existing
 `bin/contract_drift_phase2.py::compose()`, which invokes the one pinned ops
 `contract-diff` implementation.
