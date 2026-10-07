@@ -14,7 +14,7 @@
     # Phase 2 contract drift reuses the one reviewed comparator implementation.
     # flake=false imports only exact source; governance retains authority/closure ownership.
     opsContractDiff = {
-      url = "github:roccho-dev/ops/8c44728263a02c5d693d41078021af876420d4a4";
+      url = "github:roccho-dev/ops/27e9c36ead100e033e79b48e2fa94614e93b7a11";
       flake = false;
     };
     # #215 reads the merged canonical envs public contracts through the existing
@@ -166,7 +166,7 @@ ${helpText}
             ops_root = Path(r"${opsContractDiff}")
             envs_root = Path(r"${envsContractProjection}")
             node = Path(r"${pkgs.nodejs}/bin/node")
-            ops_revision = "8c44728263a02c5d693d41078021af876420d4a4"
+            ops_revision = "27e9c36ead100e033e79b48e2fa94614e93b7a11"
             envs_revision = "c1a7658f142c82af4ad5cdeba23ee893ef662868"
             deploy_revision = "bce3daab76c9a4565902205cc59bb443f6e68009"
 
@@ -425,7 +425,7 @@ same
           cd ${self}
           python3 tools/contract-modeling/bin/contract_drift_phase2.py selftest \
             --ops-root ${opsContractDiff}/packages/contract-diff \
-            --ops-revision 8c44728263a02c5d693d41078021af876420d4a4 \
+            --ops-revision 27e9c36ead100e033e79b48e2fa94614e93b7a11 \
             > "$TMPDIR/contract-drift-phase2.json"
           grep -q '"kind":"governance.contractDriftPhase2.selftest.v1"' "$TMPDIR/contract-drift-phase2.json"
           grep -q '"status":"pass"' "$TMPDIR/contract-drift-phase2.json"
@@ -447,7 +447,7 @@ same
           assert value["status"]=="UNKNOWN"
           assert value["reason"]=="target-input-unavailable"
           assert value["input_grade"]=="source"
-          assert value["sources"]["ops"]["revision"]=="8c44728263a02c5d693d41078021af876420d4a4"
+          assert value["sources"]["ops"]["revision"]=="27e9c36ead100e033e79b48e2fa94614e93b7a11"
           assert value["sources"]["envs"]["revision"]=="c1a7658f142c82af4ad5cdeba23ee893ef662868"
           assert value["selected_deploy_revision"]=="bce3daab76c9a4565902205cc59bb443f6e68009"
           assert value["provider_effect"] is False
@@ -462,7 +462,7 @@ same
             --ops-root ${opsContractDiff} \
             --envs-root ${envsContractProjection} \
             --node ${pkgs.nodejs}/bin/node \
-            --ops-revision 8c44728263a02c5d693d41078021af876420d4a4 \
+            --ops-revision 27e9c36ead100e033e79b48e2fa94614e93b7a11 \
             --envs-revision c1a7658f142c82af4ad5cdeba23ee893ef662868 \
             > "$TMPDIR/contract-drift-acquisition.json"
           grep -q '"kind":"governance.contractDriftAcquisition.selftest.v1"' "$TMPDIR/contract-drift-acquisition.json"

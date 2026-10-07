@@ -75,7 +75,7 @@ adoption prerequisite.
 Canonical source pins for this slice are:
 
 ```text
-ops/proposals  = 8c44728263a02c5d693d41078021af876420d4a4
+ops/proposals  = 27e9c36ead100e033e79b48e2fa94614e93b7a11
 envs/proposals = c1a7658f142c82af4ad5cdeba23ee893ef662868
 selected DEPLOY = bce3daab76c9a4565902205cc59bb443f6e68009
 ```
