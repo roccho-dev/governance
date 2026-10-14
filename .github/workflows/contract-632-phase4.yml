@@ -1,0 +1,177 @@
+name: contract-632-phase4
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/contract-632-phase4.yml'
+      - 'tools/check-package-final-scope-purpose-join.py'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: governance-contract-632-phase4-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  ACCEPTED_GOVERNANCE_REVISION: 5b26984eb59e4c03f9d0fe34891fea5e4a436a16
+  OPS_CANDIDATE: 06a7b88aec1399365dc3d9d27f0320c81d814a52
+
+jobs:
+  selected-final-consumer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: roccho-dev/governance
+          ref: ${{ env.ACCEPTED_GOVERNANCE_REVISION }}
+          path: _accepted/governance
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/checkout@v4
+        with:
+          repository: roccho-org/ops
+          ref: ${{ env.OPS_CANDIDATE }}
+          path: _external/ops
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact source identities
+        env:
+          GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GOVERNANCE_CANDIDATE"
+          test "$(git -C _accepted/governance rev-parse HEAD)" = "$ACCEPTED_GOVERNANCE_REVISION"
+          test "$(git -C _external/ops rev-parse HEAD)" = "$OPS_CANDIDATE"
+      - name: Validate consumer reader configuration
+        env:
+          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
+      - name: Create read-only UI and Ops Actions token
+        id: consumer-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
+          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
+          owner: roccho-dev
+          repositories: ui,ops
+          permission-actions: read
+          permission-contents: read
+      - name: Acquire current live consumer evidence
+        env:
+          CONSUMER_READER_TOKEN: ${{ steps.consumer-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          python3 tools/check-live-final-ci-consumers.py capture \
+            --token-env CONSUMER_READER_TOKEN \
+            --out live-selected-consumers.json
+          jq -e '.status == "pass" and .artifactBodiesVerified == true and .receiptCandidateShaBound == true' live-selected-consumers.json >/dev/null
+      - name: Rebuild exact Ops Phase 4 evidence under the Governance observer
+        env:
+          GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          root=contract-632-phase4-ops
+          python3 _external/ops/tools/contract-632-phase4-proof.py build \
+            --governance-source "$PWD/_accepted/governance" \
+            --governance-revision "$ACCEPTED_GOVERNANCE_REVISION" \
+            --ops-source "$PWD/_external/ops" \
+            --ops-candidate "$OPS_CANDIDATE" \
+            --observer-root "$PWD" \
+            --observer-repository roccho-dev/governance \
+            --observer-revision "$GOVERNANCE_CANDIDATE" \
+            --observer-path tools/check-package-final-scope-purpose-join.py \
+            --contract-diff "$PWD/_external/ops/packages/contract-diff/bin/contract-diff.py" \
+            --out "$root" > phase4-ops-build.json
+          python3 _external/ops/tools/contract-632-phase4-proof.py verify --bundle "$root" > phase4-ops-readback.json
+          jq -e '.status == "PASS" and .authority == false and .adoption == false and .remaining == 0' phase4-ops-readback.json >/dev/null
+      - name: Consume the same proof in the existing final checker
+        env:
+          GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/check-package-final-scope-purpose-join.py check \
+            --candidate-sha "$GOVERNANCE_CANDIDATE" \
+            --live-consumers live-selected-consumers.json \
+            --package-contract-scope contract-632-phase4-ops/run-scope.json \
+            --package-contract-evidence contract-632-phase4-ops/phase4-evidence.json \
+            --expected-ops-candidate "$OPS_CANDIDATE" \
+            --json > final-check-report.json
+          jq -e '
+            .status == "pass"
+            and .decision == "allow"
+            and .authority == false
+            and .companyAdoptionEffect == false
+            and .packageContractClosure.status == "pass"
+            and .packageContractClosure.authority == false
+            and .packageContractClosure.adoption == false
+            and .packageContractClosure.contractDiffStatus == "CLOSED"
+            and .packageContractClosure.remaining == 0
+            and .releasePublished == false
+            and .operationalAdoptionEffect == false
+          ' final-check-report.json >/dev/null
+      - name: Prove selected-input rejection and normal-path isolation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import copy, importlib.util, json, pathlib, tempfile
+          path=pathlib.Path('tools/check-package-final-scope-purpose-join.py')
+          spec=importlib.util.spec_from_file_location('final_join', path)
+          module=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          scope=pathlib.Path('contract-632-phase4-ops/run-scope.json')
+          evidence=pathlib.Path('contract-632-phase4-ops/phase4-evidence.json')
+          member=module.package_contract_closure(scope,evidence,'06a7b88aec1399365dc3d9d27f0320c81d814a52')
+          assert member['status']=='pass' and member['authority'] is False and member['remaining']==0
+          rejected=[]
+          try:
+              module.package_contract_closure(scope,evidence,'0'*40)
+          except ValueError:
+              rejected.append('wrong-ops-candidate')
+          bad=json.loads(evidence.read_text())
+          bad['status']='OPEN'
+          with tempfile.TemporaryDirectory() as tmp:
+              target=pathlib.Path(tmp)/'bad.json'
+              target.write_text(json.dumps(bad,sort_keys=True,separators=(',',':'))+'\n')
+              try:
+                  module.package_contract_closure(scope,target,'06a7b88aec1399365dc3d9d27f0320c81d814a52')
+              except ValueError:
+                  rejected.append('open-evidence')
+          source=path.read_text()
+          assert 'if package_member is not None:' in source
+          assert set(rejected)=={'wrong-ops-candidate','open-evidence'}
+          pathlib.Path('phase4-consumer-negative.json').write_text(json.dumps({'kind':'governance.contract632.phase4Negative.v1','status':'pass','authority':False,'rejected':sorted(rejected),'normalPathMemberAbsentUnlessSelected':True},sort_keys=True,separators=(',',':'))+'\n')
+          PY
+      - name: Write finite readback
+        env:
+          GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg governanceCandidate "$GOVERNANCE_CANDIDATE" \
+            --arg acceptedGovernance "$ACCEPTED_GOVERNANCE_REVISION" \
+            --arg opsCandidate "$OPS_CANDIDATE" \
+            --arg finalReportSha256 "$(sha256sum final-check-report.json | cut -d' ' -f1)" \
+            --arg scopeSha256 "$(sha256sum contract-632-phase4-ops/run-scope.json | cut -d' ' -f1)" \
+            --arg evidenceSha256 "$(sha256sum contract-632-phase4-ops/phase4-evidence.json | cut -d' ' -f1)" \
+            '{kind:"governance.contract632.phase4Readback.v1",status:"PASS",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernanceRevision:$acceptedGovernance,opsCandidate:$opsCandidate,finalReportSha256:("sha256:"+$finalReportSha256),scopeSha256:("sha256:"+$scopeSha256),evidenceSha256:("sha256:"+$evidenceSha256),remaining:0}' \
+            > phase4-governance-readback.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contract-632-phase4-governance-${{ github.event.pull_request.head.sha }}
+          path: |
+            contract-632-phase4-ops/
+            live-selected-consumers.json
+            final-check-report.json
+            phase4-consumer-negative.json
+            phase4-governance-readback.json
+          if-no-files-found: error
+          retention-days: 90
