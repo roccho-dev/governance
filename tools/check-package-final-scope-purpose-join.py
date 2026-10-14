@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -15,9 +17,133 @@ if str(ROOT) not in sys.path:
 
 from tools.gov_release.identity import IDENTITY_PATH, load_identity  # noqa: E402
 
+HEX40 = re.compile(r"^[0-9a-f]{40}$")
+DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+PACKAGE_SCOPE_KIND = "ops.contract632.phase4RunScope.v1"
+PACKAGE_EVIDENCE_KIND = "ops.contract632.phase4Evidence.v1"
+PACKAGE_MEMBER_KIND = "governance.packageContractClosureMember.v1"
+PACKAGE_CEILING = "OPS_SELF_DIFF_CONSUMED_NOT_ORGANIZATION_ADMISSION"
+PACKAGE_OBLIGATION = "ops.final-ci-migration-consumer.v1"
+PACKAGE_GOVERNANCE_REVISION = "5b26984eb59e4c03f9d0fe34891fea5e4a436a16"
+
 
 def canonical(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def sha256_file(path: Path) -> str:
+    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read_object(path: Path, label: str) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(label + "-not-object")
+    return value
+
+
+def package_need(ok: bool, code: str) -> None:
+    if not ok:
+        raise ValueError("package-contract:" + code)
+
+
+def exact_source(value: Any, repository: str, revision: str, path: str, label: str) -> None:
+    package_need(isinstance(value, dict), label + "-source")
+    package_need(value.get("repository") == repository, label + "-repository")
+    package_need(value.get("revision") == revision, label + "-revision")
+    package_need(value.get("path") == path, label + "-path")
+    package_need(isinstance(value.get("digest"), str) and DIGEST.fullmatch(value["digest"]) is not None, label + "-digest")
+
+
+def package_contract_closure(scope_path: Path, evidence_path: Path, expected_ops_candidate: str) -> dict[str, Any]:
+    package_need(HEX40.fullmatch(expected_ops_candidate) is not None, "expected-ops-candidate")
+    scope = read_object(scope_path, "package-scope")
+    evidence = read_object(evidence_path, "package-evidence")
+
+    package_need(scope.get("kind") == PACKAGE_SCOPE_KIND, "scope-kind")
+    package_need(scope.get("authority") is False, "scope-authority")
+    package_need(scope.get("scopeId") == "contract-632-phase4-ops-self", "scope-id")
+    package_need(scope.get("selectedObligations") == [PACKAGE_OBLIGATION], "scope-obligation")
+    package_need(scope.get("opsCandidate") == expected_ops_candidate, "scope-candidate")
+    package_need(scope.get("governanceRevision") == PACKAGE_GOVERNANCE_REVISION, "scope-governance")
+    package_need(isinstance(scope.get("acceptedRequirementDigest"), str) and DIGEST.fullmatch(scope["acceptedRequirementDigest"]) is not None, "scope-requirement-digest")
+    package_need(scope.get("requiredEvidenceTypes") == ["final-ci-receipt"], "scope-evidence-types")
+
+    package_need(evidence.get("kind") == PACKAGE_EVIDENCE_KIND, "evidence-kind")
+    package_need(evidence.get("status") == "PASS", "evidence-status")
+    package_need(evidence.get("authority") is False, "evidence-authority")
+    package_need(evidence.get("adoption") is False, "evidence-adoption")
+    package_need(evidence.get("releasePublished") is False, "evidence-release")
+    package_need(evidence.get("claimCeiling") == PACKAGE_CEILING, "evidence-ceiling")
+    package_need(evidence.get("remaining") == 0, "evidence-remaining")
+    package_need(evidence.get("scope") == scope, "scope-evidence-binding")
+
+    accepted = evidence.get("acceptedRequirement")
+    package_need(isinstance(accepted, dict), "accepted-requirement")
+    package_need(accepted.get("obligationId") == PACKAGE_OBLIGATION, "accepted-obligation")
+    exact_source(
+        accepted.get("source"), "roccho-dev/governance", PACKAGE_GOVERNANCE_REVISION,
+        "governance/selected-final-ci-rollout.v1.json", "accepted-rollout",
+    )
+    exact_source(
+        accepted.get("decisionSource"), "roccho-dev/governance", PACKAGE_GOVERNANCE_REVISION,
+        "governance/accepted-final-ci-decision.v1.json", "accepted-decision",
+    )
+    contract = accepted.get("contract")
+    package_need(isinstance(contract, dict), "accepted-contract")
+    package_need(contract.get("obligation_digest") == scope["acceptedRequirementDigest"], "accepted-contract-digest")
+    package_need(contract.get("slot") == PACKAGE_OBLIGATION, "accepted-contract-slot")
+
+    provider = evidence.get("provider")
+    package_need(isinstance(provider, dict), "provider")
+    exact_source(provider.get("source"), "roccho-org/ops", expected_ops_candidate, "governance/final-ci-claim.v1.json", "provider")
+    package_need(provider.get("claimDigest") == provider["source"]["digest"], "provider-digest")
+
+    observation = evidence.get("observation")
+    package_need(isinstance(observation, dict), "observation")
+    package_need(observation.get("candidate") == expected_ops_candidate, "observation-candidate")
+    package_need(isinstance(observation.get("source"), dict), "observation-source")
+    package_need(observation["source"].get("revision") == expected_ops_candidate, "observation-revision")
+    package_need(isinstance(observation["source"].get("digest"), str) and DIGEST.fullmatch(observation["source"]["digest"]) is not None, "observation-digest")
+
+    receipt = evidence.get("receipt")
+    package_need(isinstance(receipt, dict), "receipt")
+    exact_source(receipt.get("source"), "roccho-org/ops", expected_ops_candidate, "tools/check-final-ci-consumer.py", "receipt")
+    package_need(isinstance(receipt.get("actualReceiptDigest"), str) and DIGEST.fullmatch(receipt["actualReceiptDigest"]) is not None, "receipt-actual-digest")
+    package_need(isinstance(receipt.get("normalizedReceiptDigest"), str) and DIGEST.fullmatch(receipt["normalizedReceiptDigest"]) is not None, "receipt-normalized-digest")
+
+    comparator = evidence.get("comparator")
+    package_need(isinstance(comparator, dict), "comparator")
+    exact_source(comparator.get("source"), "roccho-org/ops", expected_ops_candidate, "packages/contract-diff/core.py", "comparator")
+    positive = comparator.get("positive")
+    negative = comparator.get("negative")
+    package_need(isinstance(positive, dict) and positive.get("status") == "CLOSED" and positive.get("findings") == [], "positive")
+    expected_negative = {
+        "contract-drift": "OPEN",
+        "missing-observation": "OPEN",
+        "wrong-candidate": "OPEN",
+        "missing-admission": "UNKNOWN",
+    }
+    package_need(isinstance(negative, dict), "negative")
+    package_need({key: value.get("status") for key, value in negative.items() if isinstance(value, dict)} == expected_negative, "negative-status")
+
+    return {
+        "kind": PACKAGE_MEMBER_KIND,
+        "status": "pass",
+        "authority": False,
+        "adoption": False,
+        "releasePublished": False,
+        "claimCeiling": PACKAGE_CEILING,
+        "scopeId": scope["scopeId"],
+        "obligationId": PACKAGE_OBLIGATION,
+        "opsCandidate": expected_ops_candidate,
+        "acceptedRequirementDigest": scope["acceptedRequirementDigest"],
+        "contractDiffStatus": "CLOSED",
+        "negativeStatus": expected_negative,
+        "scopeDigest": sha256_file(scope_path),
+        "evidenceDigest": sha256_file(evidence_path),
+        "remaining": 0,
+    }
 
 
 def run_component(name: str, args: list[str]) -> dict[str, Any]:
@@ -72,9 +198,22 @@ def run_selftest() -> dict[str, Any]:
     }
 
 
-def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
+def run_check(
+    candidate_sha: str,
+    live_consumers: Path,
+    package_contract_scope: Path | None = None,
+    package_contract_evidence: Path | None = None,
+    expected_ops_candidate: str | None = None,
+) -> dict[str, Any]:
     identity = load_identity()
     regression = run_selftest()
+    package_member = None
+    supplied = [package_contract_scope is not None, package_contract_evidence is not None, expected_ops_candidate is not None]
+    if any(supplied) and not all(supplied):
+        raise ValueError("package-contract:all-selected-inputs-required")
+    if all(supplied):
+        package_member = package_contract_closure(package_contract_scope, package_contract_evidence, expected_ops_candidate)
+
     production = run_component(
         "current-exact-sha-production-evidence",
         [sys.executable, "tools/check-package-final-ci-production.py", "check", "--candidate-sha", candidate_sha, "--live-consumers", str(live_consumers), "--json"],
@@ -122,6 +261,8 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
             "production": parsed,
             "contractModelingMigration": migration_parsed,
         }
+        if package_member is not None:
+            report["packageContractClosure"] = package_member
         gate_path = root / "gate.json"
         eligibility_path = root / "gov-release-eligibility.json"
         gate_path.write_text(canonical(report) + "\n", encoding="utf-8")
@@ -143,13 +284,24 @@ def main() -> int:
     parser.add_argument("command", nargs="?", choices=["selftest", "check"], default="selftest")
     parser.add_argument("--candidate-sha")
     parser.add_argument("--live-consumers", type=Path)
+    parser.add_argument("--package-contract-scope", type=Path)
+    parser.add_argument("--package-contract-evidence", type=Path)
+    parser.add_argument("--expected-ops-candidate")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.command == "check":
         if not args.candidate_sha or args.live_consumers is None:
             parser.error("check requires --candidate-sha and --live-consumers")
-        report = run_check(args.candidate_sha, args.live_consumers)
+        report = run_check(
+            args.candidate_sha,
+            args.live_consumers,
+            args.package_contract_scope,
+            args.package_contract_evidence,
+            args.expected_ops_candidate,
+        )
     else:
+        if any((args.package_contract_scope, args.package_contract_evidence, args.expected_ops_candidate)):
+            parser.error("package-contract inputs are valid only with check")
         report = run_selftest()
     print(canonical(report) if args.json else f"final-scope-purpose-join:{report['status']}")
     return 0
