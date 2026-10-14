@@ -18,6 +18,10 @@ OPS_LOGICAL = "roccho-dev/ops"
 OPS_PROVIDER = "roccho-org/ops"
 UI_LOGICAL = "roccho-dev/ui"
 PROVIDERS = {OPS_LOGICAL: OPS_PROVIDER, UI_LOGICAL: UI_LOGICAL}
+CURRENT_BODY_PATHS = {
+    OPS_LOGICAL: "governance/evidence/current-provider/ops/final-ci-consumer-receipt.zip.b64",
+    UI_LOGICAL: "governance/evidence/current-provider/ui/final-ci-consumer-receipt.zip.b64",
+}
 
 
 def load_core() -> Any:
@@ -50,8 +54,6 @@ class CurrentProviderApi(CORE.GitHubApi):
 
     def provider_get_bytes(self, logical: str, suffix: str) -> bytes:
         CORE.need(logical in PROVIDERS, "provider-logical:" + logical)
-        # GitHub's artifact endpoint requires its JSON media type before the
-        # client follows the redirect to the ZIP bytes.
         return self._read(
             f"/repos/{PROVIDERS[logical]}{suffix}",
             "application/vnd.github+json",
@@ -92,6 +94,14 @@ class FakeCurrentProviderApi(CurrentProviderApi):
         return self.byte_routes[path]
 
 
+def read_snapshot(path: Path, code: str) -> bytes:
+    CORE.need(path.is_file() and not path.is_symlink(), code + ":missing")
+    try:
+        return base64.b64decode("".join(path.read_text(encoding="utf-8").split()), validate=True)
+    except Exception as error:
+        raise CORE.LiveError(code + ":base64") from error
+
+
 def historical_snapshot_replay(rollout: dict[str, Any], root: Path = ROOT) -> dict[str, Any]:
     rows = []
     for expected in CORE.validate_rollout(rollout):
@@ -120,7 +130,11 @@ def historical_snapshot_replay(rollout: dict[str, Any], root: Path = ROOT) -> di
     }
 
 
-def observe_current(api: CurrentProviderApi, expected: dict[str, Any]) -> dict[str, Any]:
+def observe_current(
+    api: CurrentProviderApi,
+    expected: dict[str, Any],
+    current_body_root: Path = ROOT,
+) -> dict[str, Any]:
     repository, branch = expected["repository"], expected["branch"]
     metadata = api.provider_get_json(repository, "")
     CORE.need(isinstance(metadata, dict) and metadata.get("full_name") == PROVIDERS[repository], "provider-metadata:" + repository)
@@ -147,8 +161,21 @@ def observe_current(api: CurrentProviderApi, expected: dict[str, Any]) -> dict[s
     artifact_id, artifact_digest = artifact.get("id"), artifact.get("digest")
     CORE.need(isinstance(artifact_id, int) and artifact_id > 0, "live-artifact-id:" + repository)
     CORE.need(isinstance(artifact_digest, str) and CORE.DIGEST.fullmatch(artifact_digest) is not None, "live-artifact-digest:" + repository)
-    body = api.provider_get_bytes(repository, f"/actions/artifacts/{artifact_id}/zip")
+
+    body_source = "actual-current-provider-download"
+    authenticated = True
+    acquisition_path: str | None = None
+    try:
+        body = api.provider_get_bytes(repository, f"/actions/artifacts/{artifact_id}/zip")
+    except CORE.LiveError as error:
+        CORE.need("github-http:401:" in str(error), "artifact-download:" + repository + ":" + str(error))
+        acquisition_path = CURRENT_BODY_PATHS[repository]
+        body = read_snapshot(current_body_root / acquisition_path, "current-acquisition:" + repository)
+        body_source = "current-acquisition-provider-digest-matched"
+        authenticated = False
     CORE.need("sha256:" + hashlib.sha256(body).hexdigest() == artifact_digest, "live-artifact-body-digest:" + repository)
+    receipt, _ = CORE.parse_artifact(body, expected)
+    CORE.validate_receipt(receipt, expected, head)
     return {
         "repository": repository,
         "providerRepository": PROVIDERS[repository],
@@ -157,6 +184,9 @@ def observe_current(api: CurrentProviderApi, expected: dict[str, Any]) -> dict[s
         "artifactId": artifact_id,
         "artifactDigest": artifact_digest,
         "body": body,
+        "bodySource": body_source,
+        "downloadAuthenticated": authenticated,
+        "currentAcquisitionPath": acquisition_path,
     }
 
 
@@ -164,12 +194,13 @@ def capture_current(
     rollout: dict[str, Any],
     api: CurrentProviderApi,
     historical_root: Path = ROOT,
+    current_body_root: Path = ROOT,
 ) -> dict[str, Any]:
     observed: dict[str, dict[str, Any]] = {}
     with tempfile.TemporaryDirectory() as temporary:
         current_root = Path(temporary)
         for expected in CORE.validate_rollout(rollout):
-            current = observe_current(api, expected)
+            current = observe_current(api, expected, current_body_root)
             observed[expected["repository"]] = current
             snapshot = current_root / expected["snapshotPath"]
             snapshot.parent.mkdir(parents=True, exist_ok=True)
@@ -186,12 +217,17 @@ def capture_current(
         row["providerRepository"] = actual["providerRepository"]
         row["currentRefObserved"] = True
         row["currentRefSource"] = "provider-api"
-        row["artifactBodySource"] = "actual-current-provider-download"
-        row["artifactDownloadAuthenticated"] = True
+        row["currentArtifactDigestObserved"] = True
+        row["currentBodyDigestMatched"] = True
+        row["artifactBodySource"] = actual["bodySource"]
+        row["artifactDownloadAuthenticated"] = actual["downloadAuthenticated"]
+        row["currentAcquisitionPath"] = actual["currentAcquisitionPath"]
         row["historicalSnapshotUsedForCurrent"] = False
 
     report["observationMode"] = "actual-current-provider"
     report["currentProviderRefsObserved"] = True
+    report["currentArtifactDigestsObserved"] = True
+    report["currentBodiesProviderDigestMatched"] = True
     report["historicalSnapshotsUsedForCurrent"] = False
     report["providerAliases"] = provider_aliases()
     report["historicalReplay"] = historical_snapshot_replay(rollout, historical_root)
@@ -236,9 +272,11 @@ def selftest(rollout: dict[str, Any]) -> dict[str, Any]:
             path = history_root / expected["snapshotPath"]
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(base64.b64encode(body).decode() + "\n", encoding="utf-8")
-        report = capture_current(rollout, api, history_root)
+        report = capture_current(rollout, api, history_root, current_root)
         CORE.need(report.get("observationMode") == "actual-current-provider", "selftest-observation-mode")
         CORE.need(report.get("historicalSnapshotsUsedForCurrent") is False, "selftest-history-boundary")
+        CORE.need(report.get("currentArtifactDigestsObserved") is True, "selftest-current-artifact-digest")
+        CORE.need(report.get("currentBodiesProviderDigestMatched") is True, "selftest-current-body-digest")
         CORE.need(report["historicalReplay"].get("releaseEligible") is False, "selftest-history-ceiling")
         actual_heads = {row["repository"]: row["currentHead"] for row in report["repositories"]}
         historical_heads = {row["repository"]: row["historicalHead"] for row in report["historicalReplay"]["repositories"]}
@@ -247,7 +285,7 @@ def selftest(rollout: dict[str, Any]) -> dict[str, Any]:
         stale = fake_provider(copy.deepcopy(rollout), root / "stale")
         stale.json_routes[f"/repos/{OPS_PROVIDER}/git/ref/heads/proposals"]["object"]["sha"] = "f" * 40
         try:
-            capture_current(rollout, stale, history_root)
+            capture_current(rollout, stale, history_root, current_root)
         except CORE.LiveError as error:
             CORE.need("live-run-missing" in str(error), "selftest-stale-finding:" + str(error))
             rejected.append({"case": "stale-current-head", "status": "rejected", "finding": str(error)})
@@ -257,7 +295,7 @@ def selftest(rollout: dict[str, Any]) -> dict[str, Any]:
         wrong = fake_provider(copy.deepcopy(rollout), root / "wrong-provider")
         wrong.json_routes[f"/repos/{OPS_PROVIDER}"]["full_name"] = "wrong/provider"
         try:
-            capture_current(rollout, wrong, history_root)
+            capture_current(rollout, wrong, history_root, current_root)
         except CORE.LiveError as error:
             CORE.need("provider-metadata" in str(error), "selftest-provider-finding:" + str(error))
             rejected.append({"case": "wrong-provider", "status": "rejected", "finding": str(error)})
@@ -265,7 +303,7 @@ def selftest(rollout: dict[str, Any]) -> dict[str, Any]:
             raise CORE.LiveError("false-green:wrong-provider")
 
     return {
-        "kind": "governance.currentProviderSelectedConsumer.selftest.v1",
+        "kind": "governance.currentProviderSelectedConsumer.selftest.v2",
         "status": "pass",
         "core": core,
         "positiveCases": 1,
@@ -293,10 +331,10 @@ def main() -> int:
         else:
             token = os.environ.get(args.token_env, "")
             CORE.need(bool(token), "provider-token-missing")
-            report = capture_current(rollout, CurrentProviderApi(token, args.api_url), ROOT)
+            report = capture_current(rollout, CurrentProviderApi(token, args.api_url), ROOT, ROOT)
     except (CORE.LiveError, OSError, ValueError, KeyError, TypeError) as error:
         report = {
-            "kind": "governance.liveSelectedConsumerPacket.v1" if args.command == "capture" else "governance.currentProviderSelectedConsumer.selftest.v1",
+            "kind": "governance.liveSelectedConsumerPacket.v1" if args.command == "capture" else "governance.currentProviderSelectedConsumer.selftest.v2",
             "status": "fail",
             "finding": str(error),
             "observationMode": "actual-current-provider",
