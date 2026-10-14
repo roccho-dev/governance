@@ -71,6 +71,8 @@ jobs:
             and .receiptCandidateShaBound == true
             and .observationMode == "actual-current-provider"
             and .currentProviderRefsObserved == true
+            and .currentArtifactDigestsObserved == true
+            and .currentBodiesProviderDigestMatched == true
             and .historicalSnapshotsUsedForCurrent == false
             and .historicalReplay.kind == "governance.historicalSelectedConsumerReplay.v1"
             and .historicalReplay.status == "pass"
@@ -86,8 +88,10 @@ jobs:
             and all(.repositories[];
               .currentRefObserved == true
               and .currentRefSource == "provider-api"
-              and .artifactBodySource == "actual-current-provider-download"
-              and .artifactDownloadAuthenticated == true
+              and .currentArtifactDigestObserved == true
+              and .currentBodyDigestMatched == true
+              and (.artifactBodySource == "actual-current-provider-download"
+                or .artifactBodySource == "current-acquisition-provider-digest-matched")
               and .historicalSnapshotUsedForCurrent == false)
           ' live-selected-consumers.json >/dev/null
 
@@ -316,7 +320,7 @@ jobs:
             --arg memberSha256 "$(sha256sum package-contract-member.json | cut -d' ' -f1)" \
             --arg finalReportSha256 "$(sha256sum final-check-report.json | cut -d' ' -f1)" \
             --arg bundleManifestSha256 "$(sha256sum contract-632-phase4-ops/bundle-manifest.json | cut -d' ' -f1)" \
-            '{kind:"governance.contract632.phase4Readback.v4",status:"pass",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernance:$acceptedGovernance,opsCandidate:$opsCandidate,livePacketSha256:("sha256:"+$livePacketSha256),memberSha256:("sha256:"+$memberSha256),finalReportSha256:("sha256:"+$finalReportSha256),bundleManifestSha256:("sha256:"+$bundleManifestSha256),actualCurrentProviderObservation:true,historicalReplaySeparated:true,observerMeaningVerified:true,evidenceReconstructed:true,positiveExistingFinalChecker:true,negativeSameEntrance:true,canonicalWorkflowView:true,remaining:0}' \
+            '{kind:"governance.contract632.phase4Readback.v4",status:"pass",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernance:$acceptedGovernance,opsCandidate:$opsCandidate,livePacketSha256:("sha256:"+$livePacketSha256),memberSha256:("sha256:"+$memberSha256),finalReportSha256:("sha256:"+$finalReportSha256),bundleManifestSha256:("sha256:"+$bundleManifestSha256),actualCurrentProviderObservation:true,currentArtifactDigestObserved:true,currentBodyDigestMatched:true,historicalReplaySeparated:true,observerMeaningVerified:true,evidenceReconstructed:true,positiveExistingFinalChecker:true,negativeSameEntrance:true,canonicalWorkflowView:true,remaining:0}' \
             > phase4-governance-readback.json
           root=contract-632-phase4-governance-artifact
           mkdir -p "$root"
