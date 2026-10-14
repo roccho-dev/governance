@@ -54,7 +54,7 @@ jobs:
           test "$(git -C _accepted/governance rev-parse HEAD)" = "$ACCEPTED_GOVERNANCE_REVISION"
           test "$(git -C _external/ops rev-parse HEAD)" = "$OPS_CANDIDATE"
 
-      - name: Acquire accepted snapshot at the current Ops provider
+      - name: Acquire accepted snapshots at current providers
         env:
           CONSUMER_READER_TOKEN: ${{ github.token }}
         run: |
@@ -68,6 +68,7 @@ jobs:
             and .artifactBodiesVerified == true
             and .receiptCandidateShaBound == true
             and .providerSnapshotPinned == true
+            and (.acceptedSnapshotHeads | length) == 2
             and (.providerAliases | length) == 1
             and .providerAliases[0].logicalRepository == "roccho-dev/ops"
             and .providerAliases[0].providerRepository == "roccho-org/ops"
@@ -117,17 +118,37 @@ jobs:
             and .evidenceBound == true
           ' phase4-ops-readback.json >/dev/null
 
-      - name: Consume the whole evidence-bound bundle in the existing final checker
+      - name: Prepare canonical Governance final-checker view
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          accepted="$RUNNER_TEMP/contract-632-accepted-governance"
+          ops="$RUNNER_TEMP/contract-632-ops-source"
+          proof_workflow="$RUNNER_TEMP/contract-632-phase4.yml"
+          rm -rf "$accepted" "$ops"
+          mv _accepted/governance "$accepted"
+          mv _external/ops "$ops"
+          git show "$GOVERNANCE_CANDIDATE:.github/workflows/contract-632-phase4.yml" > "$proof_workflow"
+          cmp "$proof_workflow" .github/workflows/contract-632-phase4.yml
+          rm .github/workflows/contract-632-phase4.yml
+          test "$(find .github/workflows -maxdepth 1 -type f | wc -l)" = 3
+          test "$(git -C "$accepted" rev-parse HEAD)" = "$ACCEPTED_GOVERNANCE_REVISION"
+          test "$(git -C "$ops" rev-parse HEAD)" = "$OPS_CANDIDATE"
+
+      - name: Consume evidence-bound bundle in the existing final checker
+        env:
+          GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          ops="$RUNNER_TEMP/contract-632-ops-source"
+          accepted="$RUNNER_TEMP/contract-632-accepted-governance"
           python3 tools/check-package-final-scope-purpose-join.py check \
             --candidate-sha "$GOVERNANCE_CANDIDATE" \
             --live-consumers live-selected-consumers.json \
             --package-contract-bundle contract-632-phase4-ops \
-            --package-contract-ops-source _external/ops \
-            --package-contract-accepted-governance _accepted/governance \
+            --package-contract-ops-source "$ops" \
+            --package-contract-accepted-governance "$accepted" \
             --expected-ops-candidate "$OPS_CANDIDATE" \
             --json > final-check-report.json
           jq -e '
@@ -149,11 +170,13 @@ jobs:
           ' final-check-report.json >/dev/null
           jq -cS '.packageContractClosure' final-check-report.json > package-contract-member.json
 
-      - name: Reject fabricated and source-tampered evidence through the same final checker entrance
+      - name: Reject fabricated and source-tampered evidence through the same entrance
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          ops="$RUNNER_TEMP/contract-632-ops-source"
+          accepted="$RUNNER_TEMP/contract-632-accepted-governance"
           fake="$RUNNER_TEMP/fake-phase4"
           mkdir -p "$fake"
           cp contract-632-phase4-ops/run-scope.json "$fake/run-scope.json"
@@ -174,11 +197,11 @@ jobs:
           PY
           if python3 tools/check-package-final-scope-purpose-join.py check \
             --candidate-sha "$GOVERNANCE_CANDIDATE" --live-consumers live-selected-consumers.json \
-            --package-contract-bundle "$fake" --package-contract-ops-source _external/ops \
-            --package-contract-accepted-governance _accepted/governance \
+            --package-contract-bundle "$fake" --package-contract-ops-source "$ops" \
+            --package-contract-accepted-governance "$accepted" \
             --expected-ops-candidate "$OPS_CANDIDATE" --json \
             > fake-final-stdout.txt 2> fake-final-stderr.txt; then
-            echo 'fabricated digest-only evidence unexpectedly passed the final checker' >&2
+            echo 'fabricated digest-only evidence unexpectedly passed' >&2
             exit 1
           fi
 
@@ -195,11 +218,11 @@ jobs:
           PY
           if python3 tools/check-package-final-scope-purpose-join.py check \
             --candidate-sha "$GOVERNANCE_CANDIDATE" --live-consumers live-selected-consumers.json \
-            --package-contract-bundle "$tampered" --package-contract-ops-source _external/ops \
-            --package-contract-accepted-governance _accepted/governance \
+            --package-contract-bundle "$tampered" --package-contract-ops-source "$ops" \
+            --package-contract-accepted-governance "$accepted" \
             --expected-ops-candidate "$OPS_CANDIDATE" --json \
             > tampered-final-stdout.txt 2> tampered-final-stderr.txt; then
-            echo 'source-tampered evidence unexpectedly passed the final checker' >&2
+            echo 'source-tampered evidence unexpectedly passed' >&2
             exit 1
           fi
           jq -n '{kind:"governance.contract632.phase4FinalEntranceNegative.v1",status:"pass",authority:false,fabricatedDigestOnlyRejected:true,sourceTamperRejected:true}' > phase4-final-negative.json
@@ -217,24 +240,20 @@ jobs:
             --arg memberSha256 "$(sha256sum package-contract-member.json | cut -d' ' -f1)" \
             --arg finalReportSha256 "$(sha256sum final-check-report.json | cut -d' ' -f1)" \
             --arg bundleManifestSha256 "$(sha256sum contract-632-phase4-ops/bundle-manifest.json | cut -d' ' -f1)" \
-            '{kind:"governance.contract632.phase4Readback.v2",status:"pass",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernance:$acceptedGovernance,opsCandidate:$opsCandidate,livePacketSha256:("sha256:"+$livePacketSha256),memberSha256:("sha256:"+$memberSha256),finalReportSha256:("sha256:"+$finalReportSha256),bundleManifestSha256:("sha256:"+$bundleManifestSha256),positiveExistingFinalChecker:true,negativeSameEntrance:true,remaining:0}' \
+            '{kind:"governance.contract632.phase4Readback.v3",status:"pass",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernance:$acceptedGovernance,opsCandidate:$opsCandidate,livePacketSha256:("sha256:"+$livePacketSha256),memberSha256:("sha256:"+$memberSha256),finalReportSha256:("sha256:"+$finalReportSha256),bundleManifestSha256:("sha256:"+$bundleManifestSha256),positiveExistingFinalChecker:true,negativeSameEntrance:true,canonicalWorkflowView:true,remaining:0}' \
             > phase4-governance-readback.json
-          mkdir -p contract-632-phase4-governance-artifact
-          cp -R contract-632-phase4-ops contract-632-phase4-governance-artifact/ops-bundle
-          cp live-selected-consumers.json package-contract-member.json final-check-report.json phase4-final-negative.json phase4-governance-readback.json contract-632-phase4-governance-artifact/
-          cp fake-final-stdout.txt fake-final-stderr.txt tampered-final-stdout.txt tampered-final-stderr.txt contract-632-phase4-governance-artifact/
+          root=contract-632-phase4-governance-artifact
+          mkdir -p "$root"
+          cp -R contract-632-phase4-ops "$root/ops-bundle"
+          cp live-selected-consumers.json package-contract-member.json final-check-report.json phase4-final-negative.json phase4-governance-readback.json "$root/"
+          cp fake-final-stdout.txt fake-final-stderr.txt tampered-final-stdout.txt tampered-final-stderr.txt "$root/"
+          cp "$RUNNER_TEMP/contract-632-phase4.yml" "$root/proof-workflow.yml"
           python3 - <<'PY'
           import hashlib,json,pathlib
           root=pathlib.Path('contract-632-phase4-governance-artifact')
           rows=[{'path':p.relative_to(root).as_posix(),'sha256':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.rglob('*')) if p.is_file()]
           (root/'transport-manifest.json').write_text(json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
           PY
-          printf 'tree=%s\nreadback_sha256=%s\nmember_sha256=%s\nfinal_report_sha256=%s\ntransport_manifest_sha256=%s\n' \
-            "$(git rev-parse 'HEAD^{tree}')" \
-            "$(sha256sum phase4-governance-readback.json | cut -d' ' -f1)" \
-            "$(sha256sum package-contract-member.json | cut -d' ' -f1)" \
-            "$(sha256sum final-check-report.json | cut -d' ' -f1)" \
-            "$(sha256sum contract-632-phase4-governance-artifact/transport-manifest.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         id: upload
