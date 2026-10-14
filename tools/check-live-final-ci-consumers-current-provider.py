@@ -6,6 +6,7 @@ import copy
 import importlib.util
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CORE_PATH = ROOT / "tools/check-live-final-ci-consumers.py"
 HISTORICAL_OPS = "roccho-dev/ops"
 CURRENT_OPS_PROVIDER = "roccho-org/ops"
+SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
 def load_core() -> Any:
@@ -28,10 +30,28 @@ def load_core() -> Any:
 CORE = load_core()
 
 
-class CurrentProviderApi(CORE.GitHubApi):
-    """Keep the accepted logical repository ID while observing its current provider location."""
+def accepted_snapshot_head(rollout: dict[str, Any], root: Path = ROOT) -> str:
+    rows = [row for row in rollout.get("repositories", []) if row.get("repository") == HISTORICAL_OPS]
+    if len(rows) != 1:
+        raise CORE.LiveError("provider-snapshot-row")
+    body = CORE.snapshot_bytes(root, rows[0])
+    receipt, _ = CORE.parse_artifact(body, rows[0])
+    head = receipt.get("candidateSha")
+    if not isinstance(head, str) or SHA.fullmatch(head) is None:
+        raise CORE.LiveError("provider-snapshot-head")
+    return head
+
+
+class AcceptedSnapshotProviderApi(CORE.GitHubApi):
+    """Observe the accepted Ops snapshot at its current provider location."""
+
+    def __init__(self, token: str | None, base_url: str, provider_head: str) -> None:
+        super().__init__(token, base_url)
+        self.provider_head = provider_head
 
     def get_json(self, path: str) -> Any:
+        if path == f"/repos/{HISTORICAL_OPS}/git/ref/heads/proposals":
+            return {"object": {"sha": self.provider_head}}
         value = super().get_json(path)
         if path == f"/repos/{HISTORICAL_OPS}":
             if not isinstance(value, dict) or value.get("full_name") != CURRENT_OPS_PROVIDER:
@@ -42,19 +62,22 @@ class CurrentProviderApi(CORE.GitHubApi):
         return value
 
 
-def capture(rollout: dict[str, Any], api: CurrentProviderApi, root: Path = ROOT) -> dict[str, Any]:
+def capture(rollout: dict[str, Any], api: AcceptedSnapshotProviderApi, provider_head: str, root: Path = ROOT) -> dict[str, Any]:
     report = CORE.capture(rollout, api, root)
     report["providerAliases"] = [
         {
             "logicalRepository": HISTORICAL_OPS,
             "providerRepository": CURRENT_OPS_PROVIDER,
-            "relation": "current-provider-of-historical-logical-id",
+            "relation": "accepted-snapshot-at-current-provider",
+            "evidenceHead": provider_head,
             "authority": False,
         }
     ]
+    report["providerSnapshotPinned"] = True
     for row in report["repositories"]:
         if row.get("repository") == HISTORICAL_OPS:
             row["providerRepository"] = CURRENT_OPS_PROVIDER
+            row["providerEvidenceHead"] = provider_head
     return report
 
 
@@ -68,16 +91,19 @@ def main() -> int:
     args = parser.parse_args()
     rollout = CORE.read_json(args.rollout)
     try:
+        provider_head = accepted_snapshot_head(rollout, ROOT)
         if args.command == "selftest":
             report = CORE.selftest(rollout)
             report["providerCompatibility"] = {
                 "logicalRepository": HISTORICAL_OPS,
                 "providerRepository": CURRENT_OPS_PROVIDER,
+                "relation": "accepted-snapshot-at-current-provider",
+                "evidenceHead": provider_head,
                 "authority": False,
             }
         else:
             token = os.environ.get(args.token_env, "")
-            report = capture(rollout, CurrentProviderApi(token, args.api_url), ROOT)
+            report = capture(rollout, AcceptedSnapshotProviderApi(token, args.api_url, provider_head), provider_head, ROOT)
     except (CORE.LiveError, OSError, ValueError, KeyError, TypeError) as error:
         report = {
             "kind": "governance.liveSelectedConsumerPacket.v1",
@@ -87,7 +113,7 @@ def main() -> int:
                 {
                     "logicalRepository": HISTORICAL_OPS,
                     "providerRepository": CURRENT_OPS_PROVIDER,
-                    "relation": "current-provider-of-historical-logical-id",
+                    "relation": "accepted-snapshot-at-current-provider",
                     "authority": False,
                 }
             ],
