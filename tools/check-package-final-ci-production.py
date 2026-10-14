@@ -18,6 +18,10 @@ PROVIDERS = {
     "roccho-dev/ops": "roccho-org/ops",
     "roccho-dev/ui": "roccho-dev/ui",
 }
+BODY_SOURCES = {
+    "actual-current-provider-download",
+    "current-acquisition-provider-digest-matched",
+}
 
 
 def need(ok: bool, code: str) -> None:
@@ -30,6 +34,8 @@ def validate_current_live_packet(value: dict[str, Any]) -> None:
     need(value.get("status") == "pass", "status")
     need(value.get("observationMode") == "actual-current-provider", "observation-mode")
     need(value.get("currentProviderRefsObserved") is True, "current-ref-observation")
+    need(value.get("currentArtifactDigestsObserved") is True, "current-artifact-digest")
+    need(value.get("currentBodiesProviderDigestMatched") is True, "current-body-digest")
     need(value.get("historicalSnapshotsUsedForCurrent") is False, "historical-substitution")
     aliases = value.get("providerAliases")
     need(isinstance(aliases, list) and aliases == [{
@@ -54,8 +60,16 @@ def validate_current_live_packet(value: dict[str, Any]) -> None:
         row = by_repository[repository]
         need(row.get("providerRepository") == provider, "provider:" + repository)
         need(row.get("currentRefObserved") is True and row.get("currentRefSource") == "provider-api", "current-ref:" + repository)
-        need(row.get("artifactBodySource") == "actual-current-provider-download", "artifact-source:" + repository)
-        need(row.get("artifactDownloadAuthenticated") is True, "artifact-auth:" + repository)
+        need(row.get("currentArtifactDigestObserved") is True, "current-artifact-digest:" + repository)
+        need(row.get("currentBodyDigestMatched") is True, "current-body-digest:" + repository)
+        source = row.get("artifactBodySource")
+        need(source in BODY_SOURCES, "artifact-source:" + repository)
+        if source == "actual-current-provider-download":
+            need(row.get("artifactDownloadAuthenticated") is True, "artifact-auth:" + repository)
+            need(row.get("currentAcquisitionPath") is None, "download-acquisition-path:" + repository)
+        else:
+            need(row.get("artifactDownloadAuthenticated") is False, "acquisition-auth:" + repository)
+            need(isinstance(row.get("currentAcquisitionPath"), str) and bool(row["currentAcquisitionPath"]), "acquisition-path:" + repository)
         need(row.get("historicalSnapshotUsedForCurrent") is False, "row-historical-substitution:" + repository)
 
 
@@ -81,8 +95,11 @@ def selftest_current_live_packet() -> None:
             "providerRepository": provider,
             "currentRefObserved": True,
             "currentRefSource": "provider-api",
-            "artifactBodySource": "actual-current-provider-download",
-            "artifactDownloadAuthenticated": True,
+            "currentArtifactDigestObserved": True,
+            "currentBodyDigestMatched": True,
+            "artifactBodySource": "current-acquisition-provider-digest-matched",
+            "artifactDownloadAuthenticated": False,
+            "currentAcquisitionPath": f"current/{index}.zip.b64",
             "historicalSnapshotUsedForCurrent": False,
         })
         history_rows.append({"repository": repository, "historicalHead": str(index) * 40, "usedForCurrent": False})
@@ -91,6 +108,8 @@ def selftest_current_live_packet() -> None:
         "status": "pass",
         "observationMode": "actual-current-provider",
         "currentProviderRefsObserved": True,
+        "currentArtifactDigestsObserved": True,
+        "currentBodiesProviderDigestMatched": True,
         "historicalSnapshotsUsedForCurrent": False,
         "providerAliases": [{
             "logicalRepository": "roccho-dev/ops",
@@ -114,6 +133,8 @@ def selftest_current_live_packet() -> None:
         ("historical-substitution", lambda value: value.update(historicalSnapshotsUsedForCurrent=True)),
         ("wrong-provider", lambda value: value["repositories"][0].update(providerRepository="wrong/provider")),
         ("missing-current-ref", lambda value: value["repositories"][0].update(currentRefObserved=False)),
+        ("missing-artifact-digest", lambda value: value["repositories"][0].update(currentArtifactDigestObserved=False)),
+        ("body-digest-mismatch", lambda value: value["repositories"][0].update(currentBodyDigestMatched=False)),
         ("historical-release", lambda value: value["historicalReplay"].update(releaseEligible=True)),
     ]
     for name, mutate in cases:
