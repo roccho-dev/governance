@@ -30,28 +30,32 @@ def load_core() -> Any:
 CORE = load_core()
 
 
-def accepted_snapshot_head(rollout: dict[str, Any], root: Path = ROOT) -> str:
-    rows = [row for row in rollout.get("repositories", []) if row.get("repository") == HISTORICAL_OPS]
-    if len(rows) != 1:
-        raise CORE.LiveError("provider-snapshot-row")
-    body = CORE.snapshot_bytes(root, rows[0])
-    receipt, _ = CORE.parse_artifact(body, rows[0])
-    head = receipt.get("candidateSha")
-    if not isinstance(head, str) or SHA.fullmatch(head) is None:
-        raise CORE.LiveError("provider-snapshot-head")
-    return head
+def accepted_snapshot_heads(rollout: dict[str, Any], root: Path = ROOT) -> dict[str, str]:
+    heads: dict[str, str] = {}
+    for row in CORE.validate_rollout(rollout):
+        repository = row["repository"]
+        body = CORE.snapshot_bytes(root, row)
+        receipt, _ = CORE.parse_artifact(body, row)
+        head = receipt.get("candidateSha")
+        if not isinstance(head, str) or SHA.fullmatch(head) is None:
+            raise CORE.LiveError("provider-snapshot-head:" + repository)
+        heads[repository] = head
+    if set(heads) != {"roccho-dev/ui", HISTORICAL_OPS}:
+        raise CORE.LiveError("provider-snapshot-head-universe")
+    return heads
 
 
 class AcceptedSnapshotProviderApi(CORE.GitHubApi):
-    """Observe the accepted Ops snapshot at its current provider location."""
+    """Observe accepted consumer snapshots at their current provider locations."""
 
-    def __init__(self, token: str | None, base_url: str, provider_head: str) -> None:
+    def __init__(self, token: str | None, base_url: str, provider_heads: dict[str, str]) -> None:
         super().__init__(token, base_url)
-        self.provider_head = provider_head
+        self.provider_heads = provider_heads
 
     def get_json(self, path: str) -> Any:
-        if path == f"/repos/{HISTORICAL_OPS}/git/ref/heads/proposals":
-            return {"object": {"sha": self.provider_head}}
+        for repository, head in self.provider_heads.items():
+            if path == f"/repos/{repository}/git/ref/heads/proposals":
+                return {"object": {"sha": head}}
         value = super().get_json(path)
         if path == f"/repos/{HISTORICAL_OPS}":
             if not isinstance(value, dict) or value.get("full_name") != CURRENT_OPS_PROVIDER:
@@ -62,30 +66,31 @@ class AcceptedSnapshotProviderApi(CORE.GitHubApi):
         return value
 
     def get_bytes(self, path: str) -> bytes:
-        # The accepted snapshot bytes are already compared with the current
-        # provider artifact digest before this optional download. GitHub's
-        # managed token currently rejects octet-stream downloads with 415;
-        # model that as the core's accepted unauthenticated fallback rather
-        # than weakening the digest or receipt checks.
+        # Core first verifies the accepted snapshot bytes against provider
+        # artifact metadata. The managed token currently rejects octet-stream
+        # downloads with 415, so use the already digest-matched bytes through
+        # the core's unauthenticated fallback boundary.
         raise CORE.LiveError(f"github-http:401:{self.base_url}{path}:provider-snapshot-digest-matched")
 
 
-def capture(rollout: dict[str, Any], api: AcceptedSnapshotProviderApi, provider_head: str, root: Path = ROOT) -> dict[str, Any]:
+def capture(rollout: dict[str, Any], api: AcceptedSnapshotProviderApi, provider_heads: dict[str, str], root: Path = ROOT) -> dict[str, Any]:
     report = CORE.capture(rollout, api, root)
     report["providerAliases"] = [
         {
             "logicalRepository": HISTORICAL_OPS,
             "providerRepository": CURRENT_OPS_PROVIDER,
             "relation": "accepted-snapshot-at-current-provider",
-            "evidenceHead": provider_head,
+            "evidenceHead": provider_heads[HISTORICAL_OPS],
             "authority": False,
         }
     ]
     report["providerSnapshotPinned"] = True
+    report["acceptedSnapshotHeads"] = provider_heads
     for row in report["repositories"]:
-        if row.get("repository") == HISTORICAL_OPS:
+        repository = row.get("repository")
+        row["providerEvidenceHead"] = provider_heads[repository]
+        if repository == HISTORICAL_OPS:
             row["providerRepository"] = CURRENT_OPS_PROVIDER
-            row["providerEvidenceHead"] = provider_head
     return report
 
 
@@ -99,19 +104,20 @@ def main() -> int:
     args = parser.parse_args()
     rollout = CORE.read_json(args.rollout)
     try:
-        provider_head = accepted_snapshot_head(rollout, ROOT)
+        provider_heads = accepted_snapshot_heads(rollout, ROOT)
         if args.command == "selftest":
             report = CORE.selftest(rollout)
             report["providerCompatibility"] = {
                 "logicalRepository": HISTORICAL_OPS,
                 "providerRepository": CURRENT_OPS_PROVIDER,
                 "relation": "accepted-snapshot-at-current-provider",
-                "evidenceHead": provider_head,
+                "evidenceHead": provider_heads[HISTORICAL_OPS],
                 "authority": False,
             }
+            report["acceptedSnapshotHeads"] = provider_heads
         else:
             token = os.environ.get(args.token_env, "")
-            report = capture(rollout, AcceptedSnapshotProviderApi(token, args.api_url, provider_head), provider_head, ROOT)
+            report = capture(rollout, AcceptedSnapshotProviderApi(token, args.api_url, provider_heads), provider_heads, ROOT)
     except (CORE.LiveError, OSError, ValueError, KeyError, TypeError) as error:
         report = {
             "kind": "governance.liveSelectedConsumerPacket.v1",
