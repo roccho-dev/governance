@@ -61,6 +61,14 @@ class AcceptedSnapshotProviderApi(CORE.GitHubApi):
             value["full_name"] = HISTORICAL_OPS
         return value
 
+    def get_bytes(self, path: str) -> bytes:
+        # The accepted snapshot bytes are already compared with the current
+        # provider artifact digest before this optional download. GitHub's
+        # managed token currently rejects octet-stream downloads with 415;
+        # model that as the core's accepted unauthenticated fallback rather
+        # than weakening the digest or receipt checks.
+        raise CORE.LiveError(f"github-http:401:{self.base_url}{path}:provider-snapshot-digest-matched")
+
 
 def capture(rollout: dict[str, Any], api: AcceptedSnapshotProviderApi, provider_head: str, root: Path = ROOT) -> dict[str, Any]:
     report = CORE.capture(rollout, api, root)
