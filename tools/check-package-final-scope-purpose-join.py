@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import importlib.util
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -15,9 +18,62 @@ if str(ROOT) not in sys.path:
 
 from tools.gov_release.identity import IDENTITY_PATH, load_identity  # noqa: E402
 
+HEX40 = re.compile(r"^[0-9a-f]{40}$")
+DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+PACKAGE_MEMBER_KIND = "governance.packageContractClosureMember.v2"
+PACKAGE_CEILING = "OPS_SELF_DIFF_CONSUMED_NOT_ORGANIZATION_ADMISSION"
+PACKAGE_OBLIGATION = "ops.final-ci-migration-consumer.v1"
+PACKAGE_BUNDLE_CHECKER = ROOT / "tools/check-package-contract-closure-bundle.py"
+
 
 def canonical(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def sha256_file(path: Path) -> str:
+    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def package_need(ok: bool, code: str) -> None:
+    if not ok:
+        raise ValueError("package-contract:" + code)
+
+
+def package_contract_closure(scope_path: Path, evidence_path: Path, expected_ops_candidate: str) -> dict[str, Any]:
+    del scope_path, evidence_path, expected_ops_candidate
+    raise ValueError("package-contract:raw-selected-inputs-not-evidence-bound")
+
+
+def load_bundle_checker() -> Any:
+    spec = importlib.util.spec_from_file_location("contract632_bundle_checker", PACKAGE_BUNDLE_CHECKER)
+    package_need(spec is not None and spec.loader is not None, "bundle-checker-import")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def package_contract_bundle_closure(
+    bundle: Path,
+    ops_source: Path,
+    accepted_governance: Path,
+    expected_ops_candidate: str,
+) -> dict[str, Any]:
+    package_need(HEX40.fullmatch(expected_ops_candidate) is not None, "expected-ops-candidate")
+    module = load_bundle_checker()
+    member = module.verify_bundle(bundle, ops_source, expected_ops_candidate, accepted_governance)
+    package_need(member.get("kind") == PACKAGE_MEMBER_KIND, "member-kind")
+    package_need(member.get("status") == "pass" and member.get("remaining") == 0, "member-status")
+    package_need(member.get("authority") is False and member.get("adoption") is False, "member-authority")
+    package_need(member.get("releasePublished") is False and member.get("claimCeiling") == PACKAGE_CEILING, "member-boundary")
+    package_need(member.get("obligationId") == PACKAGE_OBLIGATION, "member-obligation")
+    package_need(member.get("opsCandidate") == expected_ops_candidate, "member-candidate")
+    package_need(member.get("evidenceBound") is True and member.get("sourceBytesVerified") == 8, "member-evidence")
+    package_need(member.get("receiptReplayed") is True and member.get("comparatorReplayed") is True, "member-replay")
+    claimed = member.get("memberDigest")
+    without_digest = {key: value for key, value in member.items() if key != "memberDigest"}
+    actual = "sha256:" + hashlib.sha256(canonical(without_digest).encode()).hexdigest()
+    package_need(claimed == actual, "member-digest")
+    return member
 
 
 def run_component(name: str, args: list[str]) -> dict[str, Any]:
@@ -72,7 +128,31 @@ def run_selftest() -> dict[str, Any]:
     }
 
 
-def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
+def run_check(
+    candidate_sha: str,
+    live_consumers: Path,
+    package_contract_bundle: Path | None = None,
+    package_contract_ops_source: Path | None = None,
+    package_contract_accepted_governance: Path | None = None,
+    expected_ops_candidate: str | None = None,
+) -> dict[str, Any]:
+    package_member = None
+    supplied = [
+        package_contract_bundle is not None,
+        package_contract_ops_source is not None,
+        package_contract_accepted_governance is not None,
+        expected_ops_candidate is not None,
+    ]
+    if any(supplied) and not all(supplied):
+        raise ValueError("package-contract:all-bundle-inputs-required")
+    if all(supplied):
+        package_member = package_contract_bundle_closure(
+            package_contract_bundle,
+            package_contract_ops_source,
+            package_contract_accepted_governance,
+            expected_ops_candidate,
+        )
+
     identity = load_identity()
     regression = run_selftest()
     production = run_component(
@@ -122,6 +202,9 @@ def run_check(candidate_sha: str, live_consumers: Path) -> dict[str, Any]:
             "production": parsed,
             "contractModelingMigration": migration_parsed,
         }
+        if package_member is not None:
+            report["packageContractClosure"] = package_member
+            report["packageContractClosureDigest"] = package_member["memberDigest"]
         gate_path = root / "gate.json"
         eligibility_path = root / "gov-release-eligibility.json"
         gate_path.write_text(canonical(report) + "\n", encoding="utf-8")
@@ -143,13 +226,30 @@ def main() -> int:
     parser.add_argument("command", nargs="?", choices=["selftest", "check"], default="selftest")
     parser.add_argument("--candidate-sha")
     parser.add_argument("--live-consumers", type=Path)
+    parser.add_argument("--package-contract-bundle", type=Path)
+    parser.add_argument("--package-contract-ops-source", type=Path)
+    parser.add_argument("--package-contract-accepted-governance", type=Path)
+    parser.add_argument("--expected-ops-candidate")
+    parser.add_argument("--package-contract-scope", type=Path)
+    parser.add_argument("--package-contract-evidence", type=Path)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
+    if args.package_contract_scope is not None or args.package_contract_evidence is not None:
+        parser.error("raw package-contract scope/evidence are not evidence-bound; use --package-contract-bundle")
     if args.command == "check":
         if not args.candidate_sha or args.live_consumers is None:
             parser.error("check requires --candidate-sha and --live-consumers")
-        report = run_check(args.candidate_sha, args.live_consumers)
+        report = run_check(
+            args.candidate_sha,
+            args.live_consumers,
+            args.package_contract_bundle,
+            args.package_contract_ops_source,
+            args.package_contract_accepted_governance,
+            args.expected_ops_candidate,
+        )
     else:
+        if any((args.package_contract_bundle, args.package_contract_ops_source, args.package_contract_accepted_governance, args.expected_ops_candidate)):
+            parser.error("package-contract inputs are valid only with check")
         report = run_selftest()
     print(canonical(report) if args.json else f"final-scope-purpose-join:{report['status']}")
     return 0

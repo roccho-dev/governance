@@ -212,7 +212,7 @@ jobs:
         id: live-capture
         continue-on-error: true
         env:
-          CONSUMER_READER_TOKEN: ${{ steps.consumer-token.outputs.token }}
+          CONSUMER_READER_TOKEN: ${{ steps.consumer-token.outputs.token || github.token }}
         run: |
           set -o pipefail
           python3 tools/check-live-final-ci-consumers.py capture \
