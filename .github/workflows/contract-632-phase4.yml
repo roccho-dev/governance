@@ -18,7 +18,7 @@ concurrency:
 
 env:
   ACCEPTED_GOVERNANCE_REVISION: 5b26984eb59e4c03f9d0fe34891fea5e4a436a16
-  OPS_CANDIDATE: ba132a372e51514653ef6ef5d06589ec9446c357
+  OPS_CANDIDATE: 5eb98c82417b399978c1e38aebab5e3fb39752d4
 
 jobs:
   selected-final-consumer:
