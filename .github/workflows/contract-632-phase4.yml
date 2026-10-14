@@ -18,12 +18,12 @@ concurrency:
 
 env:
   ACCEPTED_GOVERNANCE_REVISION: 5b26984eb59e4c03f9d0fe34891fea5e4a436a16
-  OPS_CANDIDATE: c2e2fff8eeeea32f40ac2aea0008d22f3b14769a
+  OPS_CANDIDATE: ba132a372e51514653ef6ef5d06589ec9446c357
 
 jobs:
   selected-final-consumer:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,6 +44,7 @@ jobs:
           path: _external/ops
           persist-credentials: false
           fetch-depth: 1
+
       - name: Verify exact source identities
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
@@ -52,7 +53,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GOVERNANCE_CANDIDATE"
           test "$(git -C _accepted/governance rev-parse HEAD)" = "$ACCEPTED_GOVERNANCE_REVISION"
           test "$(git -C _external/ops rev-parse HEAD)" = "$OPS_CANDIDATE"
-      - name: Acquire current live consumer evidence through explicit provider relation
+
+      - name: Acquire accepted snapshot at the current Ops provider
         env:
           CONSUMER_READER_TOKEN: ${{ github.token }}
         run: |
@@ -65,13 +67,14 @@ jobs:
             .status == "pass"
             and .artifactBodiesVerified == true
             and .receiptCandidateShaBound == true
-            and .providerAliases == [{
-              logicalRepository:"roccho-dev/ops",
-              providerRepository:"roccho-org/ops",
-              relation:"current-provider-of-historical-logical-id",
-              authority:false
-            }]
+            and .providerSnapshotPinned == true
+            and (.providerAliases | length) == 1
+            and .providerAliases[0].logicalRepository == "roccho-dev/ops"
+            and .providerAliases[0].providerRepository == "roccho-org/ops"
+            and .providerAliases[0].relation == "accepted-snapshot-at-current-provider"
+            and .providerAliases[0].authority == false
           ' live-selected-consumers.json >/dev/null
+
       - name: Build and bind exact Ops Phase 4 evidence
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
@@ -113,39 +116,18 @@ jobs:
             and .comparatorReplayed == true
             and .evidenceBound == true
           ' phase4-ops-readback.json >/dev/null
-      - name: Consume the evidence-bound bundle before the existing final checker
+
+      - name: Consume the whole evidence-bound bundle in the existing final checker
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          python3 tools/check-package-contract-closure-bundle.py check \
-            --bundle contract-632-phase4-ops \
-            --ops-source _external/ops \
-            --ops-candidate "$OPS_CANDIDATE" \
-            --accepted-governance _accepted/governance \
-            --final-checker tools/check-package-final-scope-purpose-join.py \
-            --out package-contract-member.json \
-            > package-contract-member-stdout.json
-          cmp package-contract-member.json package-contract-member-stdout.json
-          jq -e '
-            .kind == "governance.packageContractClosureMember.v2"
-            and .status == "pass"
-            and .authority == false
-            and .adoption == false
-            and .releasePublished == false
-            and .contractDiffStatus == "CLOSED"
-            and .remaining == 0
-            and .evidenceBound == true
-            and .sourceBytesVerified == 8
-            and .receiptReplayed == true
-            and .comparatorReplayed == true
-          ' package-contract-member.json >/dev/null
-
           python3 tools/check-package-final-scope-purpose-join.py check \
             --candidate-sha "$GOVERNANCE_CANDIDATE" \
             --live-consumers live-selected-consumers.json \
-            --package-contract-scope contract-632-phase4-ops/run-scope.json \
-            --package-contract-evidence contract-632-phase4-ops/phase4-evidence.json \
+            --package-contract-bundle contract-632-phase4-ops \
+            --package-contract-ops-source _external/ops \
+            --package-contract-accepted-governance _accepted/governance \
             --expected-ops-candidate "$OPS_CANDIDATE" \
             --json > final-check-report.json
           jq -e '
@@ -153,13 +135,23 @@ jobs:
             and .decision == "allow"
             and .authority == false
             and .companyAdoptionEffect == false
+            and .packageContractClosure.kind == "governance.packageContractClosureMember.v2"
             and .packageContractClosure.status == "pass"
             and .packageContractClosure.contractDiffStatus == "CLOSED"
             and .packageContractClosure.remaining == 0
+            and .packageContractClosure.evidenceBound == true
+            and .packageContractClosure.sourceBytesVerified == 8
+            and .packageContractClosure.receiptReplayed == true
+            and .packageContractClosure.comparatorReplayed == true
+            and .packageContractClosureDigest == .packageContractClosure.memberDigest
             and .releasePublished == false
             and .operationalAdoptionEffect == false
           ' final-check-report.json >/dev/null
-      - name: Reject fabricated digest-only and source-tampered evidence
+          jq -cS '.packageContractClosure' final-check-report.json > package-contract-member.json
+
+      - name: Reject fabricated and source-tampered evidence through the same final checker entrance
+        env:
+          GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           fake="$RUNNER_TEMP/fake-phase4"
@@ -168,27 +160,25 @@ jobs:
           cp contract-632-phase4-ops/phase4-evidence.json "$fake/phase4-evidence.json"
           python3 - "$fake" <<'PY'
           import hashlib,json,pathlib,sys
-          root=pathlib.Path(sys.argv[1])
-          d='sha256:'+'0'*64
+          root=pathlib.Path(sys.argv[1]); d='sha256:'+'0'*64
           scope=json.loads((root/'run-scope.json').read_text())
           evidence=json.loads((root/'phase4-evidence.json').read_text())
-          scope['acceptedRequirementDigest']=d
-          evidence['scope']=scope
+          scope['acceptedRequirementDigest']=d; evidence['scope']=scope
           evidence['acceptedRequirement']['contract']={'obligation_digest':d,'slot':'ops.final-ci-migration-consumer.v1'}
           for row in [evidence['acceptedRequirement']['source'],evidence['acceptedRequirement']['decisionSource'],evidence['provider']['source'],evidence['observation']['source'],evidence['receipt']['source'],evidence['comparator']['source']]: row['digest']=d
-          evidence['provider']['claimDigest']=d
-          evidence['receipt']['actualReceiptDigest']=d
-          evidence['receipt']['normalizedReceiptDigest']=d
+          evidence['provider']['claimDigest']=d; evidence['receipt']['actualReceiptDigest']=d; evidence['receipt']['normalizedReceiptDigest']=d
           (root/'run-scope.json').write_text(json.dumps(scope,sort_keys=True,separators=(',',':'))+'\n')
           (root/'phase4-evidence.json').write_text(json.dumps(evidence,sort_keys=True,separators=(',',':'))+'\n')
           rows=[{'path':p.name,'sha256':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.iterdir()) if p.is_file() and p.name!='bundle-manifest.json']
           (root/'bundle-manifest.json').write_text(json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
           PY
-          if python3 tools/check-package-contract-closure-bundle.py check \
-            --bundle "$fake" --ops-source _external/ops --ops-candidate "$OPS_CANDIDATE" \
-            --accepted-governance _accepted/governance --final-checker tools/check-package-final-scope-purpose-join.py \
-            > fake-stdout.txt 2> fake-stderr.txt; then
-            echo 'fabricated digest-only evidence unexpectedly passed' >&2
+          if python3 tools/check-package-final-scope-purpose-join.py check \
+            --candidate-sha "$GOVERNANCE_CANDIDATE" --live-consumers live-selected-consumers.json \
+            --package-contract-bundle "$fake" --package-contract-ops-source _external/ops \
+            --package-contract-accepted-governance _accepted/governance \
+            --expected-ops-candidate "$OPS_CANDIDATE" --json \
+            > fake-final-stdout.txt 2> fake-final-stderr.txt; then
+            echo 'fabricated digest-only evidence unexpectedly passed the final checker' >&2
             exit 1
           fi
 
@@ -203,14 +193,17 @@ jobs:
               if row['path']==target: row['sha256']='sha256:'+hashlib.sha256((root/target).read_bytes()).hexdigest()
           (root/'bundle-manifest.json').write_text(json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
           PY
-          if python3 tools/check-package-contract-closure-bundle.py check \
-            --bundle "$tampered" --ops-source _external/ops --ops-candidate "$OPS_CANDIDATE" \
-            --accepted-governance _accepted/governance --final-checker tools/check-package-final-scope-purpose-join.py \
-            > tampered-stdout.txt 2> tampered-stderr.txt; then
-            echo 'source-tampered evidence unexpectedly passed' >&2
+          if python3 tools/check-package-final-scope-purpose-join.py check \
+            --candidate-sha "$GOVERNANCE_CANDIDATE" --live-consumers live-selected-consumers.json \
+            --package-contract-bundle "$tampered" --package-contract-ops-source _external/ops \
+            --package-contract-accepted-governance _accepted/governance \
+            --expected-ops-candidate "$OPS_CANDIDATE" --json \
+            > tampered-final-stdout.txt 2> tampered-final-stderr.txt; then
+            echo 'source-tampered evidence unexpectedly passed the final checker' >&2
             exit 1
           fi
-          jq -n '{kind:"governance.contract632.phase4Negative.v2",status:"pass",authority:false,fabricatedDigestOnlyRejected:true,sourceTamperRejected:true}' > phase4-consumer-negative.json
+          jq -n '{kind:"governance.contract632.phase4FinalEntranceNegative.v1",status:"pass",authority:false,fabricatedDigestOnlyRejected:true,sourceTamperRejected:true}' > phase4-final-negative.json
+
       - name: Write finite readback
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
@@ -220,28 +213,43 @@ jobs:
             --arg governanceCandidate "$GOVERNANCE_CANDIDATE" \
             --arg acceptedGovernance "$ACCEPTED_GOVERNANCE_REVISION" \
             --arg opsCandidate "$OPS_CANDIDATE" \
+            --arg livePacketSha256 "$(sha256sum live-selected-consumers.json | cut -d' ' -f1)" \
             --arg memberSha256 "$(sha256sum package-contract-member.json | cut -d' ' -f1)" \
             --arg finalReportSha256 "$(sha256sum final-check-report.json | cut -d' ' -f1)" \
-            --arg manifestSha256 "$(sha256sum contract-632-phase4-ops/bundle-manifest.json | cut -d' ' -f1)" \
-            --arg livePacketSha256 "$(sha256sum live-selected-consumers.json | cut -d' ' -f1)" \
-            '{kind:"governance.contract632.phase4Readback.v2",status:"PASS",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernanceRevision:$acceptedGovernance,opsCandidate:$opsCandidate,memberSha256:("sha256:"+$memberSha256),finalReportSha256:("sha256:"+$finalReportSha256),bundleManifestSha256:("sha256:"+$manifestSha256),livePacketSha256:("sha256:"+$livePacketSha256),evidenceBound:true,sourceBytesVerified:8,receiptReplayed:true,comparatorReplayed:true,fabricatedDigestOnlyRejected:true,sourceTamperRejected:true,providerRelation:{logicalRepository:"roccho-dev/ops",providerRepository:"roccho-org/ops",relation:"current-provider-of-historical-logical-id",authority:false},remaining:0}' \
+            --arg bundleManifestSha256 "$(sha256sum contract-632-phase4-ops/bundle-manifest.json | cut -d' ' -f1)" \
+            '{kind:"governance.contract632.phase4Readback.v2",status:"pass",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernance:$acceptedGovernance,opsCandidate:$opsCandidate,livePacketSha256:("sha256:"+$livePacketSha256),memberSha256:("sha256:"+$memberSha256),finalReportSha256:("sha256:"+$finalReportSha256),bundleManifestSha256:("sha256:"+$bundleManifestSha256),positiveExistingFinalChecker:true,negativeSameEntrance:true,remaining:0}' \
             > phase4-governance-readback.json
+          mkdir -p contract-632-phase4-governance-artifact
+          cp -R contract-632-phase4-ops contract-632-phase4-governance-artifact/ops-bundle
+          cp live-selected-consumers.json package-contract-member.json final-check-report.json phase4-final-negative.json phase4-governance-readback.json contract-632-phase4-governance-artifact/
+          cp fake-final-stdout.txt fake-final-stderr.txt tampered-final-stdout.txt tampered-final-stderr.txt contract-632-phase4-governance-artifact/
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('contract-632-phase4-governance-artifact')
+          rows=[{'path':p.relative_to(root).as_posix(),'sha256':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.rglob('*')) if p.is_file()]
+          (root/'transport-manifest.json').write_text(json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+          printf 'tree=%s\nreadback_sha256=%s\nmember_sha256=%s\nfinal_report_sha256=%s\ntransport_manifest_sha256=%s\n' \
+            "$(git rev-parse 'HEAD^{tree}')" \
+            "$(sha256sum phase4-governance-readback.json | cut -d' ' -f1)" \
+            "$(sha256sum package-contract-member.json | cut -d' ' -f1)" \
+            "$(sha256sum final-check-report.json | cut -d' ' -f1)" \
+            "$(sha256sum contract-632-phase4-governance-artifact/transport-manifest.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@v4
+        id: upload
         with:
           name: contract-632-phase4-governance-${{ github.event.pull_request.head.sha }}
-          path: |
-            contract-632-phase4-ops/
-            phase4-ops-build.json
-            phase4-ops-bind.json
-            phase4-ops-readback.json
-            live-selected-consumers.json
-            package-contract-member.json
-            final-check-report.json
-            phase4-consumer-negative.json
-            phase4-governance-readback.json
-            fake-stdout.txt
-            fake-stderr.txt
-            tampered-stdout.txt
-            tampered-stderr.txt
+          path: contract-632-phase4-governance-artifact/
           if-no-files-found: error
           retention-days: 90
+
+      - name: Emit exact artifact identity
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          test -n "$ARTIFACT_ID"
+          [[ "$ARTIFACT_DIGEST" =~ ^(sha256:)?[0-9a-f]{64}$ ]]
+          printf 'contract_632_phase4_governance artifact_id=%s artifact_digest=%s\n' "$ARTIFACT_ID" "$ARTIFACT_DIGEST"
