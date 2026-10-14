@@ -50,7 +50,12 @@ class CurrentProviderApi(CORE.GitHubApi):
 
     def provider_get_bytes(self, logical: str, suffix: str) -> bytes:
         CORE.need(logical in PROVIDERS, "provider-logical:" + logical)
-        return super().get_bytes(f"/repos/{PROVIDERS[logical]}{suffix}")
+        # GitHub's artifact endpoint requires its JSON media type before the
+        # client follows the redirect to the ZIP bytes.
+        return self._read(
+            f"/repos/{PROVIDERS[logical]}{suffix}",
+            "application/vnd.github+json",
+        )
 
     def get_json(self, path: str) -> Any:
         logical = next((repo for repo in PROVIDERS if path == f"/repos/{repo}" or path.startswith(f"/repos/{repo}/")), None)
