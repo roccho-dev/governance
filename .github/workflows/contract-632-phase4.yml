@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/contract-632-phase4.yml'
       - 'tools/check-package-final-scope-purpose-join.py'
+      - 'tools/check-live-final-ci-consumers-current-provider.py'
 
 permissions:
   contents: read
@@ -50,30 +51,26 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GOVERNANCE_CANDIDATE"
           test "$(git -C _accepted/governance rev-parse HEAD)" = "$ACCEPTED_GOVERNANCE_REVISION"
           test "$(git -C _external/ops rev-parse HEAD)" = "$OPS_CANDIDATE"
-      - name: Validate consumer reader configuration
+      - name: Acquire current live consumer evidence through explicit provider relation
         env:
-          CLIENT_ID: ${{ vars['ADRS_READER_CLIENT_ID'] }}
-          PRIVATE_KEY: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
-        run: test -n "$CLIENT_ID" && test -n "$PRIVATE_KEY"
-      - name: Create read-only UI and Ops Actions token
-        id: consumer-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars['ADRS_READER_CLIENT_ID'] }}
-          private-key: ${{ secrets['ADRS_READER_PRIVATE_KEY'] }}
-          owner: roccho-dev
-          repositories: ui,ops
-          permission-actions: read
-          permission-contents: read
-      - name: Acquire current live consumer evidence
-        env:
-          CONSUMER_READER_TOKEN: ${{ steps.consumer-token.outputs.token }}
+          CONSUMER_READER_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          python3 tools/check-live-final-ci-consumers.py capture \
+          python3 tools/check-live-final-ci-consumers-current-provider.py selftest >/dev/null
+          python3 tools/check-live-final-ci-consumers-current-provider.py capture \
             --token-env CONSUMER_READER_TOKEN \
             --out live-selected-consumers.json
-          jq -e '.status == "pass" and .artifactBodiesVerified == true and .receiptCandidateShaBound == true' live-selected-consumers.json >/dev/null
+          jq -e '
+            .status == "pass"
+            and .artifactBodiesVerified == true
+            and .receiptCandidateShaBound == true
+            and .providerAliases == [{
+              logicalRepository:"roccho-dev/ops",
+              providerRepository:"roccho-org/ops",
+              relation:"current-provider-of-historical-logical-id",
+              authority:false
+            }]
+          ' live-selected-consumers.json >/dev/null
       - name: Rebuild exact Ops Phase 4 evidence under the Governance observer
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
@@ -122,7 +119,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import copy, importlib.util, json, pathlib, tempfile
+          import importlib.util, json, pathlib, tempfile
           path=pathlib.Path('tools/check-package-final-scope-purpose-join.py')
           spec=importlib.util.spec_from_file_location('final_join', path)
           module=importlib.util.module_from_spec(spec)
@@ -162,7 +159,8 @@ jobs:
             --arg finalReportSha256 "$(sha256sum final-check-report.json | cut -d' ' -f1)" \
             --arg scopeSha256 "$(sha256sum contract-632-phase4-ops/run-scope.json | cut -d' ' -f1)" \
             --arg evidenceSha256 "$(sha256sum contract-632-phase4-ops/phase4-evidence.json | cut -d' ' -f1)" \
-            '{kind:"governance.contract632.phase4Readback.v1",status:"PASS",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernanceRevision:$acceptedGovernance,opsCandidate:$opsCandidate,finalReportSha256:("sha256:"+$finalReportSha256),scopeSha256:("sha256:"+$scopeSha256),evidenceSha256:("sha256:"+$evidenceSha256),remaining:0}' \
+            --arg livePacketSha256 "$(sha256sum live-selected-consumers.json | cut -d' ' -f1)" \
+            '{kind:"governance.contract632.phase4Readback.v1",status:"PASS",authority:false,adoption:false,releasePublished:false,governanceCandidate:$governanceCandidate,acceptedGovernanceRevision:$acceptedGovernance,opsCandidate:$opsCandidate,finalReportSha256:("sha256:"+$finalReportSha256),scopeSha256:("sha256:"+$scopeSha256),evidenceSha256:("sha256:"+$evidenceSha256),livePacketSha256:("sha256:"+$livePacketSha256),providerRelation:{logicalRepository:"roccho-dev/ops",providerRepository:"roccho-org/ops",relation:"current-provider-of-historical-logical-id",authority:false},remaining:0}' \
             > phase4-governance-readback.json
       - uses: actions/upload-artifact@v4
         with:
