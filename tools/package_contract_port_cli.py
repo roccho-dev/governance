@@ -61,6 +61,10 @@ def cross_target_preflight(
     accepted_source: Path,
     evidence_input: Path,
 ) -> dict[str, Any]:
+    target_source = target_source.resolve()
+    runtime_source = runtime_source.resolve()
+    accepted_source = accepted_source.resolve()
+    evidence_input = evidence_input.resolve()
     target_head = "71409fa013b6cb681c0a80b4c377e4685685b690"
     runtime_head = "5eb98c82417b399978c1e38aebab5e3fb39752d4"
     accepted_head = "862313008ad19a743034599792d9a8b6e470e4cf"
