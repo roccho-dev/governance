@@ -46,9 +46,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GOVERNANCE_CANDIDATE"
           test "$GOVERNANCE_BASE" = "$B0_GOVERNANCE_HEAD"
           python3 tools/check-package-contract-closure-bundle.py discover > target-discovery.json
-          jq -e '.kind == "governance.packageContractTargets.v1"
-            and (.targets | index("ops")) != null
-            and (.targets | length) > 0' target-discovery.json >/dev/null
+          jq -e '.kind == "governance.packageContractTargets.v1" and (.targets | index("ops")) != null and (.targets | length) > 0' target-discovery.json >/dev/null
           needs_adrs="$(python3 - <<'PY'
           import json
           from pathlib import Path
@@ -119,26 +117,7 @@ jobs:
           set -euo pipefail
           python3 tools/check-live-final-ci-consumers-current-provider.py selftest >/dev/null
           python3 tools/check-live-final-ci-consumers-current-provider.py capture --token-env CONSUMER_READER_TOKEN --out live-selected-consumers.json
-          jq -e '.status=="pass"
-            and .artifactBodiesVerified==true
-            and .receiptCandidateShaBound==true
-            and .observationMode=="actual-current-provider"
-            and .currentProviderRefsObserved==true
-            and .currentArtifactDigestsObserved==true
-            and .currentDownloadArchiveDigestsObserved==true
-            and .currentReceiptDigestsObserved==true
-            and .historicalSnapshotsUsedForCurrent==false
-            and .historicalReplay.status=="pass"
-            and .historicalReplay.current==false
-            and .historicalReplay.live==false
-            and .historicalReplay.releaseEligible==false
-            and .historicalReplay.usedForCurrent==false
-            and all(.repositories[];
-              .artifactBodySource=="actual-current-provider-download"
-              and .currentAcquisitionPath==null
-              and .providerDigestMatchesDownload==true
-              and .receiptCandidateShaBound==true
-              and .historicalSnapshotUsedForCurrent==false)' live-selected-consumers.json >/dev/null
+          jq -e '.status=="pass" and .artifactBodiesVerified==true and .receiptCandidateShaBound==true and .observationMode=="actual-current-provider" and .currentProviderRefsObserved==true and .currentArtifactDigestsObserved==true and .currentDownloadArchiveDigestsObserved==true and .currentReceiptDigestsObserved==true and .historicalSnapshotsUsedForCurrent==false and .historicalReplay.status=="pass" and .historicalReplay.current==false and .historicalReplay.live==false and .historicalReplay.releaseEligible==false and .historicalReplay.usedForCurrent==false and all(.repositories[]; .artifactBodySource=="actual-current-provider-download" and .currentAcquisitionPath==null and .providerDigestMatchesDownload==true and .receiptCandidateShaBound==true and .historicalSnapshotUsedForCurrent==false)' live-selected-consumers.json >/dev/null
 
       - name: Produce and verify every discovered target through the generic port
         id: package
@@ -147,11 +126,8 @@ jobs:
         run: |
           set -euo pipefail
           for target in $(jq -r '.targets[]' target-discovery.json); do
-            target_root="_sources/$target/targetSource"
-            requirement_root="_sources/$target/acceptedRequirementSource"
-            policy_root="_sources/$target/governancePolicySource"
-            candidate="$(jq -r '.targetSource.revision' "tools/package_contract_targets/$target.target.json")"
-            bundle="contract-632-phase4-$target"
+            target_root="_sources/$target/targetSource"; requirement_root="_sources/$target/acceptedRequirementSource"; policy_root="_sources/$target/governancePolicySource"
+            candidate="$(jq -r '.targetSource.revision' "tools/package_contract_targets/$target.target.json")"; bundle="contract-632-phase4-$target"
             python3 tools/check-package-contract-closure-bundle.py produce --target-id "$target" --bundle "$bundle" --target-source "$target_root" --accepted-requirement-source "$requirement_root" --governance-policy-source "$policy_root" --governance-candidate "$GOVERNANCE_CANDIDATE" > "target-produce-$target.json"
             python3 tools/check-package-contract-closure-bundle.py check --target-id "$target" --bundle "$bundle" --target-source "$target_root" --target-candidate "$candidate" --accepted-requirement-source "$requirement_root" --governance-policy-source "$policy_root" --governance-candidate "$GOVERNANCE_CANDIDATE" --out "package-contract-member-$target.json" > "target-check-$target.json"
             jq -e --arg target "$target" --arg candidate "$candidate" --arg governance "$GOVERNANCE_CANDIDATE" '.kind=="governance.packageContractClosureMember.v3" and .targetId==$target and .targetCandidate==$candidate and .governanceCandidate==$governance and .status=="pass" and .contractDiffStatus=="CLOSED" and .contractDiffExit==0 and .remaining==0 and .authority==false and .adoption==false and .releasePublished==false and .evidenceBound==true and .receiptReplayed==true and .comparatorReplayed==true' "package-contract-member-$target.json" >/dev/null
@@ -209,7 +185,7 @@ jobs:
           Path('b0-b1-equivalence.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
           PY
 
-      - name: Prepare canonical Governance final-checker view
+      - name: Isolate acquired roots and prepare canonical final-checker view
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -219,6 +195,8 @@ jobs:
           cmp "$proof" .github/workflows/contract-632-phase4.yml
           rm .github/workflows/contract-632-phase4.yml
           test "$(find .github/workflows -maxdepth 1 -type f | wc -l)" = 3
+          mv _sources "$RUNNER_TEMP/contract-632-sources"
+          mv _b0 "$RUNNER_TEMP/contract-632-b0"
 
       - name: Consume every target through package-only final entrance
         id: package_final
@@ -226,9 +204,10 @@ jobs:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          sources="$RUNNER_TEMP/contract-632-sources"
           for target in $(jq -r '.targets[]' target-discovery.json); do
             candidate="$(jq -r '.targetSource.revision' "tools/package_contract_targets/$target.target.json")"
-            python3 tools/check-package-final-scope-purpose-join.py check-package --candidate-sha "$GOVERNANCE_CANDIDATE" --package-contract-bundle "contract-632-phase4-$target" --package-contract-target-source "_sources/$target/targetSource" --package-contract-accepted-requirement-source "_sources/$target/acceptedRequirementSource" --package-contract-governance-policy-source "_sources/$target/governancePolicySource" --package-contract-target-id "$target" --expected-target-candidate "$candidate" --json > "package-final-report-$target.json"
+            python3 tools/check-package-final-scope-purpose-join.py check-package --candidate-sha "$GOVERNANCE_CANDIDATE" --package-contract-bundle "contract-632-phase4-$target" --package-contract-target-source "$sources/$target/targetSource" --package-contract-accepted-requirement-source "$sources/$target/acceptedRequirementSource" --package-contract-governance-policy-source "$sources/$target/governancePolicySource" --package-contract-target-id "$target" --expected-target-candidate "$candidate" --json > "package-final-report-$target.json"
             jq -e --arg target "$target" --arg candidate "$candidate" --arg governance "$GOVERNANCE_CANDIDATE" '.status=="pass" and .candidateSha==$governance and .packageContractClosure.targetId==$target and .packageContractClosure.targetCandidate==$candidate and .packageContractClosure.governanceCandidate==$governance and .packageContractClosureDigest==.packageContractClosure.memberDigest' "package-final-report-$target.json" >/dev/null
           done
 
@@ -239,9 +218,10 @@ jobs:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          sources="$RUNNER_TEMP/contract-632-sources"
           for target in $(jq -r '.targets[]' target-discovery.json); do
             candidate="$(jq -r '.targetSource.revision' "tools/package_contract_targets/$target.target.json")"
-            python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$GOVERNANCE_CANDIDATE" --live-consumers live-selected-consumers.json --package-contract-bundle "contract-632-phase4-$target" --package-contract-target-source "_sources/$target/targetSource" --package-contract-accepted-requirement-source "_sources/$target/acceptedRequirementSource" --package-contract-governance-policy-source "_sources/$target/governancePolicySource" --package-contract-target-id "$target" --expected-target-candidate "$candidate" --json > "final-check-report-$target.json"
+            python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$GOVERNANCE_CANDIDATE" --live-consumers live-selected-consumers.json --package-contract-bundle "contract-632-phase4-$target" --package-contract-target-source "$sources/$target/targetSource" --package-contract-accepted-requirement-source "$sources/$target/acceptedRequirementSource" --package-contract-governance-policy-source "$sources/$target/governancePolicySource" --package-contract-target-id "$target" --expected-target-candidate "$candidate" --json > "final-check-report-$target.json"
           done
 
       - name: Reject weakened negatives, stale candidate, extra source, unrelated provider, and legacy member
@@ -250,7 +230,8 @@ jobs:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          ops="_sources/ops/targetSource"; accepted="_sources/ops/acceptedRequirementSource"; policy="_sources/ops/governancePolicySource"
+          sources="$RUNNER_TEMP/contract-632-sources"; b0="$RUNNER_TEMP/contract-632-b0"
+          ops="$sources/ops/targetSource"; accepted="$sources/ops/acceptedRequirementSource"; policy="$sources/ops/governancePolicySource"
           package_check() {
             local governance="${2:-$GOVERNANCE_CANDIDATE}"
             python3 tools/check-package-final-scope-purpose-join.py check-package --candidate-sha "$governance" --package-contract-bundle "$1" --package-contract-target-source "$ops" --package-contract-accepted-requirement-source "$accepted" --package-contract-governance-policy-source "$policy" --package-contract-target-id ops --expected-target-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 --json
@@ -286,20 +267,22 @@ jobs:
           PY
           then echo 'unrelated provider relation unexpectedly passed' >&2; exit 1; fi
           python3 - <<'PY'
-          import importlib.util,pathlib,tempfile
+          import importlib.util,json,pathlib,tempfile
           root=pathlib.Path('.').resolve(); spec=importlib.util.spec_from_file_location('checker',root/'tools/check-package-contract-closure-bundle.py'); checker=importlib.util.module_from_spec(spec); spec.loader.exec_module(checker)
           source=(root/'tools/package_contract_targets/ops.py').read_text().replace("EXPECTED_NEGATIVE = {", "EXPECTED_NEGATIVE = {}\nDISABLED_NEGATIVE = {")
-          binding=(root/'tools/package_contract_targets/ops.target.json').read_text()
-          with tempfile.TemporaryDirectory() as temporary:
-              checker.TARGET_DIR=pathlib.Path(temporary); (checker.TARGET_DIR/'ops.py').write_text(source); (checker.TARGET_DIR/'ops.target.json').write_text(binding)
+          binding=json.loads((root/'tools/package_contract_targets/ops.target.json').read_text())
+          with tempfile.TemporaryDirectory(dir=root) as temporary:
+              target=pathlib.Path(temporary); binding['adapterPath']=(target/'ops.py').relative_to(root).as_posix()
+              (target/'ops.py').write_text(source); (target/'ops.target.json').write_text(json.dumps(binding,sort_keys=True,separators=(',',':'))+'\n')
+              checker.TARGET_DIR=target
               try: checker.load_target('ops')
               except ValueError as error:
                   if 'adapter-negative-contract' not in str(error): raise
               else: raise SystemExit('weakened negative contract unexpectedly passed')
           PY
-          python3 - <<'PY'
-          import importlib.util,json,pathlib,os
-          root=pathlib.Path('.').resolve(); spec=importlib.util.spec_from_file_location('final',root/'tools/check-package-final-scope-purpose-join.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); checker=module.load_checker(); _,binding,_=checker.load_target('ops'); legacy=json.loads(pathlib.Path('_b0/package-contract-member.json').read_text())
+          python3 - "$b0/package-contract-member.json" <<'PY'
+          import importlib.util,json,pathlib,os,sys
+          root=pathlib.Path('.').resolve(); spec=importlib.util.spec_from_file_location('final',root/'tools/check-package-final-scope-purpose-join.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); checker=module.load_checker(); _,binding,_=checker.load_target('ops'); legacy=json.loads(pathlib.Path(sys.argv[1]).read_text())
           try: module.validate_member(legacy,binding,'ops','5eb98c82417b399978c1e38aebab5e3fb39752d4',os.environ['GOVERNANCE_CANDIDATE'],checker)
           except ValueError as error:
               if 'member-kind' not in str(error): raise
@@ -323,7 +306,8 @@ jobs:
           import hashlib,json,os,pathlib,shutil
           root=pathlib.Path('contract-632-phase4-governance-evidence'); root.mkdir(exist_ok=True)
           targets=json.loads(pathlib.Path('target-discovery.json').read_text())['targets'] if pathlib.Path('target-discovery.json').exists() else []
-          if pathlib.Path('_b0').exists(): shutil.copytree('_b0',root/'b0-artifact')
+          b0=pathlib.Path(os.environ['RUNNER_TEMP'])/'contract-632-b0'
+          if b0.exists(): shutil.copytree(b0,root/'b0-artifact')
           for target in targets:
               bundle=pathlib.Path(f'contract-632-phase4-{target}')
               if bundle.exists(): shutil.copytree(bundle,root/f'{target}-bundle')
