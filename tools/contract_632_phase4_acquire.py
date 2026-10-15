@@ -22,21 +22,9 @@ ADRS_REVISION = "862313008ad19a743034599792d9a8b6e470e4cf"
 RELEASE_TAG = "voice-ui-dist-" + APPS_REVISION
 RELEASE_API = f"https://api.github.com/repos/roccho-dev/apps/releases/tags/{RELEASE_TAG}"
 EXPECTED_RELEASE_ASSETS = {
-    "voice-ui-dist.zip": {
-        "id": 635746304,
-        "bytes": 62585992,
-        "sha256": "a15f4a0c481048e22461d815ead48790ba741d42e619c0088436de85f1dc2417",
-    },
-    "provenance.json": {
-        "id": 635746309,
-        "bytes": 36366,
-        "sha256": "43867c3dd595b30375194418e4ed0e27531ef3d0a326f96e865e80a2ad6fd615",
-    },
-    "merged-pr-proof.json": {
-        "id": 635746325,
-        "bytes": 434,
-        "sha256": "50370f82881b04ebe475afc31a9310065c6e305193a1a726497fdb1b7215f9cc",
-    },
+    "voice-ui-dist.zip": {"id": 635746304, "bytes": 62585992, "sha256": "a15f4a0c481048e22461d815ead48790ba741d42e619c0088436de85f1dc2417"},
+    "provenance.json": {"id": 635746309, "bytes": 36366, "sha256": "43867c3dd595b30375194418e4ed0e27531ef3d0a326f96e865e80a2ad6fd615"},
+    "merged-pr-proof.json": {"id": 635746325, "bytes": 434, "sha256": "50370f82881b04ebe475afc31a9310065c6e305193a1a726497fdb1b7215f9cc"},
 }
 EXPECTED_MANIFEST_SHA256 = "c7e77a89cc911e7337f30779f6badb1b8be560c77aac688703ab0bee3a12cae7"
 EXPECTED_DECLARATION_SHA256 = "0f79ee6819cb68140360b97c27486f2365a7a0ac849ef81702f0ff2536485d82"
@@ -111,82 +99,39 @@ def clone(source: dict[str, Any], destination: Path, tokens: dict[str, str]) -> 
     actual = run(["git", "rev-parse", "HEAD"], destination)
     if actual != source["revision"]:
         raise SystemExit("revision-mismatch:" + actual)
-    return {
-        "repository": source["repository"],
-        "revision": actual,
-        "tree": run(["git", "rev-parse", "HEAD^{tree}"], destination),
-        "accessClass": access,
-        "path": destination.as_posix(),
-    }
+    return {"repository": source["repository"], "revision": actual, "tree": run(["git", "rev-parse", "HEAD^{tree}"], destination), "accessClass": access, "path": destination.as_posix()}
 
 
 def bindings() -> dict[str, dict[str, Any]]:
-    return {
-        path.name[: -len(".target.json")]: json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted(TARGET_DIR.glob("*.target.json"))
-    }
+    return {path.name[: -len(".target.json")]: json.loads(path.read_text(encoding="utf-8")) for path in sorted(TARGET_DIR.glob("*.target.json"))}
 
 
 def discover(args: argparse.Namespace) -> None:
     targets = sorted(bindings())
     if not targets or "ops" not in targets:
         raise SystemExit("target-set")
-    Path(args.out).write_text(
-        canonical({"kind": "governance.packageContractTargets.v1", "targets": targets}) + "\n",
-        encoding="utf-8",
-    )
+    Path(args.out).write_text(canonical({"kind": "governance.packageContractTargets.v1", "targets": targets}) + "\n", encoding="utf-8")
 
 
 def acquire(args: argparse.Namespace) -> None:
-    tokens = {
-        "public-read": "",
-        "same-repo-read": os.environ.get("SAME_REPO_TOKEN", ""),
-        "adrs-reader-v1": os.environ.get("ADRS_READER_TOKEN", ""),
-    }
+    tokens = {"public-read": "", "same-repo-read": os.environ.get("SAME_REPO_TOKEN", ""), "adrs-reader-v1": os.environ.get("ADRS_READER_TOKEN", "")}
     rows: list[dict[str, Any]] = []
     for target, binding in bindings().items():
-        for role in (
-            "targetSource",
-            "acceptedRequirementSource",
-            "governancePolicySource",
-            "contractRuntimeSource",
-        ):
-            rows.append(
-                {
-                    "targetId": target,
-                    "role": role,
-                    **clone(binding[role], Path("_sources") / target / role, tokens),
-                }
-            )
+        for role in ("targetSource", "acceptedRequirementSource", "governancePolicySource", "contractRuntimeSource"):
+            rows.append({"targetId": target, "role": role, **clone(binding[role], Path("_sources") / target / role, tokens)})
     fixed = {
         "target": {"repository": "roccho-dev/apps", "revision": APPS_REVISION, "accessClass": "public-read"},
         "runtime": {"repository": "roccho-org/ops", "revision": RUNTIME_REVISION, "accessClass": "public-read"},
         "accepted": {"repository": "roccho-dev/adrs", "revision": ADRS_REVISION, "accessClass": "adrs-reader-v1"},
     }
     for role, source in fixed.items():
-        rows.append(
-            {
-                "targetId": "apps-shape-preflight",
-                "role": role,
-                **clone(source, Path("_preflight") / role, tokens),
-            }
-        )
-    Path(args.out).write_text(
-        canonical({"kind": "governance.packageContractSourceAcquisition.v2", "authority": False, "rows": rows}) + "\n",
-        encoding="utf-8",
-    )
+        rows.append({"targetId": "apps-shape-preflight", "role": role, **clone(source, Path("_preflight") / role, tokens)})
+    Path(args.out).write_text(canonical({"kind": "governance.packageContractSourceAcquisition.v2", "authority": False, "rows": rows}) + "\n", encoding="utf-8")
 
 
 def write_adapter_evidence(target: str, binding: dict[str, Any], destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
-    evidence = {
-        "kind": "governance.packageContractEvidenceInput.v1",
-        "authority": False,
-        "targetId": target,
-        "candidate": binding["targetSource"]["revision"],
-        "mode": "adapter",
-        "executor": binding["evidenceExecutor"],
-    }
+    evidence = {"kind": "governance.packageContractEvidenceInput.v1", "authority": False, "targetId": target, "candidate": binding["targetSource"]["revision"], "mode": "adapter", "executor": binding["evidenceExecutor"]}
     (destination / "evidence.json").write_text(canonical(evidence) + "\n", encoding="utf-8")
 
 
@@ -210,7 +155,6 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
         raise SystemExit("release-target-revision")
     if run(["git", "rev-parse", "HEAD^{tree}"], target_root) != APPS_TREE:
         raise SystemExit("release-target-tree")
-
     release = request_json(RELEASE_API)
     if release.get("tag_name") != RELEASE_TAG or release.get("target_commitish") != APPS_REVISION:
         raise SystemExit("release-identity")
@@ -222,22 +166,13 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
         asset = assets.get(name)
         if not isinstance(asset, dict):
             raise SystemExit("release-asset-missing:" + name)
-        metadata_digest = str(asset.get("digest", ""))
-        if (
-            asset.get("id") != expected["id"]
-            or asset.get("size") != expected["bytes"]
-            or metadata_digest != "sha256:" + expected["sha256"]
-        ):
+        if asset.get("id") != expected["id"] or asset.get("size") != expected["bytes"] or asset.get("digest") != "sha256:" + expected["sha256"]:
             raise SystemExit("release-asset-metadata:" + name)
         path = work / name
         actual = download(str(asset["browser_download_url"]), path)
         if actual != {"bytes": expected["bytes"], "sha256": expected["sha256"]}:
             raise SystemExit("release-asset-body:" + name)
-        observed_assets[name] = {
-            "id": expected["id"],
-            "bytes": actual["bytes"],
-            "sha256": "sha256:" + actual["sha256"],
-        }
+        observed_assets[name] = {"id": expected["id"], "bytes": actual["bytes"], "sha256": "sha256:" + actual["sha256"]}
 
     archive = work / "voice-ui-dist.zip"
     with zipfile.ZipFile(archive) as zipped:
@@ -275,7 +210,6 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
     source_bytes = source.read_bytes()
     if sha_bytes(source_bytes) != EXPECTED_DECLARATION_SHA256 or source_bytes != output_bytes:
         raise SystemExit("release-declaration-projection")
-
     provenance_path = work / "provenance.json"
     proof_path = work / "merged-pr-proof.json"
     provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
@@ -286,18 +220,9 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
     input_digests = provenance.get("input_digests", {})
     if source_identity != {"repository": "roccho-dev/apps", "commit": APPS_REVISION, "tree": APPS_TREE}:
         raise SystemExit("release-provenance-source")
-    if (
-        producer.get("repository") != "roccho-dev/apps"
-        or producer.get("run_id") != 38339283395
-        or producer.get("run_attempt") != 2
-        or not isinstance(producer.get("workflow_ref"), str)
-    ):
+    if producer.get("repository") != "roccho-dev/apps" or str(producer.get("run_id")) != "38339283395" or str(producer.get("run_attempt")) != "2" or not isinstance(producer.get("workflow_ref"), str):
         raise SystemExit("release-provenance-producer")
-    if (
-        artifact.get("name") != "voice-ui-dist.zip"
-        or artifact.get("bytes") != EXPECTED_RELEASE_ASSETS["voice-ui-dist.zip"]["bytes"]
-        or artifact.get("sha256") != EXPECTED_RELEASE_ASSETS["voice-ui-dist.zip"]["sha256"]
-    ):
+    if artifact.get("name") != "voice-ui-dist.zip" or artifact.get("bytes") != EXPECTED_RELEASE_ASSETS["voice-ui-dist.zip"]["bytes"] or artifact.get("sha256") != EXPECTED_RELEASE_ASSETS["voice-ui-dist.zip"]["sha256"]:
         raise SystemExit("release-provenance-artifact")
     if input_digests.get("flake.lock") != EXPECTED_FLAKE_LOCK_SHA256:
         raise SystemExit("release-provenance-lock")
@@ -305,13 +230,7 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
         raise SystemExit("release-lock-source")
     if sha_bytes((target_root / ".github/workflows/voice-ui-release.yml").read_bytes()) != EXPECTED_RELEASE_WORKFLOW_SHA256:
         raise SystemExit("release-workflow-source")
-    if (
-        proof.get("merge_sha") != APPS_REVISION
-        or proof.get("reviewed_tree") != APPS_TREE
-        or proof.get("merge_tree") != APPS_TREE
-        or not proof.get("merged_at")
-        or not proof.get("r_exact_head_verdict_ref")
-    ):
+    if proof.get("merge_sha") != APPS_REVISION or proof.get("reviewed_tree") != APPS_TREE or proof.get("merge_tree") != APPS_TREE or not proof.get("merged_at") or not proof.get("r_exact_head_verdict_ref"):
         raise SystemExit("release-proof")
 
     destination.mkdir(parents=True, exist_ok=True)
@@ -320,13 +239,7 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
     (destination / "dist-manifest.json").write_bytes(manifest_bytes)
     shutil.copy2(provenance_path, destination / "provenance.json")
     shutil.copy2(proof_path, destination / "merged-pr-proof.json")
-
-    executor = {
-        "kind": "exact-existing-release",
-        "operation": "nix-build-voice-ui-dist",
-        "readback": True,
-        "grade": "source",
-    }
+    executor = {"kind": "exact-existing-release", "operation": "nix-build-voice-ui-dist", "readback": True, "grade": "source"}
     receipt = {
         "kind": "governance.packageContractBuildReceipt.v2",
         "authority": False,
@@ -341,25 +254,9 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
         "manifestDigest": "sha256:" + EXPECTED_MANIFEST_SHA256,
         "provenanceDigest": "sha256:" + EXPECTED_RELEASE_ASSETS["provenance.json"]["sha256"],
         "proofDigest": "sha256:" + EXPECTED_RELEASE_ASSETS["merged-pr-proof.json"]["sha256"],
-        "provider": {
-            "repository": "roccho-dev/apps",
-            "releaseTag": RELEASE_TAG,
-            "runId": 38339283395,
-            "runAttempt": 2,
-            "artifactId": 11787016196,
-            "artifactDigest": "sha256:f9eb3f7ec6f8ef1643c86ca8d88d069c7b8b7e08b386d203afee18ea37e9b208",
-            "assets": observed_assets,
-        },
+        "provider": {"repository": "roccho-dev/apps", "releaseTag": RELEASE_TAG, "runId": 38339283395, "runAttempt": 2, "artifactId": 11787016196, "artifactDigest": "sha256:f9eb3f7ec6f8ef1643c86ca8d88d069c7b8b7e08b386d203afee18ea37e9b208", "assets": observed_assets},
     }
-    evidence = {
-        "kind": "governance.packageContractEvidenceInput.v1",
-        "authority": False,
-        "targetId": "apps-shape-preflight",
-        "candidate": APPS_REVISION,
-        "mode": "exact-existing-release",
-        "executor": executor,
-        "receipt": receipt,
-    }
+    evidence = {"kind": "governance.packageContractEvidenceInput.v1", "authority": False, "targetId": "apps-shape-preflight", "candidate": APPS_REVISION, "mode": "exact-existing-release", "executor": executor, "receipt": receipt}
     (destination / "evidence.json").write_text(canonical(evidence) + "\n", encoding="utf-8")
     shutil.rmtree(work)
 
