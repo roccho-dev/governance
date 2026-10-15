@@ -16,6 +16,12 @@ TARGET_DIR = ROOT / "tools/package_contract_targets"
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 TARGET_ID = re.compile(r"^[a-z][a-z0-9-]*$")
 STATUS_EXIT = {"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}
+REQUIRED_NEGATIVE = {
+    "contract-drift": "OPEN",
+    "missing-observation": "OPEN",
+    "wrong-candidate": "OPEN",
+    "missing-admission": "UNKNOWN",
+}
 COMMON_CHECKER_PATH = "tools/check-package-contract-closure-bundle.py"
 
 
@@ -83,6 +89,36 @@ def _inside_root(path: Path) -> bool:
         return False
 
 
+def validate_provider_relation(binding: dict[str, Any]) -> None:
+    target = binding.get("targetSource")
+    need(isinstance(target, dict), "target-source-binding")
+    target_repository = target.get("repository")
+    provider_repository = binding.get("providerRepository")
+    need(
+        isinstance(target_repository, str) and target_repository != "",
+        "target-source-repository",
+    )
+    need(
+        isinstance(provider_repository, str) and provider_repository != "",
+        "provider-repository",
+    )
+    if target_repository == provider_repository:
+        return
+    alias = binding.get("providerAlias")
+    need(isinstance(alias, dict), "target-provider-relation")
+    need(
+        alias
+        == {
+            "logicalRepository": binding.get("logicalRepository"),
+            "providerRepository": provider_repository,
+            "targetRepository": target_repository,
+            "relation": "current-provider-for-logical-contract",
+            "authority": False,
+        },
+        "target-provider-relation",
+    )
+
+
 def target_paths(target_id: str) -> tuple[Path, Path]:
     need(TARGET_ID.fullmatch(target_id) is not None, "target-id")
     adapter = TARGET_DIR / f"{target_id}.py"
@@ -100,6 +136,7 @@ def load_target(target_id: str) -> tuple[Any, dict[str, Any], dict[str, Any]]:
     need(binding.get("targetId") == target_id, "target-binding-id")
     expected_adapter = adapter_path.relative_to(ROOT).as_posix()
     need(binding.get("adapterPath") == expected_adapter, "target-binding-adapter")
+    validate_provider_relation(binding)
     spec = importlib.util.spec_from_file_location(
         f"package_contract_target_{target_id}", adapter_path
     )
@@ -117,6 +154,10 @@ def load_target(target_id: str) -> tuple[Any, dict[str, Any], dict[str, Any]]:
     ):
         need(description.get(key) == binding.get(key), "adapter-binding:" + key)
     need(description.get("statusExit") == STATUS_EXIT, "adapter-status-exit")
+    need(
+        getattr(module, "EXPECTED_NEGATIVE", None) == REQUIRED_NEGATIVE,
+        "adapter-negative-contract",
+    )
     return module, binding, {
         "adapterPath": expected_adapter,
         "adapterDigest": sha256_file(adapter_path),
@@ -188,7 +229,6 @@ def replay_comparator(
     bundle: Path,
     target_source: Path,
     cli_path: str,
-    expected_negative: dict[str, str],
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, int]]:
     cli = target_source / cli_path
 
@@ -221,7 +261,7 @@ def replay_comparator(
     )
     negative: dict[str, dict[str, Any]] = {}
     exits = {"positive": positive_exit}
-    for name, expected in expected_negative.items():
+    for name, expected in REQUIRED_NEGATIVE.items():
         result, code = one(
             bundle / f"negative-{name}-input.json",
             bundle / f"negative-{name}-admission.json",
@@ -252,9 +292,6 @@ def verify_bundle(
         if governance_policy_source is not None
         else accepted_requirement_source
     )
-    governance_candidate = governance_candidate or read_object(
-        bundle / "bound-verification.json", "bound"
-    ).get("observerRevision")
 
     need(HEX40.fullmatch(target_candidate) is not None, "target-candidate")
     need(
@@ -281,7 +318,9 @@ def verify_bundle(
 
     bindings = read_object(bundle / "source-bindings.json", "source-bindings")
     source_paths = module.SOURCE_PATHS
-    need(set(source_paths).issubset(bindings), "target-source-universe")
+    accepted_files = module.ACCEPTED_FILES
+    expected_source_roles = set(source_paths) | set(accepted_files) | {"observer"}
+    need(set(bindings) == expected_source_roles, "source-binding-universe")
     target_sources: dict[str, dict[str, Any]] = {}
     for key, relative in source_paths.items():
         target_sources[key] = verify_source_binding(
@@ -362,8 +401,8 @@ def verify_bundle(
     )
     need(verified.get("evidenceBound") is True, "verifier-evidence-bound")
 
-    accepted_files = module.ACCEPTED_FILES
     allowed = binding["acceptedRequirementSource"]["allowedPaths"]
+    need(set(allowed) == set(accepted_files), "accepted-path-universe")
     accepted_sources: dict[str, dict[str, Any]] = {}
     for key, relative in accepted_files.items():
         spec = allowed.get(key)
@@ -471,7 +510,6 @@ def verify_bundle(
         bundle,
         target_source,
         module.SOURCE_PATHS["comparatorCli"],
-        module.EXPECTED_NEGATIVE,
     )
     need(
         positive.get("status") == "CLOSED" and positive.get("findings") == [],
@@ -479,7 +517,7 @@ def verify_bundle(
     )
     need(
         {key: value.get("status") for key, value in negative.items()}
-        == module.EXPECTED_NEGATIVE,
+        == REQUIRED_NEGATIVE,
         "negative",
     )
     need(
@@ -511,9 +549,9 @@ def verify_bundle(
         "governancePolicyRevision": binding["governancePolicySource"]["revision"],
         "contractDiffStatus": positive["status"],
         "contractDiffExit": comparator_exit["positive"],
-        "negativeStatus": module.EXPECTED_NEGATIVE,
+        "negativeStatus": REQUIRED_NEGATIVE,
         "negativeExit": {
-            name: comparator_exit[name] for name in module.EXPECTED_NEGATIVE
+            name: comparator_exit[name] for name in REQUIRED_NEGATIVE
         },
         "scopeDigest": sha256_file(scope_path),
         "evidenceDigest": sha256_file(evidence_path),
