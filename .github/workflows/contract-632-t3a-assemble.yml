@@ -36,7 +36,10 @@ jobs:
           cat \
             .contract-632-t3a/workflow.part1 \
             .contract-632-t3a/workflow.part2a \
-            .contract-632-t3a/workflow.part2b \
+            .contract-632-t3a/workflow.part2b.1 \
+            .contract-632-t3a/workflow.part2b.2 \
+            .contract-632-t3a/workflow.part2b.3 \
+            .contract-632-t3a/workflow.part2b.4 \
             | base64 -d | gzip -d > .github/workflows/contract-632-phase4.yml
           chmod +x tools/check-package-contract-closure-bundle.py tools/check-package-final-scope-purpose-join.py
           rm -rf .contract-632-t3a
