@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import re
 import subprocess
@@ -10,29 +11,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
+ROOT = Path(__file__).resolve().parents[1]
+TARGET_DIR = ROOT / "tools/package_contract_targets"
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
-GOVERNANCE_REVISION = "5b26984eb59e4c03f9d0fe34891fea5e4a436a16"
-OPS_VERIFIER_PATH = "tools/contract-632-phase4-bind.py"
-OBSERVER_REPOSITORY = "roccho-dev/governance"
-OBSERVER_PATH = "tools/check-package-contract-closure-bundle.py"
-OPS_CEILING = "OPS_SELF_DIFF_CONSUMED_NOT_ORGANIZATION_ADMISSION"
-OBLIGATION = "ops.final-ci-migration-consumer.v1"
-ROLE = "final-ci-receipt"
-
-OPS_SOURCE_PATHS = {
-    "providerClaim": "governance/final-ci-claim.v1.json",
-    "receiptProducer": "tools/check-final-ci-consumer.py",
-    "comparatorCli": "packages/contract-diff/bin/contract-diff.py",
-    "comparatorCore": "packages/contract-diff/core.py",
-    "binder": OPS_VERIFIER_PATH,
-}
-
-EXPECTED_NEGATIVE = {
-    "contract-drift": "OPEN",
-    "missing-observation": "OPEN",
-    "wrong-candidate": "OPEN",
-    "missing-admission": "UNKNOWN",
-}
+TARGET_ID = re.compile(r"^[a-z][a-z0-9-]*$")
+STATUS_EXIT = {"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}
+COMMON_CHECKER_PATH = "tools/check-package-contract-closure-bundle.py"
 
 
 def canonical(value: Any) -> str:
@@ -51,6 +35,11 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     return sha256_bytes(path.read_bytes())
+
+
+def git_blob_file(path: Path) -> str:
+    raw = path.read_bytes()
+    return hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
 def digest(value: Any) -> str:
@@ -86,35 +75,80 @@ def check_token(value: str) -> str:
     return token
 
 
-def semantic_contract(
-    repository: str,
-    role: str,
-    branch: str,
-    check: str,
-    assertion: str,
-    binding: str,
-) -> dict[str, Any]:
-    body = {
-        "capability": "final-ci-migration-consumer",
-        "consumer": repository,
-        "stage": role,
-        "target": {
-            "provider": "github",
-            "resource": check_token(check),
-            "account": branch,
-        },
-        "slot": assertion,
-        "binding": binding,
-        "profile": [
-            {
-                "role": ROLE,
-                "operation": "check",
-                "readback": True,
-                "grade": "real",
-            }
-        ],
+def _inside_root(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(ROOT)
+        return True
+    except ValueError:
+        return False
+
+
+def target_paths(target_id: str) -> tuple[Path, Path]:
+    need(TARGET_ID.fullmatch(target_id) is not None, "target-id")
+    adapter = TARGET_DIR / f"{target_id}.py"
+    binding = TARGET_DIR / f"{target_id}.target.json"
+    need(_inside_root(adapter) and _inside_root(binding), "target-path")
+    need(adapter.is_file() and not adapter.is_symlink(), "adapter-file")
+    need(binding.is_file() and not binding.is_symlink(), "target-binding-file")
+    return adapter, binding
+
+
+def load_target(target_id: str) -> tuple[Any, dict[str, Any], dict[str, Any]]:
+    adapter_path, binding_path = target_paths(target_id)
+    binding = read_object(binding_path, "target-binding")
+    need(binding.get("kind") == "governance.packageContractTarget.v1", "target-binding-kind")
+    need(binding.get("targetId") == target_id, "target-binding-id")
+    expected_adapter = adapter_path.relative_to(ROOT).as_posix()
+    need(binding.get("adapterPath") == expected_adapter, "target-binding-adapter")
+    spec = importlib.util.spec_from_file_location(
+        f"package_contract_target_{target_id}", adapter_path
+    )
+    need(spec is not None and spec.loader is not None, "adapter-import")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    description = module.describe()
+    need(isinstance(description, dict), "adapter-description")
+    for key in (
+        "targetId",
+        "logicalRepository",
+        "providerRepository",
+        "claimCeiling",
+        "obligationId",
+    ):
+        need(description.get(key) == binding.get(key), "adapter-binding:" + key)
+    need(description.get("statusExit") == STATUS_EXIT, "adapter-status-exit")
+    return module, binding, {
+        "adapterPath": expected_adapter,
+        "adapterDigest": sha256_file(adapter_path),
+        "targetBindingPath": binding_path.relative_to(ROOT).as_posix(),
+        "targetBindingDigest": sha256_file(binding_path),
     }
-    return {"obligation_digest": digest(body), **body}
+
+
+def discover_targets() -> list[str]:
+    TARGET_DIR.mkdir(parents=True, exist_ok=True)
+    py_ids = {
+        path.stem
+        for path in TARGET_DIR.glob("*.py")
+        if path.name != "__init__.py"
+    }
+    json_ids = {
+        path.name[: -len(".target.json")]
+        for path in TARGET_DIR.glob("*.target.json")
+    }
+    need(py_ids == json_ids, "adapter-binding-set")
+    targets = sorted(py_ids)
+    need(len(targets) == len(set(targets)), "duplicate-target-id")
+    for target_id in targets:
+        load_target(target_id)
+    return targets
+
+
+def verify_git_head(root: Path, expected: str, label: str) -> None:
+    need(root.is_dir(), label + "-root")
+    process = run(["git", "rev-parse", "HEAD"], root)
+    need(process.returncode == 0, label + "-git-head")
+    need(process.stdout.strip() == expected, label + "-revision")
 
 
 def verify_source_binding(
@@ -125,6 +159,7 @@ def verify_source_binding(
     source_path: str,
     native: Path,
     bundle: Path,
+    expected_git_blob: str | None = None,
 ) -> dict[str, Any]:
     row = bindings.get(key)
     need(isinstance(row, dict), "source-binding:" + key)
@@ -135,79 +170,151 @@ def verify_source_binding(
     need(source.get("path") == source_path, "source-path:" + key)
 
     bundle_path = row.get("bundlePath")
-    need(isinstance(bundle_path, str) and bundle_path != "", "source-bundle-path:" + key)
+    need(
+        isinstance(bundle_path, str) and bundle_path != "",
+        "source-bundle-path:" + key,
+    )
     carried = bundle / bundle_path
     need(native.is_file() and not native.is_symlink(), "source-native:" + key)
     need(carried.is_file() and not carried.is_symlink(), "source-carried:" + key)
     need(carried.read_bytes() == native.read_bytes(), "source-bytes:" + key)
     need(source.get("digest") == sha256_file(native), "source-digest:" + key)
+    if expected_git_blob is not None:
+        need(git_blob_file(native) == expected_git_blob, "source-git-blob:" + key)
     return source
 
 
-def verify_ops_candidate_sources(
-    bindings: dict[str, Any],
-    ops_source: Path,
-    ops_candidate: str,
+def replay_comparator(
     bundle: Path,
-) -> dict[str, dict[str, Any]]:
-    need(set(OPS_SOURCE_PATHS).issubset(bindings), "ops-source-universe")
-    verified: dict[str, dict[str, Any]] = {}
-    for key, relative in OPS_SOURCE_PATHS.items():
-        verified[key] = verify_source_binding(
-            bindings,
-            key,
-            "roccho-org/ops",
-            ops_candidate,
-            relative,
-            ops_source / relative,
-            bundle,
+    target_source: Path,
+    cli_path: str,
+    expected_negative: dict[str, str],
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, int]]:
+    cli = target_source / cli_path
+
+    def one(input_path: Path, admission_path: Path, result_path: Path, label: str):
+        process = run(
+            [
+                sys.executable,
+                str(cli),
+                "--input",
+                str(input_path),
+                "--admission",
+                str(admission_path),
+            ],
+            target_source,
         )
-    return verified
+        need(process.stdout.strip() != "", "comparator-output:" + label)
+        actual = json.loads(process.stdout)
+        stored = read_object(result_path, "comparator-result:" + label)
+        need(actual == stored, "comparator-result:" + label)
+        status = actual.get("status")
+        need(status in STATUS_EXIT, "comparator-status:" + label)
+        need(process.returncode == STATUS_EXIT[status], "comparator-exit:" + label)
+        return actual, process.returncode
+
+    positive, positive_exit = one(
+        bundle / "contract-diff-input.json",
+        bundle / "contract-diff-admission.json",
+        bundle / "contract-diff-positive.json",
+        "positive",
+    )
+    negative: dict[str, dict[str, Any]] = {}
+    exits = {"positive": positive_exit}
+    for name, expected in expected_negative.items():
+        result, code = one(
+            bundle / f"negative-{name}-input.json",
+            bundle / f"negative-{name}-admission.json",
+            bundle / f"contract-diff-negative-{name}.json",
+            name,
+        )
+        need(result.get("status") == expected, "negative-status:" + name)
+        negative[name] = result
+        exits[name] = code
+    return positive, negative, exits
 
 
 def verify_bundle(
     bundle: Path,
-    ops_source: Path,
-    ops_candidate: str,
-    accepted_governance: Path,
+    target_source: Path,
+    target_candidate: str,
+    accepted_requirement_source: Path,
+    target_id: str = "ops",
     governance_candidate: str | None = None,
+    governance_policy_source: Path | None = None,
 ) -> dict[str, Any]:
+    module, binding, target_identity = load_target(target_id)
     bundle = bundle.resolve()
-    ops_source = ops_source.resolve()
-    accepted_governance = accepted_governance.resolve()
+    target_source = target_source.resolve()
+    accepted_requirement_source = accepted_requirement_source.resolve()
+    governance_policy_source = (
+        governance_policy_source.resolve()
+        if governance_policy_source is not None
+        else accepted_requirement_source
+    )
     governance_candidate = governance_candidate or read_object(
         bundle / "bound-verification.json", "bound"
     ).get("observerRevision")
 
-    need(HEX40.fullmatch(ops_candidate) is not None, "ops-candidate")
+    need(HEX40.fullmatch(target_candidate) is not None, "target-candidate")
     need(
         isinstance(governance_candidate, str)
         and HEX40.fullmatch(governance_candidate) is not None,
         "governance-candidate",
     )
     need(bundle.is_dir(), "bundle")
+    need(
+        target_candidate == binding["targetSource"]["revision"],
+        "target-binding-candidate",
+    )
+    verify_git_head(target_source, target_candidate, "target-source")
+    verify_git_head(
+        accepted_requirement_source,
+        binding["acceptedRequirementSource"]["revision"],
+        "accepted-requirement-source",
+    )
+    verify_git_head(
+        governance_policy_source,
+        binding["governancePolicySource"]["revision"],
+        "governance-policy-source",
+    )
 
     bindings = read_object(bundle / "source-bindings.json", "source-bindings")
-    ops_sources = verify_ops_candidate_sources(
-        bindings, ops_source, ops_candidate, bundle
-    )
-    verifier = ops_source / OPS_VERIFIER_PATH
-    verifier_source = ops_sources["binder"]
+    source_paths = module.SOURCE_PATHS
+    need(set(source_paths).issubset(bindings), "target-source-universe")
+    target_sources: dict[str, dict[str, Any]] = {}
+    for key, relative in source_paths.items():
+        target_sources[key] = verify_source_binding(
+            bindings,
+            key,
+            binding["providerRepository"],
+            target_candidate,
+            relative,
+            target_source / relative,
+            bundle,
+        )
 
-    observer_native = Path(__file__).resolve()
+    adapter_path = ROOT / target_identity["adapterPath"]
     observer_source = verify_source_binding(
         bindings,
         "observer",
-        OBSERVER_REPOSITORY,
+        "roccho-dev/governance",
         governance_candidate,
-        OBSERVER_PATH,
-        observer_native,
+        target_identity["adapterPath"],
+        adapter_path,
         bundle,
     )
-
+    verifier_path = module.LOWER_VERIFIER_PATH
+    verifier_source = target_sources["binder"]
     process = run(
-        [sys.executable, str(verifier), "verify", "--bundle", str(bundle)],
-        ops_source,
+        [
+            sys.executable,
+            str(target_source / verifier_path),
+            "verify",
+            "--bundle",
+            str(bundle),
+        ],
+        target_source,
     )
     need(
         process.returncode == 0 and process.stdout.strip() != "",
@@ -224,18 +331,30 @@ def verify_bundle(
         verified.get("releasePublished") is False
         and verified.get("remaining") == 0,
         "verifier-boundary",
-   )
-    need(verified.get("claimCeiling") == OPS_CEILING, "verifier-ceiling")
-    need(verified.get("opsCandidate") == ops_candidate, "verifier-candidate")
-    need(
-        verified.get("governanceRevision") == GOVERNANCE_REVISION,
-        "verifier-governance",
     )
     need(
-        verified.get("observerRevision") == governance_candidate,
+        verified.get("claimCeiling") == binding["claimCeiling"],
+        "verifier-ceiling",
+    )
+    lower_fields = module.LOWER_FIELDS
+    need(
+        verified.get(lower_fields["candidate"]) == target_candidate,
+        "verifier-candidate",
+    )
+    need(
+        verified.get(lower_fields["acceptedRevision"])
+        == binding["acceptedRequirementSource"]["revision"],
+        "verifier-accepted-revision",
+    )
+    need(
+        verified.get(lower_fields["observerRevision"]) == governance_candidate,
         "verifier-observer-revision",
     )
-    need(verified.get("sourceBytesVerified") == 8, "verifier-source-count")
+    need(
+        verified.get("sourceBytesVerified")
+        == binding["expectedSourceBytesVerified"],
+        "verifier-source-count",
+    )
     need(
         verified.get("receiptReplayed") is True
         and verified.get("comparatorReplayed") is True,
@@ -243,75 +362,64 @@ def verify_bundle(
     )
     need(verified.get("evidenceBound") is True, "verifier-evidence-bound")
 
-    accepted_files = {
-        "acceptedDecision": "governance/accepted-final-ci-decision.v1.json",
-        "acceptedRollout": "governance/selected-final-ci-rollout.v1.json",
-    }
+    accepted_files = module.ACCEPTED_FILES
+    allowed = binding["acceptedRequirementSource"]["allowedPaths"]
     accepted_sources: dict[str, dict[str, Any]] = {}
     for key, relative in accepted_files.items():
+        spec = allowed.get(key)
+        need(isinstance(spec, dict), "accepted-path-binding:" + key)
+        need(spec.get("path") == relative, "accepted-path:" + key)
         accepted_sources[key] = verify_source_binding(
             bindings,
             key,
-            "roccho-dev/governance",
-            GOVERNANCE_REVISION,
+            binding["acceptedRequirementSource"]["repository"],
+            binding["acceptedRequirementSource"]["revision"],
             relative,
-            accepted_governance / relative,
+            accepted_requirement_source / relative,
             bundle,
+            spec.get("gitBlob"),
         )
 
     scope_path = bundle / "run-scope.json"
     evidence_path = bundle / "phase4-evidence.json"
     scope = read_object(scope_path, "scope")
     evidence = read_object(evidence_path, "evidence")
-    need(scope.get("selectedObligations") == [OBLIGATION], "scope-obligation")
-    need(scope.get("opsCandidate") == ops_candidate, "scope-candidate")
-    need(scope.get("governanceRevision") == GOVERNANCE_REVISION, "scope-governance")
+    need(
+        scope.get("selectedObligations") == [binding["obligationId"]],
+        "scope-obligation",
+    )
+    need(
+        scope.get(module.SCOPE_CANDIDATE_FIELD) == target_candidate,
+        "scope-candidate",
+    )
+    need(
+        scope.get("governanceRevision")
+        == binding["governancePolicySource"]["revision"],
+        "scope-governance",
+    )
     need(scope.get("authority") is False, "scope-authority")
 
     decision = read_object(
-        accepted_governance / accepted_files["acceptedDecision"],
+        accepted_requirement_source / accepted_files["acceptedDecision"],
         "accepted-decision",
     )
     rollout = read_object(
-        accepted_governance / accepted_files["acceptedRollout"],
+        accepted_requirement_source / accepted_files["acceptedRollout"],
         "accepted-rollout",
     )
-    selected = [
-        row
-        for row in rollout.get("repositories", [])
-        if isinstance(row, dict) and row.get("assertionId") == OBLIGATION
-    ]
-    need(len(selected) == 1, "accepted-selection")
-    accepted = selected[0]
-    need(
-        decision.get("stableRequiredCheck")
-        == "gov-final-scope-purpose-join / gate",
-        "accepted-final-check",
-   )
-    need(accepted.get("repository") == "roccho-dev/ops", "accepted-repository")
-    need(
-        accepted.get("acceptedBundleDigest")
-        == "sha256:" + str(decision.get("contractCanonicalDigest")),
-        "accepted-binding",
-   )
-    required_contract = semantic_contract(
-        accepted["repository"],
-        accepted["role"],
-        accepted["branch"],
-        decision["stableRequiredCheck"],
-        accepted["assertionId"],
-        accepted["acceptedBundleDigest"],
+    _, required_contract = module.required_contract(
+        decision, rollout, digest, check_token
     )
     need(
         scope.get("acceptedRequirementDigest")
         == required_contract["obligation_digest"],
         "scope-accepted-reconstruction",
-   )
+    )
 
     packet = read_object(bundle / "contract-diff-input.json", "contract-diff-input")
     need(
         packet.get("required", {}).get("rows")
-        == [{"id": OBLIGATION, "contract": required_contract}],
+        == [{"id": binding["obligationId"], "contract": required_contract}],
         "packet-required-reconstruction",
     )
     need(
@@ -320,7 +428,8 @@ def verify_bundle(
         "packet-required-source",
     )
     need(
-        packet.get("provided", {}).get("source") == ops_sources["providerClaim"],
+        packet.get("provided", {}).get("source")
+        == target_sources["providerClaim"],
         "packet-provider-source",
     )
     need(
@@ -328,9 +437,10 @@ def verify_bundle(
         "packet-observer-source",
     )
     need(
-        packet.get("receipts", {}).get("source") == ops_sources["receiptProducer"],
+        packet.get("receipts", {}).get("source")
+        == target_sources["receiptProducer"],
         "packet-receipt-source",
-   )
+    )
     receipt_rows = packet.get("receipts", {}).get("rows")
     need(
         isinstance(receipt_rows, list)
@@ -339,120 +449,204 @@ def verify_bundle(
         "packet-receipt-row",
     )
 
-    expected_evidence = {
-        "kind": "ops.contract632.phase4Evidence.v1",
-        "status": "PASS",
-        "authority": False,
-        "adoption": False,
-        "releasePublished": False,
-        "claimCeiling": OPS_CEILING,
-        "scope": scope,
-        "acceptedRequirement": {
-            "source": accepted_sources["acceptedRollout"],
-            "decisionSource": accepted_sources["acceptedDecision"],
-            "obligationId": OBLIGATION,
-            "contract": required_contract,
-        },
-        "provider": {
-            "source": ops_sources["providerClaim"],
-            "claimDigest": sha256_file(
-                bundle / bindings["providerClaim"]["bundlePath"]
-            ),
-        },
-        "observation": {"source": observer_source, "candidate": ops_candidate},
-        "receipt": {
-            "source": ops_sources["receiptProducer"],
-            "actualReceiptDigest": sha256_file(
-                bundle / "ops-final-ci-consumer-receipt.json"
-            ),
-            "normalizedReceiptDigest": digest(receipt_rows[0]),
-        },
-        "comparator": {
-            "source": ops_sources["comparatorCore"],
-            "positive": read_object(
-                bundle / "contract-diff-positive.json", "positive"
-            ),
-            "negative": {
-                name: read_object(
-                    bundle / f"contract-diff-negative-{name}.json",
-                    "negative:" + name,
-                )
-                for name in EXPECTED_NEGATIVE
-            },
-        },
-        "remaining": 0,
+    sources = {
+        **target_sources,
+        **accepted_sources,
+        "observer": observer_source,
     }
+    expected_evidence = module.expected_evidence(
+        scope=scope,
+        sources=sources,
+        bindings=bindings,
+        bundle=bundle,
+        receipt_rows=receipt_rows,
+        read_object=read_object,
+        sha256_file=sha256_file,
+        digest=digest,
+        required_contract=required_contract,
+    )
     need(evidence == expected_evidence, "evidence-reconstruction")
-    positive = expected_evidence["comparator"]["positive"]
-    negative = expected_evidence["comparator"]["negative"]
+
+    positive, negative, comparator_exit = replay_comparator(
+        bundle,
+        target_source,
+        module.SOURCE_PATHS["comparatorCli"],
+        module.EXPECTED_NEGATIVE,
+    )
     need(
         positive.get("status") == "CLOSED" and positive.get("findings") == [],
         "positive",
     )
     need(
         {key: value.get("status") for key, value in negative.items()}
-        == EXPECTED_NEGATIVE,
+        == module.EXPECTED_NEGATIVE,
         "negative",
     )
-    need(verified.get("scopeDigest") == sha256_file(scope_path), "scope-digest")
+    need(
+        verified.get("scopeDigest") == sha256_file(scope_path), "scope-digest"
+    )
     need(
         verified.get("evidenceDigest") == sha256_file(evidence_path),
         "evidence-digest",
     )
 
     member = {
-        "kind": "governance.packageContractClosureMember.v2",
+        "kind": "governance.packageContractClosureMember.v3",
         "status": "pass",
         "authority": False,
         "adoption": False,
         "releasePublished": False,
-        "claimCeiling": OPS_CEILING,
+        "claimCeiling": binding["claimCeiling"],
+        "targetId": target_id,
+        "logicalRepository": binding["logicalRepository"],
+        "providerRepository": binding["providerRepository"],
         "scopeId": scope.get("scopeId"),
-        "obligationId": OBLIGATION,
-        "opsCandidate": ops_candidate,
+        "obligationId": binding["obligationId"],
+        "targetCandidate": target_candidate,
         "governanceCandidate": governance_candidate,
         "acceptedRequirementDigest": required_contract["obligation_digest"],
-        "contractDiffStatus": "CLOSED",
-        "negativeStatus": EXPECTED_NEGATIVE,
+        "acceptedRequirementRevision": binding["acceptedRequirementSource"][
+            "revision"
+        ],
+        "governancePolicyRevision": binding["governancePolicySource"]["revision"],
+        "contractDiffStatus": positive["status"],
+        "contractDiffExit": comparator_exit["positive"],
+        "negativeStatus": module.EXPECTED_NEGATIVE,
+        "negativeExit": {
+            name: comparator_exit[name] for name in module.EXPECTED_NEGATIVE
+        },
         "scopeDigest": sha256_file(scope_path),
         "evidenceDigest": sha256_file(evidence_path),
         "remaining": 0,
         "evidenceBound": True,
         "observerMeaningVerified": True,
         "evidenceReconstructed": True,
-        "opsCandidateSourceClosureVerified": True,
-        "opsCandidateSourcesVerified": len(ops_sources),
+        "targetSourceClosureVerified": True,
+        "targetSourcesVerified": len(target_sources),
         "sourceBytesVerified": verified["sourceBytesVerified"],
         "receiptReplayed": True,
         "comparatorReplayed": True,
-        "opsVerifierPath": OPS_VERIFIER_PATH,
-        "opsVerifierDigest": verifier_source["digest"],
-        "observerPath": OBSERVER_PATH,
-        "observerDigest": observer_source["digest"],
-        "acceptedGovernanceRevision": GOVERNANCE_REVISION,
+        "lowerVerifierPath": verifier_path,
+        "lowerVerifierDigest": verifier_source["digest"],
+        "adapterPath": target_identity["adapterPath"],
+        "adapterDigest": target_identity["adapterDigest"],
+        "targetBindingPath": target_identity["targetBindingPath"],
+        "targetBindingDigest": target_identity["targetBindingDigest"],
+        "commonCheckerPath": COMMON_CHECKER_PATH,
+        "commonCheckerDigest": sha256_file(Path(__file__).resolve()),
         "bundleManifestDigest": sha256_file(bundle / "bundle-manifest.json"),
     }
     member["memberDigest"] = sha256_bytes(canonical(member).encode())
     return member
 
 
+def produce_bundle(
+    *,
+    target_id: str,
+    bundle: Path,
+    target_source: Path,
+    accepted_requirement_source: Path,
+    governance_policy_source: Path,
+    governance_candidate: str,
+) -> dict[str, Any]:
+    module, binding, target_identity = load_target(target_id)
+    target_candidate = binding["targetSource"]["revision"]
+    verify_git_head(target_source.resolve(), target_candidate, "target-source")
+    verify_git_head(
+        accepted_requirement_source.resolve(),
+        binding["acceptedRequirementSource"]["revision"],
+        "accepted-requirement-source",
+    )
+    verify_git_head(
+        governance_policy_source.resolve(),
+        binding["governancePolicySource"]["revision"],
+        "governance-policy-source",
+    )
+    context = {
+        "bundle": str(bundle.resolve()),
+        "targetSourceRoot": str(target_source.resolve()),
+        "acceptedRequirementRoot": str(accepted_requirement_source.resolve()),
+        "governancePolicyRoot": str(governance_policy_source.resolve()),
+        "targetCandidate": target_candidate,
+        "acceptedRequirementRevision": binding["acceptedRequirementSource"][
+            "revision"
+        ],
+        "governanceCandidate": governance_candidate,
+        "observerRoot": str(ROOT),
+        "adapterPath": target_identity["adapterPath"],
+    }
+    result = module.produce(context)
+    need(
+        isinstance(result, dict)
+        and result.get("targetId") == target_id
+        and result.get("authority") is False,
+        "target-materials",
+    )
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("check", nargs="?")
-    parser.add_argument("--bundle", type=Path, required=True)
-    parser.add_argument("--ops-source", type=Path, required=True)
-    parser.add_argument("--ops-candidate", required=True)
-    parser.add_argument("--accepted-governance", type=Path, required=True)
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["discover", "plan", "produce", "check"],
+        default="check",
+    )
+    parser.add_argument("--target-id")
+    parser.add_argument("--bundle", type=Path)
+    parser.add_argument("--target-source", type=Path)
+    parser.add_argument("--target-candidate")
+    parser.add_argument("--accepted-requirement-source", type=Path)
+    parser.add_argument("--governance-policy-source", type=Path)
     parser.add_argument("--governance-candidate")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
-    report = verify_bundle(
+
+    if args.command == "discover":
+        print(canonical({"kind": "governance.packageContractTargets.v1", "targets": discover_targets()}))
+        return 0
+    if not args.target_id:
+        parser.error("--target-id is required")
+    if args.command == "plan":
+        _, binding, identity = load_target(args.target_id)
+        print(canonical({"binding": binding, "identity": identity}))
+        return 0
+
+    required = (
         args.bundle,
-        args.ops_source,
-        args.ops_candidate,
-        args.accepted_governance,
+        args.target_source,
+        args.accepted_requirement_source,
+        args.governance_policy_source,
         args.governance_candidate,
-   )
+    )
+    if any(value is None for value in required):
+        parser.error(
+            "produce/check require --bundle, --target-source, "
+            "--accepted-requirement-source, --governance-policy-source, "
+            "and --governance-candidate"
+        )
+    _, binding, _ = load_target(args.target_id)
+    target_candidate = args.target_candidate or binding["targetSource"]["revision"]
+    if args.command == "produce":
+        report = produce_bundle(
+            target_id=args.target_id,
+            bundle=args.bundle,
+            target_source=args.target_source,
+            accepted_requirement_source=args.accepted_requirement_source,
+            governance_policy_source=args.governance_policy_source,
+            governance_candidate=args.governance_candidate,
+        )
+    else:
+        report = verify_bundle(
+            args.bundle,
+            args.target_source,
+            target_candidate,
+            args.accepted_requirement_source,
+            args.target_id,
+            args.governance_candidate,
+            args.governance_policy_source,
+        )
     text = canonical(report) + "\n"
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
