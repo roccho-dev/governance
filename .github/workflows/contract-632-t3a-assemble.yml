@@ -1,0 +1,65 @@
+name: contract-632-t3a-assemble
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/contract-632-t3a-assemble.yml'
+      - '.contract-632-t3a/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: governance-contract-632-t3a-assemble-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  assemble:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Assemble exact T3A source and remove transport files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          mkdir -p tools .github/workflows
+          base64 -d .contract-632-t3a/checker.gz.b64 | gzip -d > tools/check-package-contract-closure-bundle.py
+          base64 -d .contract-632-t3a/final.gz.b64 | gzip -d > tools/check-package-final-scope-purpose-join.py
+          base64 -d .contract-632-t3a/workflow.gz.b64 | gzip -d > .github/workflows/contract-632-phase4.yml
+          chmod +x tools/check-package-contract-closure-bundle.py tools/check-package-final-scope-purpose-join.py
+          rm -rf .contract-632-t3a
+          rm .github/workflows/contract-632-t3a-assemble.yml
+
+          python3 -m py_compile \
+            tools/package_contract_targets/ops.py \
+            tools/check-package-contract-closure-bundle.py \
+            tools/check-package-final-scope-purpose-join.py
+          python3 tools/check-package-contract-closure-bundle.py discover \
+            | jq -e '.targets == ["ops"]' >/dev/null
+          jq -e '.targetId == "ops" and .kind == "governance.packageContractTarget.v1"' \
+            tools/package_contract_targets/ops.target.json >/dev/null
+
+          git config user.name roccho
+          git config user.email 40359643+roccho-dev@users.noreply.github.com
+          git add -A
+          git commit -m 'refactor(contract): extract reusable package target port'
+          git fetch origin "$BASE_REF"
+          git diff --name-only "origin/$BASE_REF...HEAD" | sort > actual-files.txt
+          cat > expected-files.txt <<'EOF'
+          .github/workflows/contract-632-phase4.yml
+          tools/check-package-contract-closure-bundle.py
+          tools/check-package-final-scope-purpose-join.py
+          tools/package_contract_targets/ops.py
+          tools/package_contract_targets/ops.target.json
+          EOF
+          sort -o expected-files.txt expected-files.txt
+          diff -u expected-files.txt actual-files.txt
+          git push origin "HEAD:$HEAD_REF"
