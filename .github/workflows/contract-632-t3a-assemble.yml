@@ -53,6 +53,7 @@ jobs:
             | jq -e '.targets == ["ops"]' >/dev/null
           jq -e '.targetId == "ops" and .kind == "governance.packageContractTarget.v1"' \
             tools/package_contract_targets/ops.target.json >/dev/null
+          rm -rf tools/__pycache__ tools/package_contract_targets/__pycache__
 
           git config user.name roccho
           git config user.email 40359643+roccho-dev@users.noreply.github.com
