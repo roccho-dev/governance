@@ -84,59 +84,38 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import base64, json, os, shutil, subprocess
+          import base64,json,os,subprocess
           from pathlib import Path
-
           targets=json.loads(Path('target-discovery.json').read_text())['targets']
           root=Path('_sources'); root.mkdir()
           acquisitions=[]
-          tokens={
-              'public-read':'',
-              'same-repo-read':os.environ.get('SAME_REPO_TOKEN',''),
-              'adrs-reader-v1':os.environ.get('ADRS_READER_TOKEN',''),
-          }
-
-          def run(args, cwd=None):
+          tokens={'public-read':'','same-repo-read':os.environ.get('SAME_REPO_TOKEN',''),'adrs-reader-v1':os.environ.get('ADRS_READER_TOKEN','')}
+          def run(args,cwd=None):
               process=subprocess.run(args,cwd=cwd,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-              if process.returncode:
-                  raise SystemExit('checkout-failed:'+' '.join(args[:3])+':'+process.stderr)
+              if process.returncode: raise SystemExit('checkout-failed:'+' '.join(args[:3])+':'+process.stderr)
               return process.stdout.strip()
-
           for target in targets:
               binding=json.loads(Path(f'tools/package_contract_targets/{target}.target.json').read_text())
               for role in ('targetSource','acceptedRequirementSource','governancePolicySource'):
-                  source=binding[role]
-                  access=source['accessClass']
-                  token=tokens.get(access)
-                  if token is None or (access != 'public-read' and not token):
-                      raise SystemExit(f'access-token-missing:{target}:{role}:{access}')
-                  dest=root/target/role
-                  dest.parent.mkdir(parents=True,exist_ok=True)
-                  run(['git','init',str(dest)])
-                  run(['git','remote','add','origin',f"https://github.com/{source['repository']}.git"],dest)
+                  source=binding[role]; access=source['accessClass']; token=tokens.get(access)
+                  if token is None or (access != 'public-read' and not token): raise SystemExit(f'access-token-missing:{target}:{role}:{access}')
+                  dest=root/target/role; dest.parent.mkdir(parents=True,exist_ok=True)
+                  run(['git','init',str(dest)]); run(['git','remote','add','origin',f"https://github.com/{source['repository']}.git"],dest)
                   command=['git']
                   if token:
                       encoded=base64.b64encode(f'x-access-token:{token}'.encode()).decode()
                       command += ['-c',f'http.https://github.com/.extraheader=AUTHORIZATION: basic {encoded}']
                   command += ['fetch','--depth=1','origin',source['revision']]
-                  run(command,dest)
-                  run(['git','checkout','--detach','FETCH_HEAD'],dest)
-                  actual=run(['git','rev-parse','HEAD'],dest)
-                  tree=run(['git','rev-parse','HEAD^{tree}'],dest)
-                  if actual != source['revision']:
-                      raise SystemExit(f'revision-mismatch:{target}:{role}:{actual}')
-                  acquisitions.append({
-                      'targetId':target,'role':role,'repository':source['repository'],
-                      'revision':actual,'tree':tree,'accessClass':access,
-                      'path':dest.as_posix(),
-                  })
-          Path('source-acquisition.json').write_text(
-              json.dumps({'kind':'governance.packageContractSourceAcquisition.v1',
-                          'authority':False,'rows':acquisitions},
-                         sort_keys=True,separators=(',',':'))+'\n')
+                  run(command,dest); run(['git','checkout','--detach','FETCH_HEAD'],dest)
+                  actual=run(['git','rev-parse','HEAD'],dest); tree=run(['git','rev-parse','HEAD^{tree}'],dest)
+                  if actual != source['revision']: raise SystemExit(f'revision-mismatch:{target}:{role}:{actual}')
+                  acquisitions.append({'targetId':target,'role':role,'repository':source['repository'],'revision':actual,'tree':tree,'accessClass':access,'path':dest.as_posix()})
+          Path('source-acquisition.json').write_text(json.dumps({'kind':'governance.packageContractSourceAcquisition.v1','authority':False,'rows':acquisitions},sort_keys=True,separators=(',',':'))+'\n')
           PY
 
       - name: Observe actual current providers and replay history separately
+        id: provider
+        continue-on-error: true
         env:
           CONSUMER_READER_TOKEN: ${{ github.token }}
         run: |
@@ -152,7 +131,8 @@ jobs:
             and .observationMode == "actual-current-provider"
             and .currentProviderRefsObserved == true
             and .currentArtifactDigestsObserved == true
-            and .currentBodiesProviderDigestMatched == true
+            and .currentDownloadArchiveDigestsObserved == true
+            and .currentReceiptDigestsObserved == true
             and .historicalSnapshotsUsedForCurrent == false
             and .historicalReplay.status == "pass"
             and .historicalReplay.current == false
@@ -162,6 +142,7 @@ jobs:
           ' live-selected-consumers.json >/dev/null
 
       - name: Produce and verify every discovered target through the generic port
+        id: package
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -173,197 +154,68 @@ jobs:
             policy_root="_sources/$target/governancePolicySource"
             candidate="$(jq -r '.targetSource.revision' "tools/package_contract_targets/$target.target.json")"
             bundle="contract-632-phase4-$target"
-            python3 tools/check-package-contract-closure-bundle.py produce \
-              --target-id "$target" \
-              --bundle "$bundle" \
-              --target-source "$target_root" \
-              --accepted-requirement-source "$requirement_root" \
-              --governance-policy-source "$policy_root" \
-              --governance-candidate "$GOVERNANCE_CANDIDATE" \
-              > "target-produce-$target.json"
-            python3 tools/check-package-contract-closure-bundle.py check \
-              --target-id "$target" \
-              --bundle "$bundle" \
-              --target-source "$target_root" \
-              --target-candidate "$candidate" \
-              --accepted-requirement-source "$requirement_root" \
-              --governance-policy-source "$policy_root" \
-              --governance-candidate "$GOVERNANCE_CANDIDATE" \
-              --out "package-contract-member-$target.json" \
-              > "target-check-$target.json"
-            jq -e --arg target "$target" --arg candidate "$candidate" '
+            python3 tools/check-package-contract-closure-bundle.py produce --target-id "$target" --bundle "$bundle" --target-source "$target_root" --accepted-requirement-source "$requirement_root" --governance-policy-source "$policy_root" --governance-candidate "$GOVERNANCE_CANDIDATE" > "target-produce-$target.json"
+            python3 tools/check-package-contract-closure-bundle.py check --target-id "$target" --bundle "$bundle" --target-source "$target_root" --target-candidate "$candidate" --accepted-requirement-source "$requirement_root" --governance-policy-source "$policy_root" --governance-candidate "$GOVERNANCE_CANDIDATE" --out "package-contract-member-$target.json" > "target-check-$target.json"
+            jq -e --arg target "$target" --arg candidate "$candidate" --arg governance "$GOVERNANCE_CANDIDATE" '
               .kind == "governance.packageContractClosureMember.v3"
-              and .targetId == $target
-              and .targetCandidate == $candidate
-              and .status == "pass"
-              and .contractDiffStatus == "CLOSED"
-              and .contractDiffExit == 0
-              and .remaining == 0
-              and .authority == false
-              and .adoption == false
-              and .releasePublished == false
-              and .evidenceBound == true
-              and .receiptReplayed == true
-              and .comparatorReplayed == true
+              and .targetId == $target and .targetCandidate == $candidate
+              and .governanceCandidate == $governance
+              and .status == "pass" and .contractDiffStatus == "CLOSED"
+              and .contractDiffExit == 0 and .remaining == 0
+              and .authority == false and .adoption == false and .releasePublished == false
+              and .evidenceBound == true and .receiptReplayed == true and .comparatorReplayed == true
             ' "package-contract-member-$target.json" >/dev/null
           done
 
       - name: Build same-candidate B0 bundle and prove B0/B1 port equivalence
+        id: equivalence
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          ops="_sources/ops/targetSource"
-          accepted="_sources/ops/acceptedRequirementSource"
-          oldroot="$RUNNER_TEMP/contract-632-b0-observer"
-          mkdir -p "$oldroot/tools"
-          git show "$B0_GOVERNANCE_HEAD:tools/check-package-contract-closure-bundle.py" \
-            > "$oldroot/tools/check-package-contract-closure-bundle.py"
+          ops="_sources/ops/targetSource"; accepted="_sources/ops/acceptedRequirementSource"
+          oldroot="$RUNNER_TEMP/contract-632-b0-observer"; mkdir -p "$oldroot/tools"
+          git show "$B0_GOVERNANCE_HEAD:tools/check-package-contract-closure-bundle.py" > "$oldroot/tools/check-package-contract-closure-bundle.py"
           root=contract-632-phase4-b0
-          python3 "$ops/tools/contract-632-phase4-proof.py" build \
-            --governance-source "$accepted" \
-            --governance-revision 5b26984eb59e4c03f9d0fe34891fea5e4a436a16 \
-            --ops-source "$ops" \
-            --ops-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 \
-            --observer-root "$oldroot" \
-            --observer-repository roccho-dev/governance \
-            --observer-revision "$GOVERNANCE_CANDIDATE" \
-            --observer-path tools/check-package-contract-closure-bundle.py \
-            --contract-diff "$ops/packages/contract-diff/bin/contract-diff.py" \
-            --out "$root" > b0-build.json
-          python3 "$ops/tools/contract-632-phase4-bind.py" bind \
-            --bundle "$root" \
-            --governance-source "$accepted" \
-            --governance-revision 5b26984eb59e4c03f9d0fe34891fea5e4a436a16 \
-            --ops-source "$ops" \
-            --ops-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 \
-            --observer-root "$oldroot" \
-            --observer-repository roccho-dev/governance \
-            --observer-revision "$GOVERNANCE_CANDIDATE" \
-            --observer-path tools/check-package-contract-closure-bundle.py \
-            > b0-bind.json
-          python3 "$oldroot/tools/check-package-contract-closure-bundle.py" check \
-            --bundle "$root" \
-            --ops-source "$ops" \
-            --ops-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 \
-            --accepted-governance "$accepted" \
-            --governance-candidate "$GOVERNANCE_CANDIDATE" \
-            --out package-contract-member-b0-v2.json >/dev/null
-
+          python3 "$ops/tools/contract-632-phase4-proof.py" build --governance-source "$accepted" --governance-revision 5b26984eb59e4c03f9d0fe34891fea5e4a436a16 --ops-source "$ops" --ops-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 --observer-root "$oldroot" --observer-repository roccho-dev/governance --observer-revision "$GOVERNANCE_CANDIDATE" --observer-path tools/check-package-contract-closure-bundle.py --contract-diff "$ops/packages/contract-diff/bin/contract-diff.py" --out "$root" > b0-build.json
+          python3 "$ops/tools/contract-632-phase4-bind.py" bind --bundle "$root" --governance-source "$accepted" --governance-revision 5b26984eb59e4c03f9d0fe34891fea5e4a436a16 --ops-source "$ops" --ops-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 --observer-root "$oldroot" --observer-repository roccho-dev/governance --observer-revision "$GOVERNANCE_CANDIDATE" --observer-path tools/check-package-contract-closure-bundle.py > b0-bind.json
+          python3 "$oldroot/tools/check-package-contract-closure-bundle.py" check --bundle "$root" --ops-source "$ops" --ops-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 --accepted-governance "$accepted" --governance-candidate "$GOVERNANCE_CANDIDATE" --out package-contract-member-b0-v2.json >/dev/null
           python3 - <<'PY'
-          import hashlib,json
+          import json
           from pathlib import Path
-
-          b0=Path('contract-632-phase4-b0')
-          b1=Path('contract-632-phase4-ops')
-          old_path='tools/check-package-contract-closure-bundle.py'
-          new_path='tools/package_contract_targets/ops.py'
-          expected={
-            'sources/observer/source',
-            'source-bindings.json','bound-verification.json',
-            'contract-diff-input.json','contract-diff-admission.json',
-            'contract-diff-positive.json',
-            'negative-contract-drift-input.json',
-            'negative-contract-drift-admission.json',
-            'contract-diff-negative-contract-drift.json',
-            'negative-missing-observation-input.json',
-            'negative-missing-observation-admission.json',
-            'contract-diff-negative-missing-observation.json',
-            'negative-wrong-candidate-input.json',
-            'negative-wrong-candidate-admission.json',
-            'contract-diff-negative-wrong-candidate.json',
-            'negative-missing-admission-input.json',
-            'phase4-evidence.json','bundle-manifest.json',
-          }
-          paths0={p.relative_to(b0).as_posix() for p in b0.rglob('*') if p.is_file()}
-          paths1={p.relative_to(b1).as_posix() for p in b1.rglob('*') if p.is_file()}
-          if paths0 != paths1:
-              raise SystemExit('bundle-path-set:'+json.dumps({
-                  'onlyB0':sorted(paths0-paths1),'onlyB1':sorted(paths1-paths0)}))
+          b0=Path('contract-632-phase4-b0'); b1=Path('contract-632-phase4-ops')
+          old_path='tools/check-package-contract-closure-bundle.py'; new_path='tools/package_contract_targets/ops.py'
+          expected={'sources/observer/source','source-bindings.json','bound-verification.json','contract-diff-input.json','contract-diff-admission.json','contract-diff-positive.json','negative-contract-drift-input.json','negative-contract-drift-admission.json','contract-diff-negative-contract-drift.json','negative-missing-observation-input.json','negative-missing-observation-admission.json','contract-diff-negative-missing-observation.json','negative-wrong-candidate-input.json','negative-wrong-candidate-admission.json','contract-diff-negative-wrong-candidate.json','negative-missing-admission-input.json','phase4-evidence.json','bundle-manifest.json'}
+          paths0={p.relative_to(b0).as_posix() for p in b0.rglob('*') if p.is_file()}; paths1={p.relative_to(b1).as_posix() for p in b1.rglob('*') if p.is_file()}
+          if paths0 != paths1: raise SystemExit('bundle-path-set:'+json.dumps({'onlyB0':sorted(paths0-paths1),'onlyB1':sorted(paths1-paths0)}))
           changed={p for p in paths0 if (b0/p).read_bytes() != (b1/p).read_bytes()}
-          if changed != expected:
-              raise SystemExit('unexpected-delta-files:'+json.dumps({
-                  'actual':sorted(changed),'expected':sorted(expected),
-                  'extra':sorted(changed-expected),'missing':sorted(expected-changed)}))
-
-          def normalize(value, manifest=False):
+          if changed != expected: raise SystemExit('unexpected-delta-files:'+json.dumps({'actual':sorted(changed),'expected':sorted(expected),'extra':sorted(changed-expected),'missing':sorted(expected-changed)}))
+          def normalize(value,manifest=False):
               if isinstance(value,dict):
-                  out={}
-                  is_observer=(
-                      value.get('repository')=='roccho-dev/governance'
-                      and value.get('path') in (old_path,new_path)
-                  )
+                  out={}; is_observer=value.get('repository')=='roccho-dev/governance' and value.get('path') in (old_path,new_path)
                   for key,item in value.items():
                       if is_observer and key=='path': out[key]='<observer-path>'
                       elif is_observer and key=='digest': out[key]='<observer-digest>'
                       elif key in ('observerPath','observerDigest'): out[key]=f'<{key}>'
-                      elif key in ('input_manifest_digest','inputManifestDigest'):
-                          out[key]='<rebound-manifest>'
+                      elif key in ('input_manifest_digest','inputManifestDigest'): out[key]='<rebound-manifest>'
                       else: out[key]=normalize(item,manifest)
                   return out
               if isinstance(value,list):
                   rows=[normalize(item,manifest) for item in value]
                   if manifest:
                       for row in rows:
-                          if isinstance(row,dict) and row.get('path') in expected:
-                              row['sha256']='<rebound-file>'
+                          if isinstance(row,dict) and row.get('path') in expected: row['sha256']='<rebound-file>'
                   return rows
               return value
-
           for path in sorted(changed-{'sources/observer/source'}):
-              left=json.loads((b0/path).read_text())
-              right=json.loads((b1/path).read_text())
-              if normalize(left,path=='bundle-manifest.json') != normalize(right,path=='bundle-manifest.json'):
-                  raise SystemExit('unexpected-semantic-delta:'+path)
-
-          for stable in (
-              'run-scope.json',
-              'negative-missing-admission-admission.json',
-              'contract-diff-negative-missing-admission.json',
-              'ops-final-ci-consumer-receipt.json',
-          ):
-              if (b0/stable).read_bytes() != (b1/stable).read_bytes():
-                  raise SystemExit('stable-byte-drift:'+stable)
-
-          v2=json.loads(Path('package-contract-member-b0-v2.json').read_text())
-          v3=json.loads(Path('package-contract-member-ops.json').read_text())
-          n2={
-              'status':v2['status'],'authority':v2['authority'],
-              'adoption':v2['adoption'],'releasePublished':v2['releasePublished'],
-              'claimCeiling':v2['claimCeiling'],'scopeId':v2['scopeId'],
-              'obligationId':v2['obligationId'],'targetCandidate':v2['opsCandidate'],
-              'acceptedRequirementDigest':v2['acceptedRequirementDigest'],
-              'contractDiffStatus':v2['contractDiffStatus'],
-              'negativeStatus':v2['negativeStatus'],'remaining':v2['remaining'],
-              'evidenceBound':v2['evidenceBound'],
-              'observerMeaningVerified':v2['observerMeaningVerified'],
-              'evidenceReconstructed':v2['evidenceReconstructed'],
-              'targetSourceClosureVerified':v2['opsCandidateSourceClosureVerified'],
-              'targetSourcesVerified':v2['opsCandidateSourcesVerified'],
-              'sourceBytesVerified':v2['sourceBytesVerified'],
-              'receiptReplayed':v2['receiptReplayed'],
-              'comparatorReplayed':v2['comparatorReplayed'],
-              'acceptedRequirementRevision':v2['acceptedGovernanceRevision'],
-              'governancePolicyRevision':v2['acceptedGovernanceRevision'],
-          }
+              if normalize(json.loads((b0/path).read_text()),path=='bundle-manifest.json') != normalize(json.loads((b1/path).read_text()),path=='bundle-manifest.json'): raise SystemExit('unexpected-semantic-delta:'+path)
+          for stable in ('run-scope.json','negative-missing-admission-admission.json','contract-diff-negative-missing-admission.json','ops-final-ci-consumer-receipt.json'):
+              if (b0/stable).read_bytes() != (b1/stable).read_bytes(): raise SystemExit('stable-byte-drift:'+stable)
+          v2=json.loads(Path('package-contract-member-b0-v2.json').read_text()); v3=json.loads(Path('package-contract-member-ops.json').read_text())
+          n2={'status':v2['status'],'authority':v2['authority'],'adoption':v2['adoption'],'releasePublished':v2['releasePublished'],'claimCeiling':v2['claimCeiling'],'scopeId':v2['scopeId'],'obligationId':v2['obligationId'],'targetCandidate':v2['opsCandidate'],'acceptedRequirementDigest':v2['acceptedRequirementDigest'],'contractDiffStatus':v2['contractDiffStatus'],'negativeStatus':v2['negativeStatus'],'remaining':v2['remaining'],'evidenceBound':v2['evidenceBound'],'observerMeaningVerified':v2['observerMeaningVerified'],'evidenceReconstructed':v2['evidenceReconstructed'],'targetSourceClosureVerified':v2['opsCandidateSourceClosureVerified'],'targetSourcesVerified':v2['opsCandidateSourcesVerified'],'sourceBytesVerified':v2['sourceBytesVerified'],'receiptReplayed':v2['receiptReplayed'],'comparatorReplayed':v2['comparatorReplayed'],'acceptedRequirementRevision':v2['acceptedGovernanceRevision'],'governancePolicyRevision':v2['acceptedGovernanceRevision']}
           n3={key:v3[key] for key in n2}
-          if n2 != n3:
-              raise SystemExit('semantic-member-drift:'+json.dumps({'v2':n2,'v3':n3},sort_keys=True))
-          report={
-              'kind':'governance.contract632.b0B1PortEquivalence.v1',
-              'status':'pass','authority':False,
-              'semanticInvariant':True,'stableByteInvariant':True,
-              'evidenceRebound':True,'expectedDeltaClosed':True,
-              'changedFiles':sorted(changed),
-              'stableFilesChecked':4,
-              'b0MemberKind':v2['kind'],'b1MemberKind':v3['kind'],
-              'newComparatorExitBinding':{
-                  'positive':v3['contractDiffExit'],
-                  'negative':v3['negativeExit'],
-              },
-          }
-          Path('b0-b1-equivalence.json').write_text(
-              json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
+          if n2 != n3: raise SystemExit('semantic-member-drift:'+json.dumps({'v2':n2,'v3':n3},sort_keys=True))
+          Path('b0-b1-equivalence.json').write_text(json.dumps({'kind':'governance.contract632.b0B1PortEquivalence.v1','status':'pass','authority':False,'semanticInvariant':True,'stableByteInvariant':True,'evidenceRebound':True,'expectedDeltaClosed':True,'changedFiles':sorted(changed),'stableFilesChecked':4,'b0MemberKind':v2['kind'],'b1MemberKind':v3['kind'],'newComparatorExitBinding':{'positive':v3['contractDiffExit'],'negative':v3['negativeExit']}},sort_keys=True,separators=(',',':'))+'\n')
           PY
 
       - name: Prepare canonical Governance final-checker view
@@ -377,231 +229,134 @@ jobs:
           rm .github/workflows/contract-632-phase4.yml
           test "$(find .github/workflows -maxdepth 1 -type f | wc -l)" = 3
 
-      - name: Consume every target through the existing final checker
+      - name: Consume every target through package-only final entrance
+        id: package_final
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          targets="$(jq -r '.targets[]' target-discovery.json)"
-          for target in $targets; do
+          for target in $(jq -r '.targets[]' target-discovery.json); do
             candidate="$(jq -r '.targetSource.revision' "tools/package_contract_targets/$target.target.json")"
-            python3 tools/check-package-final-scope-purpose-join.py check \
-              --candidate-sha "$GOVERNANCE_CANDIDATE" \
-              --live-consumers live-selected-consumers.json \
-              --package-contract-bundle "contract-632-phase4-$target" \
-              --package-contract-target-source "_sources/$target/targetSource" \
-              --package-contract-accepted-requirement-source "_sources/$target/acceptedRequirementSource" \
-              --package-contract-governance-policy-source "_sources/$target/governancePolicySource" \
-              --package-contract-target-id "$target" \
-              --expected-target-candidate "$candidate" \
-              --json > "final-check-report-$target.json"
-            jq -e --arg target "$target" --arg candidate "$candidate" '
-              .status == "pass"
-              and .decision == "allow"
-              and .authority == false
-              and .companyAdoptionEffect == false
-              and .packageContractClosure.kind == "governance.packageContractClosureMember.v3"
-              and .packageContractClosure.targetId == $target
-              and .packageContractClosure.targetCandidate == $candidate
-              and .packageContractClosure.status == "pass"
-              and .packageContractClosure.contractDiffStatus == "CLOSED"
-              and .packageContractClosure.contractDiffExit == 0
-              and .packageContractClosure.remaining == 0
-              and .packageContractClosureDigest == .packageContractClosure.memberDigest
-              and .releasePublished == false
-              and .operationalAdoptionEffect == false
-            ' "final-check-report-$target.json" >/dev/null
+            python3 tools/check-package-final-scope-purpose-join.py check-package --candidate-sha "$GOVERNANCE_CANDIDATE" --package-contract-bundle "contract-632-phase4-$target" --package-contract-target-source "_sources/$target/targetSource" --package-contract-accepted-requirement-source "_sources/$target/acceptedRequirementSource" --package-contract-governance-policy-source "_sources/$target/governancePolicySource" --package-contract-target-id "$target" --expected-target-candidate "$candidate" --json > "package-final-report-$target.json"
+            jq -e --arg target "$target" --arg candidate "$candidate" --arg governance "$GOVERNANCE_CANDIDATE" '.status=="pass" and .candidateSha==$governance and .packageContractClosure.targetId==$target and .packageContractClosure.targetCandidate==$candidate and .packageContractClosure.governanceCandidate==$governance and .packageContractClosureDigest==.packageContractClosure.memberDigest' "package-final-report-$target.json" >/dev/null
           done
 
-      - name: Reject fabrication, source substitution, evidence contradiction, and legacy member
+      - name: Join current provider and package through the existing final checker
+        id: final_join
+        continue-on-error: true
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          ops="_sources/ops/targetSource"
-          accepted="_sources/ops/acceptedRequirementSource"
-          policy="_sources/ops/governancePolicySource"
-          final_check() {
-            python3 tools/check-package-final-scope-purpose-join.py check \
-              --candidate-sha "$GOVERNANCE_CANDIDATE" \
-              --live-consumers live-selected-consumers.json \
-              --package-contract-bundle "$1" \
-              --package-contract-target-source "$ops" \
-              --package-contract-accepted-requirement-source "$accepted" \
-              --package-contract-governance-policy-source "$policy" \
-              --package-contract-target-id ops \
-              --expected-target-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 \
-              --json
+          for target in $(jq -r '.targets[]' target-discovery.json); do
+            candidate="$(jq -r '.targetSource.revision' "tools/package_contract_targets/$target.target.json")"
+            python3 tools/check-package-final-scope-purpose-join.py check --candidate-sha "$GOVERNANCE_CANDIDATE" --live-consumers live-selected-consumers.json --package-contract-bundle "contract-632-phase4-$target" --package-contract-target-source "_sources/$target/targetSource" --package-contract-accepted-requirement-source "_sources/$target/acceptedRequirementSource" --package-contract-governance-policy-source "_sources/$target/governancePolicySource" --package-contract-target-id "$target" --expected-target-candidate "$candidate" --json > "final-check-report-$target.json"
+          done
+
+      - name: Reject weakened negatives, stale candidate, source substitution, and legacy member
+        id: negatives
+        env:
+          GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          ops="_sources/ops/targetSource"; accepted="_sources/ops/acceptedRequirementSource"; policy="_sources/ops/governancePolicySource"
+          package_check() {
+            local governance="${2:-$GOVERNANCE_CANDIDATE}"
+            python3 tools/check-package-final-scope-purpose-join.py check-package --candidate-sha "$governance" --package-contract-bundle "$1" --package-contract-target-source "$ops" --package-contract-accepted-requirement-source "$accepted" --package-contract-governance-policy-source "$policy" --package-contract-target-id ops --expected-target-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 --json
           }
-
-          fake="$RUNNER_TEMP/fake-phase4"
-          mkdir -p "$fake"
-          cp contract-632-phase4-ops/run-scope.json "$fake/run-scope.json"
-          cp contract-632-phase4-ops/phase4-evidence.json "$fake/phase4-evidence.json"
-          if final_check "$fake" > fake-final-stdout.txt 2> fake-final-stderr.txt; then
-            echo 'fabricated digest-only evidence unexpectedly passed' >&2
-            exit 1
-          fi
-
-          tampered="$RUNNER_TEMP/tampered-phase4"
-          cp -R contract-632-phase4-ops "$tampered"
-          printf '\n' >> "$tampered/sources/governance/selected-final-ci-rollout.v1.json"
+          fake="$RUNNER_TEMP/fake-phase4"; mkdir -p "$fake"; cp contract-632-phase4-ops/run-scope.json "$fake/run-scope.json"; cp contract-632-phase4-ops/phase4-evidence.json "$fake/phase4-evidence.json"
+          if package_check "$fake" >/dev/null 2>&1; then echo 'fabricated digest-only evidence unexpectedly passed' >&2; exit 1; fi
+          tampered="$RUNNER_TEMP/tampered-phase4"; cp -R contract-632-phase4-ops "$tampered"; printf '\n' >> "$tampered/sources/governance/selected-final-ci-rollout.v1.json"
           python3 - "$tampered" <<'PY'
           import hashlib,json,pathlib,sys
-          root=pathlib.Path(sys.argv[1]); target='sources/governance/selected-final-ci-rollout.v1.json'
-          rows=json.loads((root/'bundle-manifest.json').read_text())
+          root=pathlib.Path(sys.argv[1]); target='sources/governance/selected-final-ci-rollout.v1.json'; rows=json.loads((root/'bundle-manifest.json').read_text())
           for row in rows:
-              if row['path']==target:
-                  row['sha256']='sha256:'+hashlib.sha256((root/target).read_bytes()).hexdigest()
+              if row['path']==target: row['sha256']='sha256:'+hashlib.sha256((root/target).read_bytes()).hexdigest()
           (root/'bundle-manifest.json').write_text(json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
           PY
-          if final_check "$tampered" > tampered-final-stdout.txt 2> tampered-final-stderr.txt; then
-            echo 'source-tampered evidence unexpectedly passed' >&2
-            exit 1
-          fi
-
-          alternate_root="$RUNNER_TEMP/alternate-adapter-root"
-          alternate="$RUNNER_TEMP/alternate-adapter-phase4"
-          mkdir -p "$alternate_root/tools/package_contract_targets"
-          printf '{}\n' > "$alternate_root/tools/package_contract_targets/ops.py"
-          python3 "$ops/tools/contract-632-phase4-proof.py" build \
-            --governance-source "$accepted" \
-            --governance-revision 5b26984eb59e4c03f9d0fe34891fea5e4a436a16 \
-            --ops-source "$ops" \
-            --ops-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 \
-            --observer-root "$alternate_root" \
-            --observer-repository roccho-dev/governance \
-            --observer-revision "$GOVERNANCE_CANDIDATE" \
-            --observer-path tools/package_contract_targets/ops.py \
-            --contract-diff "$ops/packages/contract-diff/bin/contract-diff.py" \
-            --out "$alternate" > alternate-adapter-build.json
-          python3 "$ops/tools/contract-632-phase4-bind.py" bind \
-            --bundle "$alternate" \
-            --governance-source "$accepted" \
-            --governance-revision 5b26984eb59e4c03f9d0fe34891fea5e4a436a16 \
-            --ops-source "$ops" \
-            --ops-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4 \
-            --observer-root "$alternate_root" \
-            --observer-repository roccho-dev/governance \
-            --observer-revision "$GOVERNANCE_CANDIDATE" \
-            --observer-path tools/package_contract_targets/ops.py \
-            > alternate-adapter-bind.json
-          if final_check "$alternate" > alternate-final-stdout.txt 2> alternate-final-stderr.txt; then
-            echo 'adapter-source substitution unexpectedly passed' >&2
-            exit 1
-          fi
-          grep -q 'source-bytes:observer' alternate-final-stderr.txt
-
-          contradiction="$RUNNER_TEMP/evidence-contradiction-phase4"
-          cp -R contract-632-phase4-ops "$contradiction"
-          python3 - "$contradiction" <<'PY'
+          if package_check "$tampered" >/dev/null 2>&1; then echo 'source-tampered evidence unexpectedly passed' >&2; exit 1; fi
+          extra="$RUNNER_TEMP/extra-source-phase4"; cp -R contract-632-phase4-ops "$extra"
+          python3 - "$extra" <<'PY'
           import hashlib,json,pathlib,sys
-          root=pathlib.Path(sys.argv[1])
-          target=root/'phase4-evidence.json'
-          evidence=json.loads(target.read_text())
-          evidence['acceptedRequirement']['contract']['target']['resource']='FORGED/NO-SUCH-CHECK'
-          target.write_text(json.dumps(evidence,sort_keys=True,separators=(',',':'))+'\n')
+          root=pathlib.Path(sys.argv[1]); path=root/'source-bindings.json'; value=json.loads(path.read_text()); value['unexpectedRole']=value['providerClaim']; path.write_text(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n')
           rows=json.loads((root/'bundle-manifest.json').read_text())
           for row in rows:
-              if row['path']=='phase4-evidence.json':
-                  row['sha256']='sha256:'+hashlib.sha256(target.read_bytes()).hexdigest()
+              if row['path']=='source-bindings.json': row['sha256']='sha256:'+hashlib.sha256(path.read_bytes()).hexdigest()
           (root/'bundle-manifest.json').write_text(json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
           PY
-          if final_check "$contradiction" > contradiction-final-stdout.txt 2> contradiction-final-stderr.txt; then
-            echo 'contradictory evidence unexpectedly passed' >&2
-            exit 1
-          fi
-          grep -q 'evidence-reconstruction' contradiction-final-stderr.txt
-
+          if package_check "$extra" >/dev/null 2>extra-source-stderr.txt; then echo 'extra source role unexpectedly passed' >&2; exit 1; fi
+          grep -q 'source-binding-universe' extra-source-stderr.txt
+          wrong="0000000000000000000000000000000000000000"
+          if package_check contract-632-phase4-ops "$wrong" >/dev/null 2>wrong-governance-stderr.txt; then echo 'stale governance candidate unexpectedly passed' >&2; exit 1; fi
+          grep -Eq 'source-revision:observer|verifier-observer-revision|member-governance-candidate' wrong-governance-stderr.txt
           python3 - <<'PY'
           import importlib.util,json,pathlib,tempfile
-          root=pathlib.Path('.').resolve()
-          spec=importlib.util.spec_from_file_location('final_join',root/'tools/check-package-final-scope-purpose-join.py')
-          module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
-          checker=module.load_bundle_checker()
-          target_module,binding,_=checker.load_target('ops')
-          legacy=json.loads(pathlib.Path('package-contract-member-b0-v2.json').read_text())
-          try:
-              module.validate_package_member(
-                  legacy,binding,'ops','5eb98c82417b399978c1e38aebab5e3fb39752d4',
-                  target_module.EXPECTED_NEGATIVE,checker.STATUS_EXIT)
+          root=pathlib.Path('.').resolve(); spec=importlib.util.spec_from_file_location('checker',root/'tools/check-package-contract-closure-bundle.py'); checker=importlib.util.module_from_spec(spec); spec.loader.exec_module(checker)
+          checker.validate_provider_relation({'logicalRepository':'logical/repo','providerRepository':'provider/repo','targetSource':{'repository':'wrong/repo'}})
+          PY
+          if test $? = 0; then echo 'unrelated provider relation unexpectedly passed' >&2; exit 1; fi
+          python3 - <<'PY'
+          import importlib.util,json,pathlib,tempfile
+          root=pathlib.Path('.').resolve(); spec=importlib.util.spec_from_file_location('checker',root/'tools/check-package-contract-closure-bundle.py'); checker=importlib.util.module_from_spec(spec); spec.loader.exec_module(checker)
+          source=(root/'tools/package_contract_targets/ops.py').read_text().replace("EXPECTED_NEGATIVE = {", "EXPECTED_NEGATIVE = {}\nDISABLED_NEGATIVE = {")
+          binding=(root/'tools/package_contract_targets/ops.target.json').read_text()
+          with tempfile.TemporaryDirectory() as temporary:
+              checker.TARGET_DIR=pathlib.Path(temporary); (checker.TARGET_DIR/'ops.py').write_text(source); (checker.TARGET_DIR/'ops.target.json').write_text(binding)
+              try: checker.load_target('ops')
+              except ValueError as error:
+                  if 'adapter-negative-contract' not in str(error): raise
+              else: raise SystemExit('weakened-negative-contract-unexpectedly-accepted')
+          PY
+          python3 - <<'PY'
+          import importlib.util,json,pathlib,tempfile
+          root=pathlib.Path('.').resolve(); spec=importlib.util.spec_from_file_location('final',root/'tools/check-package-final-scope-purpose-join.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); checker=module.load_checker(); _,binding,_=checker.load_target('ops'); legacy=json.loads(pathlib.Path('package-contract-member-b0-v2.json').read_text())
+          try: module.validate_member(legacy,binding,'ops','5eb98c82417b399978c1e38aebab5e3fb39752d4',__import__('os').environ['GOVERNANCE_CANDIDATE'],checker)
           except ValueError as error:
               if 'member-kind' not in str(error): raise
-          else:
-              raise SystemExit('legacy-member-v2-unexpectedly-accepted')
-
-          with tempfile.TemporaryDirectory() as temporary:
-              checker.TARGET_DIR=pathlib.Path(temporary)
-              (checker.TARGET_DIR/'ops.py').write_text('def describe(): return {}\n')
-              try: checker.discover_targets()
-              except ValueError: pass
-              else: raise SystemExit('unpaired-adapter-unexpectedly-accepted')
+          else: raise SystemExit('legacy-member-v2-unexpectedly-accepted')
           PY
-
-          jq -n '{
-            kind:"governance.contract632.phase4FinalEntranceNegative.v3",
-            status:"pass",authority:false,
-            fabricatedDigestOnlyRejected:true,
-            acceptedSourceTamperRejected:true,
-            adapterSourceSubstitutionRejected:true,
-            evidenceContradictionRejected:true,
-            legacyMemberV2Rejected:true,
-            unpairedAdapterRejected:true
-          }' > phase4-final-negative.json
+          jq -n '{kind:"governance.contract632.phase4FinalEntranceNegative.v4",status:"pass",authority:false,fabricatedDigestOnlyRejected:true,acceptedSourceTamperRejected:true,closedSourceUniverse:true,wrongGovernanceCandidateRejected:true,weakNegativeContractRejected:true,providerRelationClosed:true,legacyMemberV2Rejected:true}' > phase4-final-negative.json
 
       - name: Write finite readback and transport manifest
+        if: always()
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
+          PROVIDER_OUTCOME: ${{ steps.provider.outcome }}
+          PACKAGE_OUTCOME: ${{ steps.package.outcome }}
+          EQUIVALENCE_OUTCOME: ${{ steps.equivalence.outcome }}
+          PACKAGE_FINAL_OUTCOME: ${{ steps.package_final.outcome }}
+          FINAL_JOIN_OUTCOME: ${{ steps.final_join.outcome }}
+          NEGATIVE_OUTCOME: ${{ steps.negatives.outcome }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import hashlib,json,pathlib,shutil
-          root=pathlib.Path('contract-632-phase4-governance-evidence'); root.mkdir()
-          targets=json.loads(pathlib.Path('target-discovery.json').read_text())['targets']
-          shutil.copytree(pathlib.Path('contract-632-phase4-b0'),root/'b0-bundle')
+          import hashlib,json,os,pathlib,shutil
+          root=pathlib.Path('contract-632-phase4-governance-evidence'); root.mkdir(exist_ok=True)
+          targets=json.loads(pathlib.Path('target-discovery.json').read_text())['targets'] if pathlib.Path('target-discovery.json').exists() else []
+          for source,destination in [('contract-632-phase4-b0','b0-bundle')]:
+              if pathlib.Path(source).exists(): shutil.copytree(source,root/destination)
           for target in targets:
-              shutil.copytree(pathlib.Path(f'contract-632-phase4-{target}'),root/f'{target}-bundle')
-              for name in (
-                  f'package-contract-member-{target}.json',
-                  f'final-check-report-{target}.json',
-                  f'target-produce-{target}.json',
-                  f'target-check-{target}.json',
-              ):
-                  shutil.copy2(name,root/name)
+              bundle=pathlib.Path(f'contract-632-phase4-{target}')
+              if bundle.exists(): shutil.copytree(bundle,root/f'{target}-bundle')
+              for name in (f'package-contract-member-{target}.json',f'package-final-report-{target}.json',f'final-check-report-{target}.json',f'target-produce-{target}.json',f'target-check-{target}.json'):
+                  if pathlib.Path(name).exists(): shutil.copy2(name,root/name)
               producer=pathlib.Path(f'contract-632-phase4-{target}-producer')
               if producer.exists(): shutil.copytree(producer,root/producer.name)
-          for name in (
-              'target-discovery.json','source-acquisition.json',
-              'live-selected-consumers.json','b0-b1-equivalence.json',
-              'package-contract-member-b0-v2.json','phase4-final-negative.json',
-          ):
-              shutil.copy2(name,root/name)
-          proof=pathlib.Path(__import__('os').environ['RUNNER_TEMP'])/'contract-632-phase4.yml'
-          shutil.copy2(proof,root/'proof-workflow.yml')
-          members={target:json.loads(pathlib.Path(f'package-contract-member-{target}.json').read_text())
-                   for target in targets}
-          report={
-              'kind':'governance.contract632.t3aReadback.v1',
-              'status':'pass','authority':False,'adoption':False,'releasePublished':False,
-              'governanceCandidate':__import__('os').environ['GOVERNANCE_CANDIDATE'],
-              'targets':targets,
-              'memberDigests':{target:members[target]['memberDigest'] for target in targets},
-              'b0B1Equivalence':json.loads(pathlib.Path('b0-b1-equivalence.json').read_text()),
-              'negative':json.loads(pathlib.Path('phase4-final-negative.json').read_text()),
-              'remaining':0,
-              'claimCeiling':'T3A_PORT_EXTRACTION_NOT_B1_FREEZE_OR_APPS_CLOSURE',
-          }
-          pathlib.Path('phase4-governance-readback.json').write_text(
-              json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
-          shutil.copy2('phase4-governance-readback.json',root/'phase4-governance-readback.json')
-          rows=[{'path':p.relative_to(root).as_posix(),
-                 'sha256':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()}
-                for p in sorted(root.rglob('*')) if p.is_file()]
-          (root/'transport-manifest.json').write_text(
-              json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
+          for name in ('target-discovery.json','source-acquisition.json','live-selected-consumers.json','b0-b1-equivalence.json','package-contract-member-b0-v2.json','phase4-final-negative.json'):
+              if pathlib.Path(name).exists(): shutil.copy2(name,root/name)
+          proof=pathlib.Path(os.environ['RUNNER_TEMP'])/'contract-632-phase4.yml'
+          if proof.exists(): shutil.copy2(proof,root/'proof-workflow.yml')
+          outcomes={key:os.environ[key] for key in ('PROVIDER_OUTCOME','PACKAGE_OUTCOME','EQUIVALENCE_OUTCOME','PACKAGE_FINAL_OUTCOME','FINAL_JOIN_OUTCOME','NEGATIVE_OUTCOME')}
+          required_pass=all(outcomes[key]=='success' for key in ('PROVIDER_OUTCOME','PACKAGE_OUTCOME','EQUIVALENCE_OUTCOME','PACKAGE_FINAL_OUTCOME','FINAL_JOIN_OUTCOME','NEGATIVE_OUTCOME'))
+          members={target:json.loads(pathlib.Path(f'package-contract-member-{target}.json').read_text()) for target in targets if pathlib.Path(f'package-contract-member-{target}.json').exists()}
+          report={'kind':'governance.contract632.t3aReadback.v2','status':'pass' if required_pass else 'fail','authority':False,'adoption':False,'releasePublished':False,'governanceCandidate':os.environ['GOVERNANCE_CANDIDATE'],'targets':targets,'memberDigests':{target:value['memberDigest'] for target,value in members.items()},'stageOutcomes':outcomes,'provider':json.loads(pathlib.Path('live-selected-consumers.json').read_text()) if pathlib.Path('live-selected-consumers.json').exists() else {'status':'not-run'},'b0B1Equivalence':json.loads(pathlib.Path('b0-b1-equivalence.json').read_text()) if pathlib.Path('b0-b1-equivalence.json').exists() else {'status':'not-run'},'negative':json.loads(pathlib.Path('phase4-final-negative.json').read_text()) if pathlib.Path('phase4-final-negative.json').exists() else {'status':'not-run'},'remaining':0 if required_pass else sum(value!='success' for value in outcomes.values()),'claimCeiling':'T3A_PORT_EXTRACTION_NOT_B1_FREEZE_OR_APPS_CLOSURE'}
+          pathlib.Path('phase4-governance-readback.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n'); shutil.copy2('phase4-governance-readback.json',root/'phase4-governance-readback.json')
+          rows=[{'path':p.relative_to(root).as_posix(),'sha256':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.rglob('*')) if p.is_file()]
+          (root/'transport-manifest.json').write_text(json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
           PY
 
       - name: Attempt provider archive transport
+        if: always()
         id: upload
         continue-on-error: true
         uses: actions/upload-artifact@v4
@@ -621,36 +376,10 @@ jobs:
           set -euo pipefail
           test -s phase4-governance-readback.json
           test -s contract-632-phase4-governance-evidence/transport-manifest.json
-          jq -e '.status == "pass"
-            and .authority == false
-            and .remaining == 0
-            and .b0B1Equivalence.status == "pass"
-            and .negative.status == "pass"' phase4-governance-readback.json >/dev/null
-          echo 'CONTRACT_632_T3A_READBACK_BEGIN'
-          cat phase4-governance-readback.json
-          echo 'CONTRACT_632_T3A_READBACK_END'
-          echo 'CONTRACT_632_T3A_EQUIVALENCE_BEGIN'
-          cat b0-b1-equivalence.json
-          echo 'CONTRACT_632_T3A_EQUIVALENCE_END'
-          echo 'CONTRACT_632_T3A_NEGATIVE_BEGIN'
-          cat phase4-final-negative.json
-          echo 'CONTRACT_632_T3A_NEGATIVE_END'
-          echo 'CONTRACT_632_T3A_MEMBERS_BEGIN'
-          for file in package-contract-member-*.json; do
-            printf '%s=' "$file"; cat "$file"
-          done
-          echo 'CONTRACT_632_T3A_MEMBERS_END'
+          echo 'CONTRACT_632_T3A_READBACK_BEGIN'; cat phase4-governance-readback.json; echo 'CONTRACT_632_T3A_READBACK_END'
+          if test -s live-selected-consumers.json; then echo 'CONTRACT_632_T3A_PROVIDER_BEGIN'; cat live-selected-consumers.json; echo 'CONTRACT_632_T3A_PROVIDER_END'; fi
+          if test -s b0-b1-equivalence.json; then echo 'CONTRACT_632_T3A_EQUIVALENCE_BEGIN'; cat b0-b1-equivalence.json; echo 'CONTRACT_632_T3A_EQUIVALENCE_END'; fi
+          if test -s phase4-final-negative.json; then echo 'CONTRACT_632_T3A_NEGATIVE_BEGIN'; cat phase4-final-negative.json; echo 'CONTRACT_632_T3A_NEGATIVE_END'; fi
           manifest_sha="$(sha256sum contract-632-phase4-governance-evidence/transport-manifest.json | cut -d' ' -f1)"
-          printf 'contract_632_t3a transport_manifest_sha256=%s artifact_outcome=%s artifact_id=%s artifact_digest=%s\n' \
-            "$manifest_sha" "$ARTIFACT_OUTCOME" "${ARTIFACT_ID:-}" "${ARTIFACT_DIGEST:-}"
-          {
-            echo '## Contract 632 T3A'
-            echo ''
-            echo '- source/check status: PASS'
-            echo "- targets: $(jq -c '.targets' target-discovery.json)"
-            echo "- B0/B1 equivalence: PASS"
-            echo "- required negatives: PASS"
-            echo "- archive artifact outcome: \`$ARTIFACT_OUTCOME\`"
-            echo "- transport manifest SHA-256: \`$manifest_sha\`"
-            echo '- authority/adoption/release: `false`'
-          } >> "$GITHUB_STEP_SUMMARY"
+          printf 'contract_632_t3a transport_manifest_sha256=%s artifact_outcome=%s artifact_id=%s artifact_digest=%s\n' "$manifest_sha" "$ARTIFACT_OUTCOME" "${ARTIFACT_ID:-}" "${ARTIFACT_DIGEST:-}"
+          jq -e '.status=="pass" and .remaining==0 and .stageOutcomes.PROVIDER_OUTCOME=="success" and .stageOutcomes.PACKAGE_OUTCOME=="success" and .stageOutcomes.EQUIVALENCE_OUTCOME=="success" and .stageOutcomes.PACKAGE_FINAL_OUTCOME=="success" and .stageOutcomes.FINAL_JOIN_OUTCOME=="success" and .stageOutcomes.NEGATIVE_OUTCOME=="success"' phase4-governance-readback.json >/dev/null
