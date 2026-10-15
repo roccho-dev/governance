@@ -82,7 +82,18 @@ def cross_target_preflight(
     need(git_blob_file(runtime_cli) == "e06a74b4323f2772fbbb69fac9ba543c4326b97b", "preflight-runtime-cli")
     need(git_blob_file(runtime_core) == "9613c92deb6ee12b335863a36261268976ad9cc5", "preflight-runtime-core")
     runtime_selftest = run([sys.executable, str(runtime_cli), "--selftest"], runtime_source)
-    need(runtime_selftest.returncode == 0, "preflight-runtime-selftest")
+    if runtime_selftest.returncode != 0:
+        raise ValueError(
+            "package-contract-bundle:preflight-runtime-selftest:"
+            + json.dumps(
+                {
+                    "exit": runtime_selftest.returncode,
+                    "stdout": runtime_selftest.stdout[-12000:],
+                    "stderr": runtime_selftest.stderr[-12000:],
+                },
+                sort_keys=True,
+            )
+        )
     requirement_path = accepted_source / "decisions/apps-voice-ui-artifact-auth-requirement-261015.jsonl"
     rows = [json.loads(line) for line in requirement_path.read_text(encoding="utf-8").splitlines() if line]
     need(len(rows) == 1, "preflight-requirement-row")
