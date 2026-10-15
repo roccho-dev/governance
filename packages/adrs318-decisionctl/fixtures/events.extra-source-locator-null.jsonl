@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-source-locator-null","decision_type":"architecture","event_id":"source-locator-null","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"source_locator":null,"summary":"Null source locator excluded","title":"Null source locator excluded"}

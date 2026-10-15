@@ -1,0 +1,2 @@
+{"actor":"author","decision_id":"ADR-double-proposal","decision_type":"architecture","event_id":"double-proposal-a","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"First proposal","title":"Double proposal"}
+{"actor":"author","decision_id":"ADR-double-proposal","decision_type":"architecture","event_id":"double-proposal-b","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Second proposal must fail","title":"Double proposal"}

@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-empty-type","decision_type":"","event_id":"empty-type","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Empty type must fail","title":"Empty type"}

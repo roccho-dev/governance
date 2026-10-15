@@ -1,0 +1,2 @@
+{"actor":"author","decision_id":"ADR-318-rejected","decision_type":"policy","event_id":"rejected-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Rejected fixture","title":"Rejected fixture"}
+{"actor":"owner","decision_id":"ADR-318-rejected","decision_type":"policy","event_id":"rejected-event","kind":"reject","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Rejected fixture","title":"Rejected fixture"}

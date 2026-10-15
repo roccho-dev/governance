@@ -1,0 +1,2 @@
+{"actor":"author","decision_id":"ADR-318-demo","decision_type":"architecture","event_id":"demo-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Typed ADR projection","title":"ADRS 318 demo"}
+{"actor":"owner","decision_id":"ADR-318-demo","decision_type":"architecture","event_id":"demo-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Accepted for fixture proof","title":"ADRS 318 demo"}

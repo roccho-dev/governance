@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-etag-null","decision_type":"architecture","etag":null,"event_id":"etag-null","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Null ETag excluded","title":"Null ETag excluded"}

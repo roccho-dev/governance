@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-fetched-at","decision_type":"architecture","event_id":"fetched-at","fetched_at":"2026-08-26T00:00:00Z","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Fetched timestamp excluded","title":"Fetched timestamp excluded"}

@@ -1,0 +1,2 @@
+{"actor":"author","decision_id":"ADR-type-change","decision_type":"architecture","event_id":"type-change-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Type change fixture","title":"Type change fixture"}
+{"actor":"owner","decision_id":"ADR-type-change","decision_type":"policy","event_id":"type-change-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Type change must fail","title":"Type change fixture"}
