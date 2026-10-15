@@ -33,7 +33,10 @@ jobs:
           mkdir -p tools .github/workflows
           base64 -d .contract-632-t3a/checker.gz.b64 | gzip -d > tools/check-package-contract-closure-bundle.py
           base64 -d .contract-632-t3a/final.gz.b64 | gzip -d > tools/check-package-final-scope-purpose-join.py
-          cat .contract-632-t3a/workflow.part1 .contract-632-t3a/workflow.part2 \
+          cat \
+            .contract-632-t3a/workflow.part1 \
+            .contract-632-t3a/workflow.part2a \
+            .contract-632-t3a/workflow.part2b \
             | base64 -d | gzip -d > .github/workflows/contract-632-phase4.yml
           chmod +x tools/check-package-contract-closure-bundle.py tools/check-package-final-scope-purpose-join.py
           rm -rf .contract-632-t3a
