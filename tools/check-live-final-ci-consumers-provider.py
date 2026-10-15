@@ -10,6 +10,9 @@ import io
 import json
 import os
 import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -20,10 +23,6 @@ OPS_LOGICAL = "roccho-dev/ops"
 OPS_PROVIDER = "roccho-org/ops"
 UI_LOGICAL = "roccho-dev/ui"
 PROVIDERS = {OPS_LOGICAL: OPS_PROVIDER, UI_LOGICAL: UI_LOGICAL}
-CURRENT_BODY_PATHS = {
-    OPS_LOGICAL: "governance/evidence/current-provider/ops/final-ci-consumer-receipt.zip.b64",
-    UI_LOGICAL: "governance/evidence/current-provider/ui/final-ci-consumer-receipt.zip.b64",
-}
 
 
 def load_core() -> Any:
@@ -44,6 +43,19 @@ class DiagnosticError(CORE.LiveError):
         self.diagnostic = diagnostic
 
 
+class CrossHostAuthStrippingRedirect(urllib.request.HTTPRedirectHandler):
+    """Keep the API token at api.github.com, never forward it to signed storage."""
+
+    def redirect_request(self, request, fp, code, message, headers, newurl):
+        redirected = super().redirect_request(request, fp, code, message, headers, newurl)
+        if redirected is not None:
+            before = urllib.parse.urlparse(request.full_url).netloc
+            after = urllib.parse.urlparse(newurl).netloc
+            if before != after:
+                redirected.remove_header("Authorization")
+        return redirected
+
+
 def provider_aliases() -> list[dict[str, Any]]:
     return [{
         "logicalRepository": OPS_LOGICAL,
@@ -54,8 +66,7 @@ def provider_aliases() -> list[dict[str, Any]]:
 
 
 def finding_text(error: Exception) -> str:
-    value = str(error)
-    return value[:500]
+    return str(error)[:500]
 
 
 class CurrentProviderApi(CORE.GitHubApi):
@@ -65,25 +76,40 @@ class CurrentProviderApi(CORE.GitHubApi):
         CORE.need(logical in PROVIDERS, "provider-logical:" + logical)
         return super().get_json(f"/repos/{PROVIDERS[logical]}{suffix}")
 
-    def provider_download(self, logical: str, suffix: str) -> tuple[bytes, bool, list[dict[str, Any]]]:
+    def provider_download(self, logical: str, suffix: str) -> tuple[bytes, bool, list[dict[str, Any]], str]:
         CORE.need(logical in PROVIDERS, "provider-logical:" + logical)
         path = f"/repos/{PROVIDERS[logical]}{suffix}"
-        attempts: list[dict[str, Any]] = []
+        url = self.base_url + path
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "roccho-dev-governance-final-ci/3",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
         if self.token:
-            try:
-                body = self._request(path, self.token, "application/vnd.github+json")
-            except CORE.LiveError as error:
-                attempts.append({"mode": "authenticated", "status": "fail", "finding": finding_text(error)})
-            else:
-                attempts.append({"mode": "authenticated", "status": "pass"})
-                return body, True, attempts
+            headers["Authorization"] = f"Bearer {self.token}"
+        request = urllib.request.Request(url, headers=headers, method="GET")
+        opener = urllib.request.build_opener(CrossHostAuthStrippingRedirect())
         try:
-            body = self._request(path, None, "application/vnd.github+json")
-        except CORE.LiveError as error:
-            attempts.append({"mode": "anonymous", "status": "fail", "finding": finding_text(error)})
-            raise DiagnosticError("artifact-download:" + logical, {"downloadAttempts": attempts}) from error
-        attempts.append({"mode": "anonymous", "status": "pass"})
-        return body, False, attempts
+            with opener.open(request, timeout=60) as response:
+                body = response.read()
+                final_url = response.geturl()
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", "replace")
+            diagnostic = {
+                "downloadAttempts": [{
+                    "mode": "authenticated-cross-host-safe",
+                    "status": "fail",
+                    "httpStatus": error.code,
+                    "finding": detail[:300],
+                }]
+            }
+            raise DiagnosticError("artifact-download:" + logical, diagnostic) from error
+        except urllib.error.URLError as error:
+            raise DiagnosticError(
+                "artifact-download-network:" + logical,
+                {"downloadAttempts": [{"mode": "authenticated-cross-host-safe", "status": "fail", "finding": str(error.reason)[:300]}]},
+            ) from error
+        return body, bool(self.token), [{"mode": "authenticated-cross-host-safe", "status": "pass"}], urllib.parse.urlparse(final_url).netloc
 
     def get_json(self, path: str) -> Any:
         logical = next((repo for repo in PROVIDERS if path == f"/repos/{repo}" or path.startswith(f"/repos/{repo}/")), None)
@@ -100,7 +126,7 @@ class CurrentProviderApi(CORE.GitHubApi):
     def get_bytes(self, path: str) -> bytes:
         logical = next((repo for repo in PROVIDERS if path.startswith(f"/repos/{repo}/")), None)
         CORE.need(logical is not None, "provider-byte-route:" + path)
-        body, _, _ = self.provider_download(logical, path[len(f"/repos/{logical}"):])
+        body, _, _, _ = self.provider_download(logical, path[len(f"/repos/{logical}"):])
         return body
 
 
@@ -115,18 +141,10 @@ class FakeCurrentProviderApi(CurrentProviderApi):
         CORE.need(path in self.json_routes, "fake-json-missing:" + path)
         return copy.deepcopy(self.json_routes[path])
 
-    def provider_download(self, logical: str, suffix: str) -> tuple[bytes, bool, list[dict[str, Any]]]:
+    def provider_download(self, logical: str, suffix: str) -> tuple[bytes, bool, list[dict[str, Any]], str]:
         path = f"/repos/{PROVIDERS[logical]}{suffix}"
         CORE.need(path in self.byte_routes, "fake-bytes-missing:" + path)
-        return self.byte_routes[path], True, [{"mode": "authenticated", "status": "pass"}]
-
-
-def read_snapshot(path: Path, code: str) -> bytes:
-    CORE.need(path.is_file() and not path.is_symlink(), code + ":missing")
-    try:
-        return base64.b64decode("".join(path.read_text(encoding="utf-8").split()), validate=True)
-    except Exception as error:
-        raise CORE.LiveError(code + ":base64") from error
+        return self.byte_routes[path], True, [{"mode": "fake-current-provider", "status": "pass"}], "fake.invalid"
 
 
 def receipt_raw(body: bytes, expected: dict[str, Any]) -> bytes:
@@ -167,7 +185,7 @@ def historical_snapshot_replay(rollout: dict[str, Any], root: Path = ROOT) -> di
     }
 
 
-def observe_current(api: CurrentProviderApi, expected: dict[str, Any], current_body_root: Path = ROOT) -> dict[str, Any]:
+def observe_current(api: CurrentProviderApi, expected: dict[str, Any]) -> dict[str, Any]:
     repository, branch = expected["repository"], expected["branch"]
     diagnostic: dict[str, Any] = {
         "repository": repository,
@@ -175,6 +193,7 @@ def observe_current(api: CurrentProviderApi, expected: dict[str, Any], current_b
         "branch": branch,
         "receiptParsed": False,
         "receiptCandidateShaBound": False,
+        "currentAcquisitionPath": None,
     }
     try:
         metadata = api.provider_get_json(repository, "")
@@ -196,9 +215,7 @@ def observe_current(api: CurrentProviderApi, expected: dict[str, Any], current_b
         run = max(candidates, key=lambda value: int(value.get("id", 0)))
         run_id = run.get("id")
         CORE.need(isinstance(run_id, int) and run_id > 0, "live-run-id:" + repository)
-        diagnostic["runId"] = run_id
-        diagnostic["workflowName"] = run.get("name")
-        diagnostic["workflowPath"] = run.get("path")
+        diagnostic.update({"runId": run_id, "workflowName": run.get("name"), "workflowPath": run.get("path")})
         listed = api.provider_get_json(repository, f"/actions/runs/{run_id}/artifacts?{CORE.query(per_page=100)}")
         artifacts = [item for item in listed.get("artifacts", []) if item.get("name") == expected["artifactName"] and item.get("expired") is False]
         CORE.need(len(artifacts) == 1, "live-artifact-cardinality:" + repository)
@@ -212,30 +229,15 @@ def observe_current(api: CurrentProviderApi, expected: dict[str, Any], current_b
             "providerArtifactDigest": artifact_digest,
             "providerArtifactBytes": artifact.get("size_in_bytes"),
         })
-
-        body_source = "actual-current-provider-download"
-        authenticated = False
-        acquisition_path: str | None = None
-        attempts: list[dict[str, Any]] = []
-        try:
-            body, authenticated, attempts = api.provider_download(repository, f"/actions/artifacts/{artifact_id}/zip")
-        except DiagnosticError as error:
-            attempts = list(error.diagnostic.get("downloadAttempts", []))
-            if not any("github-http:401:" in str(row.get("finding", "")) for row in attempts):
-                error.diagnostic = {**diagnostic, **error.diagnostic}
-                raise
-            acquisition_path = CURRENT_BODY_PATHS[repository]
-            body = read_snapshot(current_body_root / acquisition_path, "current-acquisition:" + repository)
-            body_source = "current-acquisition-fallback"
+        body, authenticated, attempts, final_host = api.provider_download(repository, f"/actions/artifacts/{artifact_id}/zip")
         diagnostic.update({
             "downloadAttempts": attempts,
-            "artifactBodySource": body_source,
+            "artifactBodySource": "actual-current-provider-download",
             "artifactDownloadAuthenticated": authenticated,
-            "currentAcquisitionPath": acquisition_path,
+            "downloadFinalHost": final_host,
             "downloadArchiveBytes": len(body),
             "downloadArchiveDigest": "sha256:" + hashlib.sha256(body).hexdigest(),
         })
-
         receipt, receipt_digest = CORE.parse_artifact(body, expected)
         raw = receipt_raw(body, expected)
         diagnostic.update({
@@ -247,8 +249,7 @@ def observe_current(api: CurrentProviderApi, expected: dict[str, Any], current_b
         CORE.validate_receipt(receipt, expected, head)
         diagnostic["receiptCandidateShaBound"] = True
         diagnostic["providerDigestMatchesDownload"] = diagnostic["downloadArchiveDigest"] == artifact_digest
-        if not diagnostic["providerDigestMatchesDownload"]:
-            raise DiagnosticError("live-artifact-body-digest:" + repository, diagnostic)
+        CORE.need(diagnostic["providerDigestMatchesDownload"] is True, "live-artifact-body-digest:" + repository)
         return {**diagnostic, "body": body}
     except DiagnosticError:
         raise
@@ -256,18 +257,17 @@ def observe_current(api: CurrentProviderApi, expected: dict[str, Any], current_b
         raise DiagnosticError(str(error), diagnostic) from error
 
 
-def capture_current(rollout: dict[str, Any], api: CurrentProviderApi, historical_root: Path = ROOT, current_body_root: Path = ROOT) -> dict[str, Any]:
+def capture_current(rollout: dict[str, Any], api: CurrentProviderApi, historical_root: Path = ROOT) -> dict[str, Any]:
     observed: dict[str, dict[str, Any]] = {}
     with tempfile.TemporaryDirectory() as temporary:
         current_root = Path(temporary)
         for expected in CORE.validate_rollout(rollout):
-            current = observe_current(api, expected, current_body_root)
+            current = observe_current(api, expected)
             observed[expected["repository"]] = current
             snapshot = current_root / expected["snapshotPath"]
             snapshot.parent.mkdir(parents=True, exist_ok=True)
             snapshot.write_text(base64.b64encode(current["body"]).decode() + "\n", encoding="utf-8")
         report = CORE.capture(rollout, api, current_root)
-
     for row in report["repositories"]:
         repository = row["repository"]
         actual = observed[repository]
@@ -281,16 +281,17 @@ def capture_current(rollout: dict[str, Any], api: CurrentProviderApi, historical
         row["currentArtifactDigestObserved"] = True
         row["currentBodyDigestMatched"] = True
         row["historicalSnapshotUsedForCurrent"] = False
-
-    report["observationMode"] = "actual-current-provider"
-    report["currentProviderRefsObserved"] = True
-    report["currentArtifactDigestsObserved"] = True
-    report["currentBodiesProviderDigestMatched"] = True
-    report["currentDownloadArchiveDigestsObserved"] = True
-    report["currentReceiptDigestsObserved"] = True
-    report["historicalSnapshotsUsedForCurrent"] = False
-    report["providerAliases"] = provider_aliases()
-    report["historicalReplay"] = historical_snapshot_replay(rollout, historical_root)
+    report.update({
+        "observationMode": "actual-current-provider",
+        "currentProviderRefsObserved": True,
+        "currentArtifactDigestsObserved": True,
+        "currentBodiesProviderDigestMatched": True,
+        "currentDownloadArchiveDigestsObserved": True,
+        "currentReceiptDigestsObserved": True,
+        "historicalSnapshotsUsedForCurrent": False,
+        "providerAliases": provider_aliases(),
+        "historicalReplay": historical_snapshot_replay(rollout, historical_root),
+    })
     return report
 
 
@@ -332,14 +333,14 @@ def selftest(rollout: dict[str, Any]) -> dict[str, Any]:
             path = history_root / expected["snapshotPath"]
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(base64.b64encode(body).decode() + "\n", encoding="utf-8")
-        report = capture_current(rollout, api, history_root, current_root)
+        report = capture_current(rollout, api, history_root)
         CORE.need(report.get("currentDownloadArchiveDigestsObserved") is True, "selftest-download-digest")
         CORE.need(report.get("currentReceiptDigestsObserved") is True, "selftest-receipt-digest")
         CORE.need(report.get("historicalSnapshotsUsedForCurrent") is False, "selftest-history-boundary")
         stale = fake_provider(copy.deepcopy(rollout), root / "stale")
         stale.json_routes[f"/repos/{OPS_PROVIDER}/git/ref/heads/proposals"]["object"]["sha"] = "f" * 40
         try:
-            capture_current(rollout, stale, history_root, current_root)
+            capture_current(rollout, stale, history_root)
         except CORE.LiveError as error:
             CORE.need("live-run-missing" in str(error), "selftest-stale-finding:" + str(error))
             rejected.append({"case": "stale-current-head", "status": "rejected", "finding": str(error)})
@@ -348,7 +349,7 @@ def selftest(rollout: dict[str, Any]) -> dict[str, Any]:
         wrong = fake_provider(copy.deepcopy(rollout), root / "wrong-provider")
         wrong.json_routes[f"/repos/{OPS_PROVIDER}"]["full_name"] = "wrong/provider"
         try:
-            capture_current(rollout, wrong, history_root, current_root)
+            capture_current(rollout, wrong, history_root)
         except CORE.LiveError as error:
             CORE.need("provider-metadata" in str(error), "selftest-provider-finding:" + str(error))
             rejected.append({"case": "wrong-provider", "status": "rejected", "finding": str(error)})
@@ -383,7 +384,7 @@ def main() -> int:
         else:
             token = os.environ.get(args.token_env, "")
             CORE.need(bool(token), "provider-token-missing")
-            report = capture_current(rollout, CurrentProviderApi(token, args.api_url), ROOT, ROOT)
+            report = capture_current(rollout, CurrentProviderApi(token, args.api_url), ROOT)
     except (CORE.LiveError, OSError, ValueError, KeyError, TypeError) as error:
         report = {
             "kind": "governance.liveSelectedConsumerPacket.v1" if args.command == "capture" else "governance.currentProviderSelectedConsumer.selftest.v3",
