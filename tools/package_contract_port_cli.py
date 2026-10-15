@@ -79,10 +79,25 @@ def cross_target_preflight(
     need(not (target_source / "tools/contract-632-phase4-bind.py").exists(), "preflight-target-binder-absent")
     runtime_cli = runtime_source / "packages/contract-diff/bin/contract-diff.py"
     runtime_core = runtime_source / "packages/contract-diff/core.py"
+    runtime_tests = runtime_source / "packages/contract-diff/tests"
     need(git_blob_file(runtime_cli) == "e06a74b4323f2772fbbb69fac9ba543c4326b97b", "preflight-runtime-cli")
     need(git_blob_file(runtime_core) == "9613c92deb6ee12b335863a36261268976ad9cc5", "preflight-runtime-core")
-    runtime_selftest = run([sys.executable, str(runtime_cli), "--selftest"], runtime_source)
-    if runtime_selftest.returncode != 0:
+    runtime_selftest = run(
+        [
+            sys.executable,
+            "-m",
+            "unittest",
+            "discover",
+            "-v",
+            "-s",
+            str(runtime_tests),
+            "-p",
+            "test_*.py",
+        ],
+        runtime_source,
+    )
+    stderr = runtime_selftest.stderr.strip()
+    if runtime_selftest.returncode != 0 or not stderr.endswith("OK"):
         raise ValueError(
             "package-contract-bundle:preflight-runtime-selftest:"
             + json.dumps(
