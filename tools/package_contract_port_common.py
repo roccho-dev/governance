@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TARGET_DIR = ROOT / "tools/package_contract_targets"
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 TARGET_ID = re.compile(r"^[a-z][a-z0-9-]*$")
+DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 STATUS_EXIT = {"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}
 REQUIRED_NEGATIVE = {
     "contract-drift": "OPEN",
@@ -111,9 +112,10 @@ def validate_binding_shape(binding: dict[str, Any], source_paths: dict[str, str]
     need(
         isinstance(executor, dict)
         and set(executor) == {"kind", "operation", "readback", "grade"}
-        and executor.get("kind") in {"adapter", "nix-build-voice-ui-dist"}
+        and executor.get("kind") in {"adapter", "exact-existing-release"}
         and isinstance(executor.get("operation"), str)
-        and type(executor.get("readback")) is bool
+        and executor.get("operation") != ""
+        and executor.get("readback") is True
         and executor.get("grade") in {"source", "real"},
         "evidence-executor",
     )
@@ -245,6 +247,84 @@ def verify_source_binding(
         need(native.is_file() and not native.is_symlink(), "source-native:" + key)
         need(carried.read_bytes() == native.read_bytes(), "source-bytes:" + key)
     return source
+
+
+def verify_evidence_input(
+    evidence_root: Path | None,
+    binding: dict[str, Any],
+    target_id: str,
+    target_candidate: str,
+) -> dict[str, Any]:
+    need(evidence_root is not None, "evidence-input-root")
+    evidence_root = evidence_root.resolve()
+    need(evidence_root.is_dir(), "evidence-input-root")
+    evidence_path = evidence_root / "evidence.json"
+    need(evidence_path.is_file() and not evidence_path.is_symlink(), "evidence-input-file")
+    evidence = read_object(evidence_path, "evidence-input")
+    need(evidence.get("kind") == "governance.packageContractEvidenceInput.v1", "evidence-input-kind")
+    need(evidence.get("authority") is False, "evidence-input-authority")
+    need(evidence.get("targetId") == target_id, "evidence-input-target")
+    need(evidence.get("candidate") == target_candidate, "evidence-input-candidate")
+    need(evidence.get("executor") == binding["evidenceExecutor"], "evidence-input-executor")
+    mode = evidence.get("mode")
+    if mode == "adapter":
+        need(binding["evidenceExecutor"]["kind"] == "adapter", "evidence-input-mode")
+        expected_files = {"evidence.json"}
+        receipt = None
+    elif mode == "exact-existing-release":
+        need(binding["evidenceExecutor"]["kind"] == "exact-existing-release", "evidence-input-mode")
+        expected_files = {
+            "evidence.json",
+            "source-artifact.jsonl",
+            "output-artifact.jsonl",
+            "dist-manifest.json",
+            "provenance.json",
+            "merged-pr-proof.json",
+        }
+        source = evidence_root / "source-artifact.jsonl"
+        output = evidence_root / "output-artifact.jsonl"
+        manifest_path = evidence_root / "dist-manifest.json"
+        provenance_path = evidence_root / "provenance.json"
+        proof_path = evidence_root / "merged-pr-proof.json"
+        need(source.read_bytes() == output.read_bytes(), "evidence-input-projection")
+        receipt = evidence.get("receipt")
+        need(isinstance(receipt, dict), "evidence-input-receipt")
+        need(receipt.get("candidate") == target_candidate, "evidence-input-receipt-candidate")
+        executor = binding["evidenceExecutor"]
+        need(receipt.get("operation") == executor["operation"], "evidence-input-operation")
+        need(receipt.get("grade") == executor["grade"], "evidence-input-grade")
+        need(receipt.get("status") == "PASS" and receipt.get("readback") == "PASS", "evidence-input-result")
+        need(receipt.get("sourceDigest") == sha256_file(source), "evidence-input-source-digest")
+        need(receipt.get("outputDigest") == sha256_file(output), "evidence-input-output-digest")
+        need(receipt.get("manifestDigest") == sha256_file(manifest_path), "evidence-input-manifest-digest")
+        need(receipt.get("provenanceDigest") == sha256_file(provenance_path), "evidence-input-provenance-digest")
+        need(receipt.get("proofDigest") == sha256_file(proof_path), "evidence-input-proof-digest")
+        manifest = read_object(manifest_path, "evidence-input-manifest")
+        need(manifest.get("schema") == "voice-ui-dist/2", "evidence-input-manifest-schema")
+        need(manifest.get("sources", {}).get("apps") == target_candidate, "evidence-input-manifest-candidate")
+        need(manifest.get("auth") == ".envs/artifact.jsonl", "evidence-input-manifest-auth")
+        provenance = read_object(provenance_path, "evidence-input-provenance")
+        proof = read_object(proof_path, "evidence-input-proof")
+        need(provenance.get("source", {}).get("commit") == target_candidate, "evidence-input-provenance-candidate")
+        need(proof.get("merge_sha") == target_candidate, "evidence-input-proof-candidate")
+        need(proof.get("reviewed_tree") == proof.get("merge_tree"), "evidence-input-proof-tree")
+    else:
+        raise ValueError("package-contract-bundle:evidence-input-mode")
+    actual_files = {
+        p.relative_to(evidence_root).as_posix()
+        for p in evidence_root.rglob("*")
+        if p.is_file()
+    }
+    need(actual_files == expected_files, "evidence-input-universe")
+    return {
+        "kind": evidence["kind"],
+        "mode": mode,
+        "candidate": target_candidate,
+        "executor": binding["evidenceExecutor"],
+        "digest": sha256_file(evidence_path),
+        "filesVerified": len(actual_files),
+        "receipt": receipt,
+    }
 
 
 def replay_comparator(

@@ -108,6 +108,9 @@ def validate_member(
     need(member.get("targetCandidate") == target_candidate, "member-target-candidate")
     need(member.get("governanceCandidate") == governance_candidate, "member-governance-candidate")
     need(member.get("evidenceBound") is True and member.get("sourceBytesVerified") == binding["expectedSourceBytesVerified"], "member-evidence")
+    need(member.get("evidenceInputVerified") is True, "member-evidence-input")
+    need(member.get("evidenceExecutor") == binding["evidenceExecutor"], "member-evidence-executor")
+    need(isinstance(member.get("evidenceInputDigest"), str), "member-evidence-input-digest")
     need(member.get("receiptReplayed") is True and member.get("comparatorReplayed") is True, "member-replay")
     need(member.get("contractDiffStatus") == "CLOSED" and member.get("contractDiffExit") == checker.STATUS_EXIT["CLOSED"], "member-positive")
     need(member.get("negativeStatus") == checker.REQUIRED_NEGATIVE, "member-negative-status")
@@ -125,6 +128,8 @@ def package_member(
     target_source: Path,
     accepted_source: Path,
     policy_source: Path,
+    runtime_source: Path,
+    evidence_input: Path,
     target_id: str,
     target_candidate: str,
 ) -> dict[str, Any]:
@@ -140,6 +145,8 @@ def package_member(
         target_id,
         candidate_sha,
         policy_source,
+        runtime_source,
+        evidence_input,
     )
     return validate_member(member, binding, target_id, target_candidate, candidate_sha, checker)
 
@@ -151,6 +158,8 @@ def run_package_check(args: argparse.Namespace) -> dict[str, Any]:
         args.package_contract_target_source,
         args.package_contract_accepted_requirement_source,
         args.package_contract_governance_policy_source,
+        args.package_contract_runtime_source,
+        args.package_contract_evidence_input,
         args.package_contract_target_id,
         args.expected_target_candidate,
     )
@@ -174,6 +183,8 @@ def run_check(args: argparse.Namespace) -> dict[str, Any]:
         args.package_contract_target_source,
         args.package_contract_accepted_requirement_source,
         args.package_contract_governance_policy_source,
+        args.package_contract_runtime_source,
+        args.package_contract_evidence_input,
         args.package_contract_target_id,
         args.expected_target_candidate,
     ]
@@ -185,36 +196,44 @@ def run_check(args: argparse.Namespace) -> dict[str, Any]:
             args.package_contract_target_source,
             args.package_contract_accepted_requirement_source,
             args.package_contract_governance_policy_source,
+            args.package_contract_runtime_source,
+            args.package_contract_evidence_input,
             args.package_contract_target_id,
             args.expected_target_candidate,
         )
 
     identity = load_identity()
     regression = run_selftest()
-    production = run_component("current-exact-sha-production-evidence", [
-        sys.executable,
-        "tools/check-package-final-ci-production.py",
-        "check",
-        "--candidate-sha",
-        args.candidate_sha,
-        "--live-consumers",
-        str(args.live_consumers),
-        "--json",
-    ])
+    production = run_component(
+        "current-exact-sha-production-evidence",
+        [
+            sys.executable,
+            "tools/check-package-final-ci-production.py",
+            "check",
+            "--candidate-sha",
+            args.candidate_sha,
+            "--live-consumers",
+            str(args.live_consumers),
+            "--json",
+        ],
+    )
     if production["status"] != "pass":
         raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v8", "status": "fail", "failedComponents": [production]}))
     parsed = json.loads(production["output"][-1])
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
-        migration = run_component("contract-modeling-production-cutover", [
-            sys.executable,
-            "tools/check-contract-modeling-production-migration.py",
-            "check",
-            "--candidate-sha",
-            args.candidate_sha,
-            "--out",
-            temporary,
-        ])
+        migration = run_component(
+            "contract-modeling-production-cutover",
+            [
+                sys.executable,
+                "tools/check-contract-modeling-production-migration.py",
+                "check",
+                "--candidate-sha",
+                args.candidate_sha,
+                "--out",
+                temporary,
+            ],
+        )
         if migration["status"] != "pass":
             raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v8", "status": "fail", "failedComponents": [migration]}))
         migration_value = json.loads((root / "production-migration-candidate.json").read_text(encoding="utf-8"))
@@ -255,19 +274,22 @@ def run_check(args: argparse.Namespace) -> dict[str, Any]:
         gate_path = root / "gate.json"
         eligibility_path = root / "gov-release-eligibility.json"
         gate_path.write_text(canonical(report) + "\n", encoding="utf-8")
-        release = run_component("gov-release-eligibility", [
-            sys.executable,
-            "tools/check-gov-release-integration.py",
-            "eligibility",
-            "--gate",
-            str(gate_path),
-            "--live-consumers",
-            str(args.live_consumers),
-            "--candidate-sha",
-            args.candidate_sha,
-            "--out",
-            str(eligibility_path),
-        ])
+        release = run_component(
+            "gov-release-eligibility",
+            [
+                sys.executable,
+                "tools/check-gov-release-integration.py",
+                "eligibility",
+                "--gate",
+                str(gate_path),
+                "--live-consumers",
+                str(args.live_consumers),
+                "--candidate-sha",
+                args.candidate_sha,
+                "--out",
+                str(eligibility_path),
+            ],
+        )
         if release["status"] != "pass":
             raise SystemExit(canonical({"kind": "governance.finalScopePurposeJoin.gate.v8", "status": "fail", "failedComponents": [release]}))
         report["govReleaseEligibility"] = json.loads(eligibility_path.read_text(encoding="utf-8"))
@@ -286,6 +308,8 @@ def main() -> int:
     parser.add_argument("--package-contract-target-source", type=Path)
     parser.add_argument("--package-contract-accepted-requirement-source", type=Path)
     parser.add_argument("--package-contract-governance-policy-source", type=Path)
+    parser.add_argument("--package-contract-runtime-source", type=Path)
+    parser.add_argument("--package-contract-evidence-input", type=Path)
     parser.add_argument("--package-contract-target-id")
     parser.add_argument("--expected-target-candidate")
     parser.add_argument("--package-contract-scope", type=Path)
@@ -300,6 +324,8 @@ def main() -> int:
         args.package_contract_target_source,
         args.package_contract_accepted_requirement_source,
         args.package_contract_governance_policy_source,
+        args.package_contract_runtime_source,
+        args.package_contract_evidence_input,
         args.package_contract_target_id,
         args.expected_target_candidate,
     ]

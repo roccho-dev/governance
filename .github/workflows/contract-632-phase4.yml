@@ -36,7 +36,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Verify exact stacked input
+      - name: Verify exact stacked input and discover targets
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -45,7 +45,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$HEAD_SHA"
           test "$BASE_SHA" = 1422300f4b5706c860403f14966bfbba1f6ddc1a
           python3 tools/contract_632_phase4_acquire.py discover --out target-discovery.json
-          jq -e '.targets == ["ops"]' target-discovery.json >/dev/null
+          jq -e '.kind=="governance.packageContractTargets.v1" and (.targets|index("ops"))!=null and (.targets|length)>0' target-discovery.json >/dev/null
 
       - name: Validate existing ADRS reader
         env:
@@ -62,32 +62,33 @@ jobs:
           repositories: adrs
           permission-contents: read
 
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            extra-experimental-features = nix-command flakes
-
-      - name: Acquire target, runtime, policy, Requirement, and fixed Apps preflight sources
+      - name: Acquire every caller-owned exact source and fixed Apps shape roots
         env:
           SAME_REPO_TOKEN: ${{ github.token }}
           ADRS_READER_TOKEN: ${{ steps.adrs-token.outputs.token }}
         run: |
           set -euo pipefail
           python3 tools/contract_632_phase4_acquire.py acquire --out source-acquisition.json
-          jq -e '.kind=="governance.packageContractSourceAcquisition.v2" and (.rows|length)==7' source-acquisition.json >/dev/null
+          targets="$(jq '.targets|length' target-discovery.json)"
+          expected="$((targets * 4 + 3))"
+          jq -e --argjson expected "$expected" '.kind=="governance.packageContractSourceAcquisition.v2" and (.rows|length)==$expected' source-acquisition.json >/dev/null
 
-      - name: Prove cross-target port shape and actual Apps build readback
-        id: preflight
+      - name: Read exact existing Apps release bodies and prepare target evidence inputs
         run: |
           set -euo pipefail
           python3 tools/contract_632_phase4_acquire.py prepare
+
+      - name: Prove cross-target port shape and exact Apps build readback
+        id: preflight
+        run: |
+          set -euo pipefail
           python3 tools/check-package-contract-closure-bundle.py preflight \
             --preflight-target-source _preflight/target \
             --preflight-runtime-source _preflight/runtime \
             --preflight-accepted-source _preflight/accepted \
+            --preflight-evidence-input _preflight/evidence \
             --out cross-target-preflight.json
-          jq -e '.status=="pass" and .targetRuntimeSeparated==true and .targetLocalComparatorPresent==false and .targetLocalLowerVerifierPresent==false and .lowerVerifierMayBeNone==true' cross-target-preflight.json >/dev/null
-          jq -e '.kind=="governance.packageContractBuildReceipt.v1" and .targetId=="apps-shape-preflight" and .candidate=="71409fa013b6cb681c0a80b4c377e4685685b690" and .operation=="nix-build-voice-ui-dist" and .grade=="source" and .status=="PASS" and .readback=="PASS" and .sourceDigest==.outputDigest' _preflight/evidence/build-receipt.json >/dev/null
+          jq -e '.status=="pass" and .memberCreated==false and .targetRuntimeSeparated==true and .targetLocalComparatorPresent==false and .targetLocalLowerVerifierPresent==false and .lowerVerifierMayBeNone==true and .runtimeComparatorSelftest==true and .evidenceInputVerified==true and .sourceOutputBytesEqual==true' cross-target-preflight.json >/dev/null
 
       - name: Observe actual current providers and replay history separately
         id: provider
@@ -102,6 +103,7 @@ jobs:
 
       - name: Produce and verify every discovered target through corrected Common
         id: package
+        continue-on-error: true
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -113,7 +115,7 @@ jobs:
             common=(--target-id "$target" --bundle "$bundle" --target-source "$root/targetSource" --accepted-requirement-source "$root/acceptedRequirementSource" --governance-policy-source "$root/governancePolicySource" --contract-runtime-source "$root/contractRuntimeSource" --evidence-input "_evidence/$target" --governance-candidate "$GOVERNANCE_CANDIDATE")
             python3 tools/check-package-contract-closure-bundle.py produce "${common[@]}" > "target-produce-$target.json"
             python3 tools/check-package-contract-closure-bundle.py check "${common[@]}" --target-candidate "$candidate" --out "package-contract-member-$target.json" > "target-check-$target.json"
-            jq -e --arg target "$target" --arg candidate "$candidate" --arg governance "$GOVERNANCE_CANDIDATE" '.kind=="governance.packageContractClosureMember.v3" and .targetId==$target and .targetCandidate==$candidate and .governanceCandidate==$governance and .status=="pass" and .contractDiffStatus=="CLOSED" and .remaining==0 and .contractRuntimeRepository=="roccho-org/ops" and .runtimeSourcesVerified==2 and .lowerProofMode=="target-verifier+common-reconstruction"' "package-contract-member-$target.json" >/dev/null
+            jq -e --arg target "$target" --arg candidate "$candidate" --arg governance "$GOVERNANCE_CANDIDATE" '.kind=="governance.packageContractClosureMember.v3" and .targetId==$target and .targetCandidate==$candidate and .governanceCandidate==$governance and .status=="pass" and .contractDiffStatus=="CLOSED" and .remaining==0 and .contractRuntimeRepository=="roccho-org/ops" and .runtimeSourcesVerified==2 and .evidenceInputVerified==true' "package-contract-member-$target.json" >/dev/null
           done
 
       - name: Acquire exact B0 provider artifact
@@ -124,42 +126,71 @@ jobs:
           github-token: ${{ github.token }}
           path: _b0
 
-      - name: Prove B0 to corrected B1-prime equivalence
+      - name: Prove B0 to corrected B1-prime value-level equivalence
         id: equivalence
+        continue-on-error: true
         run: |
           set -euo pipefail
           python3 tools/contract_632_b0_b1_prime.py \
             --b0 _b0 --b1 contract-632-phase4-ops \
             --member package-contract-member-ops.json \
             --out b0-b1-equivalence.json
-          jq -e '.status=="pass" and .runtimeSeparated==true and .lowerProofPreservedForOps==true and .semanticInvariant==true and .stableByteInvariant==true and .expectedDeltaClosed==true' b0-b1-equivalence.json >/dev/null
+          jq -e '.status=="pass" and .runtimeSeparated==true and .lowerProofPreservedForOps==true and .semanticInvariant==true and .stableByteInvariant==true and .expectedDeltaClosed==true and .negativeDeltaMapClosed==true and .manifestDeltaClosed==true' b0-b1-equivalence.json >/dev/null
 
-      - name: Consume Ops through package-only and normal existing final entrances
+      - name: Isolate acquired proof roots from canonical repository scans
+        env:
+          GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          proof_root="$RUNNER_TEMP/contract-632-proof-roots"
+          rm -rf "$proof_root"
+          mkdir -p "$proof_root"
+          for root in _sources _preflight _evidence _b0; do mv "$root" "$proof_root/$root"; done
+          proof_workflow="$proof_root/contract-632-phase4.yml"
+          git show "$GOVERNANCE_CANDIDATE:.github/workflows/contract-632-phase4.yml" > "$proof_workflow"
+          cmp "$proof_workflow" .github/workflows/contract-632-phase4.yml
+          rm .github/workflows/contract-632-phase4.yml
+          test "$(find .github/workflows -maxdepth 1 -type f | wc -l)" = 3
+          echo "CONTRACT_632_PROOF_ROOT=$proof_root" >> "$GITHUB_ENV"
+
+      - name: Consume every target through package-only and normal existing final entrances
         id: final
+        continue-on-error: true
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          root="_sources/ops"
-          common=(--candidate-sha "$GOVERNANCE_CANDIDATE" --package-contract-bundle contract-632-phase4-ops --package-contract-target-source "$root/targetSource" --package-contract-accepted-requirement-source "$root/acceptedRequirementSource" --package-contract-governance-policy-source "$root/governancePolicySource" --package-contract-target-id ops --expected-target-candidate 5eb98c82417b399978c1e38aebab5e3fb39752d4)
-          python3 tools/check-package-final-scope-purpose-join.py check-package "${common[@]}" --json > package-final-report-ops.json
-          python3 tools/check-package-final-scope-purpose-join.py check "${common[@]}" --live-consumers live-selected-consumers.json --json > final-check-report-ops.json
-          jq -e '.status=="pass" and .packageContractClosureDigest==.packageContractClosure.memberDigest' package-final-report-ops.json >/dev/null
-          jq -e '.status=="pass" and .decision=="allow" and .releasePublished==false and .operationalAdoptionEffect==false and .packageContractClosureDigest==.packageContractClosure.memberDigest' final-check-report-ops.json >/dev/null
+          for target in $(jq -r '.targets[]' target-discovery.json); do
+            root="$CONTRACT_632_PROOF_ROOT/_sources/$target"
+            evidence="$CONTRACT_632_PROOF_ROOT/_evidence/$target"
+            candidate="$(jq -r '.targetSource.revision' "tools/package_contract_targets/$target.target.json")"
+            common=(--candidate-sha "$GOVERNANCE_CANDIDATE" --package-contract-bundle "contract-632-phase4-$target" --package-contract-target-source "$root/targetSource" --package-contract-accepted-requirement-source "$root/acceptedRequirementSource" --package-contract-governance-policy-source "$root/governancePolicySource" --package-contract-runtime-source "$root/contractRuntimeSource" --package-contract-evidence-input "$evidence" --package-contract-target-id "$target" --expected-target-candidate "$candidate")
+            python3 tools/check-package-final-scope-purpose-join.py check-package "${common[@]}" --json > "package-final-report-$target.json"
+            python3 tools/check-package-final-scope-purpose-join.py check "${common[@]}" --live-consumers live-selected-consumers.json --json > "final-check-report-$target.json"
+            jq -e '.status=="pass" and .packageContractClosureDigest==.packageContractClosure.memberDigest' "package-final-report-$target.json" >/dev/null
+            jq -e '.status=="pass" and .decision=="allow" and .releasePublished==false and .operationalAdoptionEffect==false and .packageContractClosureDigest==.packageContractClosure.memberDigest' "final-check-report-$target.json" >/dev/null
+          done
 
-      - name: Run destructive source, runtime, candidate, contract, provider, and legacy negatives
+      - name: Run destructive source, runtime, evidence, candidate, contract, provider, and legacy negatives
         id: negatives
+        if: always()
+        continue-on-error: true
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          test -d "$CONTRACT_632_PROOF_ROOT/_sources"
+          test -d "$CONTRACT_632_PROOF_ROOT/_evidence"
           python3 tools/contract_632_phase4_negatives.py \
-            --bundle contract-632-phase4-ops --sources _sources \
-            --governance "$GOVERNANCE_CANDIDATE" --b0 _b0 \
+            --bundle contract-632-phase4-ops \
+            --sources "$CONTRACT_632_PROOF_ROOT/_sources" \
+            --evidence "$CONTRACT_632_PROOF_ROOT/_evidence" \
+            --governance "$GOVERNANCE_CANDIDATE" \
+            --b0 "$CONTRACT_632_PROOF_ROOT/_b0" \
             --out phase4-final-negative.json
-          jq -e '.status=="pass" and .runtimeSourceTamper==true and .weakenedNegativeContract==true and .legacyMemberV2==true' phase4-final-negative.json >/dev/null
+          jq -e '.status=="pass" and .runtimeSourceTamper==true and .missingEvidenceInput==true and .wrongEvidenceCandidate==true and .wrongEvidenceOperation==true and .weakenedNegativeContract==true and .legacyMemberV2==true' phase4-final-negative.json >/dev/null
 
-      - name: Write finite readback and transport manifest
+      - name: Write finite target-set readback and transport manifest
         if: always()
         env:
           GOVERNANCE_CANDIDATE: ${{ github.event.pull_request.head.sha }}
@@ -174,21 +205,38 @@ jobs:
           python3 - <<'PY'
           import hashlib,json,os,pathlib,shutil
           root=pathlib.Path('contract-632-phase4-governance-evidence'); root.mkdir(exist_ok=True)
-          for source,target in [
-            ('contract-632-phase4-ops','ops-bundle'),('package-contract-member-ops.json','package-contract-member-ops.json'),
-            ('package-final-report-ops.json','package-final-report-ops.json'),('final-check-report-ops.json','final-check-report-ops.json'),
-            ('target-discovery.json','target-discovery.json'),('source-acquisition.json','source-acquisition.json'),
-            ('cross-target-preflight.json','cross-target-preflight.json'),('b0-b1-equivalence.json','b0-b1-equivalence.json'),
-            ('phase4-final-negative.json','phase4-final-negative.json'),('live-selected-consumers.json','live-selected-consumers.json')]:
-              path=pathlib.Path(source)
-              if path.is_dir(): shutil.copytree(path,root/target)
-              elif path.exists(): shutil.copy2(path,root/target)
-          if pathlib.Path('_preflight/evidence').exists(): shutil.copytree('_preflight/evidence',root/'apps-preflight-evidence')
+          targets=json.loads(pathlib.Path('target-discovery.json').read_text())['targets']
+          binding=sorted(p.name[:-len('.target.json')] for p in pathlib.Path('tools/package_contract_targets').glob('*.target.json'))
+          adapters=sorted(p.stem for p in pathlib.Path('tools/package_contract_targets').glob('*.py') if p.name!='__init__.py')
+          executed=sorted(p.name[len('package-contract-member-'):-len('.json')] for p in pathlib.Path('.').glob('package-contract-member-*.json'))
+          artifacts=sorted(p.name[len('contract-632-phase4-'):] for p in pathlib.Path('.').glob('contract-632-phase4-*') if p.is_dir())
+          if not (binding==adapters==targets==executed==artifacts):
+              raise SystemExit('target-set-mismatch:'+json.dumps({'binding':binding,'adapters':adapters,'targets':targets,'executed':executed,'artifacts':artifacts},sort_keys=True))
+          common_files=('target-discovery.json','source-acquisition.json','cross-target-preflight.json','b0-b1-equivalence.json','phase4-final-negative.json','live-selected-consumers.json')
+          for name in common_files:
+              path=pathlib.Path(name)
+              if path.exists(): shutil.copy2(path,root/name)
+          proof=pathlib.Path(os.environ['CONTRACT_632_PROOF_ROOT'])
+          preflight=proof/'_preflight/evidence'
+          if preflight.exists(): shutil.copytree(preflight,root/'apps-preflight-evidence')
+          workflow=proof/'contract-632-phase4.yml'
+          if workflow.exists(): shutil.copy2(workflow,root/'proof-workflow.yml')
+          members={}
+          for target in targets:
+              bundle=pathlib.Path(f'contract-632-phase4-{target}')
+              shutil.copytree(bundle,root/f'{target}-bundle')
+              for name in (f'package-contract-member-{target}.json',f'package-final-report-{target}.json',f'final-check-report-{target}.json',f'target-produce-{target}.json',f'target-check-{target}.json'):
+                  path=pathlib.Path(name)
+                  if path.exists(): shutil.copy2(path,root/name)
+              producer=pathlib.Path(f'contract-632-phase4-{target}-producer')
+              if producer.exists(): shutil.copytree(producer,root/producer.name)
+              member_path=pathlib.Path(f'package-contract-member-{target}.json')
+              if member_path.exists(): members[target]=json.loads(member_path.read_text())['memberDigest']
           outcomes={name:os.environ[name] for name in ('PREFLIGHT','PROVIDER','PACKAGE','EQUIVALENCE','FINAL','NEGATIVES')}
           passed=all(value=='success' for value in outcomes.values())
-          member=json.loads(pathlib.Path('package-contract-member-ops.json').read_text()) if pathlib.Path('package-contract-member-ops.json').exists() else {}
-          report={'kind':'governance.contract632.b1PrimeReadback.v1','status':'pass' if passed else 'fail','authority':False,'adoption':False,'releasePublished':False,'governanceCandidate':os.environ['GOVERNANCE_CANDIDATE'],'targets':['ops'],'memberDigests':{'ops':member.get('memberDigest')},'stageOutcomes':outcomes,'remaining':0 if passed else sum(v!='success' for v in outcomes.values()),'claimCeiling':'B1_PRIME_PORT_SHAPE_NOT_APPS_ADAPTER_OR_EXTENSION_CLOSURE'}
-          pathlib.Path('phase4-governance-readback.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n'); shutil.copy2('phase4-governance-readback.json',root/'phase4-governance-readback.json')
+          report={'kind':'governance.contract632.b1PrimeReadback.v2','status':'pass' if passed else 'fail','authority':False,'adoption':False,'releasePublished':False,'governanceCandidate':os.environ['GOVERNANCE_CANDIDATE'],'targets':targets,'bindingTargets':binding,'adapterTargets':adapters,'executedTargets':executed,'memberTargets':sorted(members),'artifactTargets':artifacts,'memberDigests':members,'stageOutcomes':outcomes,'remaining':0 if passed else sum(v!='success' for v in outcomes.values()),'claimCeiling':'B1_PRIME_PORT_SHAPE_NOT_APPS_ADAPTER_OR_EXTENSION_CLOSURE'}
+          pathlib.Path('phase4-governance-readback.json').write_text(json.dumps(report,sort_keys=True,separators=(',',':'))+'\n')
+          shutil.copy2('phase4-governance-readback.json',root/'phase4-governance-readback.json')
           rows=[{'path':p.relative_to(root).as_posix(),'sha256':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.rglob('*')) if p.is_file()]
           (root/'transport-manifest.json').write_text(json.dumps(rows,sort_keys=True,separators=(',',':'))+'\n')
           PY
@@ -215,4 +263,4 @@ jobs:
           cat phase4-governance-readback.json
           manifest_sha="$(sha256sum contract-632-phase4-governance-evidence/transport-manifest.json | cut -d' ' -f1)"
           printf 'contract_632_b1_prime manifest=%s artifact_outcome=%s artifact_id=%s artifact_digest=%s\n' "$manifest_sha" "$ARTIFACT_OUTCOME" "${ARTIFACT_ID:-}" "${ARTIFACT_DIGEST:-}"
-          jq -e '.status=="pass" and .remaining==0 and all(.stageOutcomes[]; .=="success")' phase4-governance-readback.json >/dev/null
+          jq -e '.status=="pass" and .remaining==0 and .bindingTargets==.adapterTargets and .adapterTargets==.targets and .targets==.executedTargets and .executedTargets==.memberTargets and .memberTargets==.artifactTargets and all(.stageOutcomes[]; .=="success")' phase4-governance-readback.json >/dev/null

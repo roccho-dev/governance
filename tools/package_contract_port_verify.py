@@ -26,7 +26,11 @@ def verify_bundle(
     policy_source = governance_policy_source.resolve() if governance_policy_source else accepted_requirement_source
     runtime_identity = binding["contractRuntimeSource"]
     runtime_source = contract_runtime_source.resolve() if contract_runtime_source else None
-    if runtime_source is None and runtime_identity["repository"] == binding["targetSource"]["repository"] and runtime_identity["revision"] == target_candidate:
+    if (
+        runtime_source is None
+        and runtime_identity["repository"] == binding["targetSource"]["repository"]
+        and runtime_identity["revision"] == target_candidate
+    ):
         runtime_source = target_source
 
     need(HEX40.fullmatch(target_candidate) is not None, "target-candidate")
@@ -35,8 +39,9 @@ def verify_bundle(
     verify_git_head(target_source, target_candidate, "target-source")
     verify_git_head(accepted_requirement_source, binding["acceptedRequirementSource"]["revision"], "accepted-requirement-source")
     verify_git_head(policy_source, binding["governancePolicySource"]["revision"], "governance-policy-source")
-    if runtime_source is not None:
-        verify_git_head(runtime_source, runtime_identity["revision"], "contract-runtime-source")
+    need(runtime_source is not None, "contract-runtime-root")
+    verify_git_head(runtime_source, runtime_identity["revision"], "contract-runtime-source")
+    evidence_identity = verify_evidence_input(evidence_input, binding, target_id, target_candidate)
     verify_manifest(bundle)
 
     bindings = read_object(bundle / "source-bindings.json", "source-bindings")
@@ -54,14 +59,19 @@ def verify_bundle(
         else:
             spec = runtime_identity["allowedPaths"][role]
             repository, revision = runtime_identity["repository"], runtime_identity["revision"]
-            native = runtime_source / relative if runtime_source else None
+            native = runtime_source / relative
             expected_blob = spec["gitBlob"]
             runtime_count += 1
         sources[role] = verify_source_binding(bindings, role, repository, revision, relative, native, bundle, expected_blob)
 
     observer = verify_source_binding(
-        bindings, "observer", "roccho-dev/governance", governance_candidate,
-        identity["adapterPath"], ROOT / identity["adapterPath"], bundle,
+        bindings,
+        "observer",
+        "roccho-dev/governance",
+        governance_candidate,
+        identity["adapterPath"],
+        ROOT / identity["adapterPath"],
+        bundle,
     )
     allowed = binding["acceptedRequirementSource"]["allowedPaths"]
     need(set(allowed) == set(accepted_files), "accepted-path-universe")
@@ -70,9 +80,14 @@ def verify_bundle(
         spec = allowed[role]
         need(spec.get("path") == relative, "accepted-path:" + role)
         accepted[role] = verify_source_binding(
-            bindings, role, binding["acceptedRequirementSource"]["repository"],
-            binding["acceptedRequirementSource"]["revision"], relative,
-            accepted_requirement_source / relative, bundle, spec.get("gitBlob"),
+            bindings,
+            role,
+            binding["acceptedRequirementSource"]["repository"],
+            binding["acceptedRequirementSource"]["revision"],
+            relative,
+            accepted_requirement_source / relative,
+            bundle,
+            spec.get("gitBlob"),
         )
 
     source_count = len(paths) + len(accepted_files) + 1
@@ -82,7 +97,6 @@ def verify_bundle(
         role = lower["sourceRole"]
         lower_path, lower_digest = paths[role], sources[role]["digest"]
         native_root = target_source if roots[role] == "target" else runtime_source
-        need(native_root is not None, "lower-verifier-root")
         process = run([sys.executable, str(native_root / lower_path), "verify", "--bundle", str(bundle)], native_root)
         need(process.returncode == 0 and process.stdout.strip() != "", "verifier-execution")
         verified = json.loads(process.stdout)
@@ -95,7 +109,12 @@ def verify_bundle(
         need(verified.get(fields["acceptedRevision"]) == binding["acceptedRequirementSource"]["revision"], "verifier-accepted-revision")
         need(verified.get(fields["observerRevision"]) == governance_candidate, "verifier-observer-revision")
         need(verified.get("sourceBytesVerified") == source_count, "verifier-source-count")
-        need(verified.get("receiptReplayed") is True and verified.get("comparatorReplayed") is True and verified.get("evidenceBound") is True, "verifier-replay")
+        need(
+            verified.get("receiptReplayed") is True
+            and verified.get("comparatorReplayed") is True
+            and verified.get("evidenceBound") is True,
+            "verifier-replay",
+        )
         lower_mode = "target-verifier+common-reconstruction"
 
     scope_path, evidence_path = bundle / "run-scope.json", bundle / "phase4-evidence.json"
@@ -121,12 +140,26 @@ def verify_bundle(
     need(packet.get("receipts", {}).get("source") == sources[receipt_role], "packet-receipt-source")
     receipt_rows = packet.get("receipts", {}).get("rows")
     need(isinstance(receipt_rows, list) and len(receipt_rows) == 1 and isinstance(receipt_rows[0], dict), "packet-receipt-row")
+    receipt = receipt_rows[0]
+    executor = binding["evidenceExecutor"]
+    need(receipt.get("obligation_id") == binding["obligationId"], "receipt-obligation")
+    need(receipt.get("operation") == executor["operation"], "receipt-operation")
+    need(receipt.get("grade") == executor["grade"], "receipt-grade")
+    need(receipt.get("status") == "PASS", "receipt-status")
+    if executor["readback"]:
+        need(receipt.get("readback") == "PASS", "receipt-readback")
 
     combined = {**sources, **accepted, "observer": observer}
     reconstructed = module.expected_evidence(
-        scope=scope, sources=combined, bindings=bindings, bundle=bundle,
-        receipt_rows=receipt_rows, read_object=read_object, sha256_file=sha256_file,
-        digest=digest, required_contract=required_contract,
+        scope=scope,
+        sources=combined,
+        bindings=bindings,
+        bundle=bundle,
+        receipt_rows=receipt_rows,
+        read_object=read_object,
+        sha256_file=sha256_file,
+        digest=digest,
+        required_contract=required_contract,
     )
     need(evidence == reconstructed, "evidence-reconstruction")
     positive, negative, exits = replay_comparator(bundle, bindings, paths)
@@ -134,30 +167,53 @@ def verify_bundle(
     need({k: v.get("status") for k, v in negative.items()} == REQUIRED_NEGATIVE, "negative")
 
     member = {
-        "kind": "governance.packageContractClosureMember.v3", "status": "pass",
-        "authority": False, "adoption": False, "releasePublished": False,
-        "claimCeiling": binding["claimCeiling"], "targetId": target_id,
-        "logicalRepository": binding["logicalRepository"], "providerRepository": binding["providerRepository"],
-        "scopeId": scope.get("scopeId"), "obligationId": binding["obligationId"],
-        "targetCandidate": target_candidate, "governanceCandidate": governance_candidate,
+        "kind": "governance.packageContractClosureMember.v3",
+        "status": "pass",
+        "authority": False,
+        "adoption": False,
+        "releasePublished": False,
+        "claimCeiling": binding["claimCeiling"],
+        "targetId": target_id,
+        "logicalRepository": binding["logicalRepository"],
+        "providerRepository": binding["providerRepository"],
+        "scopeId": scope.get("scopeId"),
+        "obligationId": binding["obligationId"],
+        "targetCandidate": target_candidate,
+        "governanceCandidate": governance_candidate,
         "acceptedRequirementDigest": required_contract["obligation_digest"],
         "acceptedRequirementRevision": binding["acceptedRequirementSource"]["revision"],
         "governancePolicyRevision": binding["governancePolicySource"]["revision"],
         "contractRuntimeRepository": runtime_identity["repository"],
         "contractRuntimeRevision": runtime_identity["revision"],
-        "contractDiffStatus": positive["status"], "contractDiffExit": exits["positive"],
+        "contractDiffStatus": positive["status"],
+        "contractDiffExit": exits["positive"],
         "negativeStatus": REQUIRED_NEGATIVE,
         "negativeExit": {name: exits[name] for name in REQUIRED_NEGATIVE},
-        "scopeDigest": sha256_file(scope_path), "evidenceDigest": sha256_file(evidence_path),
-        "remaining": 0, "evidenceBound": True, "observerMeaningVerified": True,
-        "evidenceReconstructed": True, "targetSourceClosureVerified": True,
-        "targetSourcesVerified": len(paths), "targetNativeSourcesVerified": target_native,
-        "runtimeSourcesVerified": runtime_count, "sourceBytesVerified": source_count,
-        "receiptReplayed": True, "comparatorReplayed": True,
-        "lowerProofMode": lower_mode, "lowerVerifierPath": lower_path,
-        "lowerVerifierDigest": lower_digest, "evidenceExecutor": binding["evidenceExecutor"],
-        "adapterPath": identity["adapterPath"], "adapterDigest": identity["adapterDigest"],
-        "targetBindingPath": identity["targetBindingPath"], "targetBindingDigest": identity["targetBindingDigest"],
+        "scopeDigest": sha256_file(scope_path),
+        "evidenceDigest": sha256_file(evidence_path),
+        "evidenceInputVerified": True,
+        "evidenceInputMode": evidence_identity["mode"],
+        "evidenceInputDigest": evidence_identity["digest"],
+        "evidenceInputFilesVerified": evidence_identity["filesVerified"],
+        "evidenceExecutor": evidence_identity["executor"],
+        "remaining": 0,
+        "evidenceBound": True,
+        "observerMeaningVerified": True,
+        "evidenceReconstructed": True,
+        "targetSourceClosureVerified": True,
+        "targetSourcesVerified": len(paths),
+        "targetNativeSourcesVerified": target_native,
+        "runtimeSourcesVerified": runtime_count,
+        "sourceBytesVerified": source_count,
+        "receiptReplayed": True,
+        "comparatorReplayed": True,
+        "lowerProofMode": lower_mode,
+        "lowerVerifierPath": lower_path,
+        "lowerVerifierDigest": lower_digest,
+        "adapterPath": identity["adapterPath"],
+        "adapterDigest": identity["adapterDigest"],
+        "targetBindingPath": identity["targetBindingPath"],
+        "targetBindingDigest": identity["targetBindingDigest"],
         "commonCheckerPath": COMMON_CHECKER_PATH,
         "commonCheckerDigest": sha256_file(ROOT / COMMON_CHECKER_PATH),
         "bundleManifestDigest": sha256_file(bundle / "bundle-manifest.json"),
