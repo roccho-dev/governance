@@ -21,8 +21,9 @@ RUNTIME_REVISION = "5eb98c82417b399978c1e38aebab5e3fb39752d4"
 ADRS_REVISION = "862313008ad19a743034599792d9a8b6e470e4cf"
 RELEASE_TAG = "voice-ui-dist-" + APPS_REVISION
 RELEASE_API = f"https://api.github.com/repos/roccho-dev/apps/releases/tags/{RELEASE_TAG}"
+FULL_ASSET_NAME = "voice-ui-dist.zip"
 EXPECTED_RELEASE_ASSETS = {
-    "voice-ui-dist.zip": {"id": 635746304, "bytes": 62585992, "sha256": "a15f4a0c481048e22461d815ead48790ba741d42e619c0088436de85f1dc2417"},
+    FULL_ASSET_NAME: {"id": 635746304, "bytes": 62585992, "sha256": "a15f4a0c481048e22461d815ead48790ba741d42e619c0088436de85f1dc2417"},
     "provenance.json": {"id": 635746309, "bytes": 36366, "sha256": "43867c3dd595b30375194418e4ed0e27531ef3d0a326f96e865e80a2ad6fd615"},
     "merged-pr-proof.json": {"id": 635746325, "bytes": 434, "sha256": "50370f82881b04ebe475afc31a9310065c6e305193a1a726497fdb1b7215f9cc"},
 }
@@ -54,6 +55,10 @@ def sha(path: Path) -> str:
 def git_blob(path: Path) -> str:
     raw = path.read_bytes()
     return hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+
+
+def full_material_root(evidence_root: Path) -> Path:
+    return evidence_root.parent / f"{evidence_root.name}-full"
 
 
 def request_json(url: str) -> dict[str, Any]:
@@ -130,6 +135,9 @@ def acquire(args: argparse.Namespace) -> None:
 
 
 def write_adapter_evidence(target: str, binding: dict[str, Any], destination: Path) -> None:
+    full_root = full_material_root(destination)
+    if full_root.exists():
+        shutil.rmtree(full_root)
     destination.mkdir(parents=True, exist_ok=True)
     evidence = {"kind": "governance.packageContractEvidenceInput.v1", "authority": False, "targetId": target, "candidate": binding["targetSource"]["revision"], "mode": "adapter", "executor": binding["evidenceExecutor"]}
     (destination / "evidence.json").write_text(canonical(evidence) + "\n", encoding="utf-8")
@@ -151,6 +159,9 @@ def find_dist_manifest(zipped: zipfile.ZipFile) -> tuple[str, dict[str, Any]]:
 
 
 def verify_release_evidence(target_root: Path, destination: Path) -> None:
+    full_root = full_material_root(destination)
+    if full_root.exists():
+        shutil.rmtree(full_root)
     if run(["git", "rev-parse", "HEAD"], target_root) != APPS_REVISION:
         raise SystemExit("release-target-revision")
     if run(["git", "rev-parse", "HEAD^{tree}"], target_root) != APPS_TREE:
@@ -174,7 +185,7 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
             raise SystemExit("release-asset-body:" + name)
         observed_assets[name] = {"id": expected["id"], "bytes": actual["bytes"], "sha256": "sha256:" + actual["sha256"]}
 
-    archive = work / "voice-ui-dist.zip"
+    archive = work / FULL_ASSET_NAME
     with zipfile.ZipFile(archive) as zipped:
         manifest_name, manifest = find_dist_manifest(zipped)
         manifest_bytes = zipped.read(manifest_name)
@@ -222,7 +233,7 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
         raise SystemExit("release-provenance-source")
     if producer.get("repository") != "roccho-dev/apps" or str(producer.get("run_id")) != "38339283395" or str(producer.get("run_attempt")) != "2" or not isinstance(producer.get("workflow_ref"), str):
         raise SystemExit("release-provenance-producer")
-    if artifact.get("name") != "voice-ui-dist.zip" or artifact.get("bytes") != EXPECTED_RELEASE_ASSETS["voice-ui-dist.zip"]["bytes"] or artifact.get("sha256") != EXPECTED_RELEASE_ASSETS["voice-ui-dist.zip"]["sha256"]:
+    if artifact.get("name") != FULL_ASSET_NAME or artifact.get("bytes") != EXPECTED_RELEASE_ASSETS[FULL_ASSET_NAME]["bytes"] or artifact.get("sha256") != EXPECTED_RELEASE_ASSETS[FULL_ASSET_NAME]["sha256"]:
         raise SystemExit("release-provenance-artifact")
     if input_digests.get("flake.lock") != EXPECTED_FLAKE_LOCK_SHA256:
         raise SystemExit("release-provenance-lock")
@@ -239,6 +250,8 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
     (destination / "dist-manifest.json").write_bytes(manifest_bytes)
     shutil.copy2(provenance_path, destination / "provenance.json")
     shutil.copy2(proof_path, destination / "merged-pr-proof.json")
+    full_root.mkdir(parents=True, exist_ok=False)
+    shutil.copy2(archive, full_root / FULL_ASSET_NAME)
     executor = {"kind": "exact-existing-release", "operation": "nix-build-voice-ui-dist", "readback": True, "grade": "source"}
     receipt = {
         "kind": "governance.packageContractBuildReceipt.v2",
@@ -254,7 +267,7 @@ def verify_release_evidence(target_root: Path, destination: Path) -> None:
         "manifestDigest": "sha256:" + EXPECTED_MANIFEST_SHA256,
         "provenanceDigest": "sha256:" + EXPECTED_RELEASE_ASSETS["provenance.json"]["sha256"],
         "proofDigest": "sha256:" + EXPECTED_RELEASE_ASSETS["merged-pr-proof.json"]["sha256"],
-        "provider": {"repository": "roccho-dev/apps", "releaseTag": RELEASE_TAG, "runId": 38339283395, "runAttempt": 2, "artifactId": 11787016196, "artifactDigest": "sha256:f9eb3f7ec6f8ef1643c86ca8d88d069c7b8b7e08b386d203afee18ea37e9b208", "assets": observed_assets},
+        "provider": {"repository": "roccho-dev/apps", "releaseId": 411224075, "releaseTag": RELEASE_TAG, "targetCommitish": APPS_REVISION, "runId": 38339283395, "runAttempt": 2, "artifactId": 11787016196, "artifactDigest": "sha256:f9eb3f7ec6f8ef1643c86ca8d88d069c7b8b7e08b386d203afee18ea37e9b208", "assets": observed_assets},
     }
     evidence = {"kind": "governance.packageContractEvidenceInput.v1", "authority": False, "targetId": "apps-shape-preflight", "candidate": APPS_REVISION, "mode": "exact-existing-release", "executor": executor, "receipt": receipt}
     (destination / "evidence.json").write_text(canonical(evidence) + "\n", encoding="utf-8")

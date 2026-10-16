@@ -6,7 +6,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 DIGEST_PREFIX = "sha256:"
@@ -167,13 +167,14 @@ V3_BOUND = {
     "governanceCandidate", "scopeDigest", "evidenceDigest", "commonCheckerDigest",
     "bundleManifestDigest", "memberDigest",
 }
+V3_EVIDENCE_BOUND = {
+    "evidenceInputMode", "evidenceInputDigest", "evidenceInputFilesVerified", "evidenceExecutor",
+}
 V3_DERIVED = {
     "targetId", "logicalRepository", "providerRepository", "contractRuntimeRepository",
     "contractRuntimeRevision", "contractDiffExit", "negativeExit", "evidenceInputVerified",
-    "evidenceInputMode", "evidenceInputDigest", "evidenceInputFilesVerified",
-    "evidenceExecutor", "targetNativeSourcesVerified", "runtimeSourcesVerified",
-    "lowerProofMode", "adapterPath", "adapterDigest", "targetBindingPath",
-    "targetBindingDigest",
+    "targetNativeSourcesVerified", "runtimeSourcesVerified", "lowerProofMode", "adapterPath",
+    "adapterDigest", "targetBindingPath", "targetBindingDigest",
 }
 
 
@@ -197,14 +198,73 @@ def member_digest(value: dict[str, Any]) -> str:
 
 def validate_classification() -> None:
     v2_groups = [DIRECT, set(RENAMED), {"acceptedGovernanceRevision"}, {"kind"}, V2_BOUND]
-    v3_groups = [DIRECT, set(RENAMED.values()), {"acceptedRequirementRevision", "governancePolicyRevision"}, {"kind"}, V3_BOUND, V3_DERIVED]
+    v3_groups = [
+        DIRECT,
+        set(RENAMED.values()),
+        {"acceptedRequirementRevision", "governancePolicyRevision"},
+        {"kind"},
+        V3_BOUND,
+        V3_EVIDENCE_BOUND,
+        V3_DERIVED,
+    ]
     need(set().union(*v2_groups) == V2_FIELDS, "v2-field-classification")
     need(sum(len(group) for group in v2_groups) == len(V2_FIELDS), "v2-field-classification-overlap")
     need(set().union(*v3_groups) == V3_FIELDS, "v3-field-classification")
     need(sum(len(group) for group in v3_groups) == len(V3_FIELDS), "v3-field-classification-overlap")
 
 
-def validate_member_mapping(v2: dict[str, Any], v3: dict[str, Any], b0_root: Path, b1: Path) -> dict[str, Any]:
+def validate_evidence_input(root: Path, binding: dict[str, Any], v3: dict[str, Any]) -> dict[str, Any]:
+    root = root.resolve()
+    need(root.is_dir() and not root.is_symlink(), "evidence-input-root")
+    path = root / "evidence.json"
+    need(path.is_file() and not path.is_symlink(), "evidence-input-file")
+    evidence = read(path)
+    need(isinstance(evidence, dict), "evidence-input-object")
+    mode = evidence.get("mode")
+    if mode == "adapter":
+        expected_keys = {"kind", "authority", "targetId", "candidate", "mode", "executor"}
+        expected_files = {"evidence.json"}
+    elif mode == "exact-existing-release":
+        expected_keys = {"kind", "authority", "targetId", "candidate", "mode", "executor", "receipt"}
+        expected_files = {
+            "evidence.json", "source-artifact.jsonl", "output-artifact.jsonl",
+            "dist-manifest.json", "provenance.json", "merged-pr-proof.json",
+        }
+    else:
+        fail("evidence-input-mode")
+    need(set(evidence) == expected_keys, "evidence-input-key-universe")
+    actual_files = {
+        item.relative_to(root).as_posix()
+        for item in root.rglob("*")
+        if item.is_file()
+    }
+    need(actual_files == expected_files, "evidence-input-file-universe", {"actual": sorted(actual_files), "expected": sorted(expected_files)})
+    need(evidence.get("kind") == "governance.packageContractEvidenceInput.v1", "evidence-input-kind")
+    need(evidence.get("authority") is False, "evidence-input-authority")
+    need(evidence.get("targetId") == v3["targetId"] == binding["targetId"], "evidence-input-target")
+    need(evidence.get("candidate") == v3["targetCandidate"] == binding["targetSource"]["revision"], "evidence-input-candidate")
+    need(evidence.get("executor") == binding["evidenceExecutor"], "evidence-input-executor")
+    identity = {
+        "mode": mode,
+        "digest": sha256(path),
+        "filesVerified": len(actual_files),
+        "executor": evidence["executor"],
+        "paths": sorted(actual_files),
+    }
+    need(v3["evidenceInputMode"] == identity["mode"], "member-evidence-input-mode")
+    need(v3["evidenceInputDigest"] == identity["digest"], "member-evidence-input-digest")
+    need(v3["evidenceInputFilesVerified"] == identity["filesVerified"], "member-evidence-input-files")
+    need(v3["evidenceExecutor"] == identity["executor"], "member-evidence-input-executor")
+    return identity
+
+
+def validate_member_mapping(
+    v2: dict[str, Any],
+    v3: dict[str, Any],
+    b0_root: Path,
+    b1: Path,
+    evidence_input: Path,
+) -> dict[str, Any]:
     need(set(v2) == V2_FIELDS, "v2-field-universe", {"missing": sorted(V2_FIELDS - set(v2)), "extra": sorted(set(v2) - V2_FIELDS)})
     need(set(v3) == V3_FIELDS, "v3-field-universe", {"missing": sorted(V3_FIELDS - set(v3)), "extra": sorted(set(v3) - V3_FIELDS)})
     validate_classification()
@@ -233,9 +293,6 @@ def validate_member_mapping(v2: dict[str, Any], v3: dict[str, Any], b0_root: Pat
         "contractDiffExit": STATUS_EXIT[v3["contractDiffStatus"]],
         "negativeExit": {name: STATUS_EXIT[status] for name, status in v3["negativeStatus"].items()},
         "evidenceInputVerified": True,
-        "evidenceInputMode": binding["evidenceExecutor"]["kind"],
-        "evidenceInputFilesVerified": 1,
-        "evidenceExecutor": binding["evidenceExecutor"],
         "targetNativeSourcesVerified": target_count,
         "runtimeSourcesVerified": runtime_count,
         "lowerProofMode": "target-verifier+common-reconstruction",
@@ -244,6 +301,7 @@ def validate_member_mapping(v2: dict[str, Any], v3: dict[str, Any], b0_root: Pat
     }
     for key, value in expected.items():
         need(v3[key] == value, "member-derived-drift:" + key)
+    evidence_identity = validate_evidence_input(evidence_input, binding, v3)
     need(binding["lowerVerifier"]["mode"] == "required", "member-lower-verifier-mode")
     need(v3["targetSourcesVerified"] == target_count + runtime_count, "member-source-partition")
     need(v3["sourceBytesVerified"] == len(roots) + accepted_count + 1, "member-source-total")
@@ -263,7 +321,7 @@ def validate_member_mapping(v2: dict[str, Any], v3: dict[str, Any], b0_root: Pat
     need(v3["adapterDigest"] == sha256(ROOT / v3["adapterPath"]), "v3-adapter-digest")
     need(v3["targetBindingDigest"] == sha256(binding_path), "v3-target-binding-digest")
     need(v3["commonCheckerDigest"] == sha256(ROOT / v3["commonCheckerPath"]), "v3-common-checker-digest")
-    need(valid_digest(v3["evidenceInputDigest"]), "v3-evidence-input-digest")
+    need(valid_digest(v3["evidenceInputDigest"]), "v3-evidence-input-digest-shape")
     need(v2["memberDigest"] == member_digest(v2), "v2-member-digest")
     need(v3["memberDigest"] == member_digest(v3), "v3-member-digest")
     return {
@@ -274,15 +332,29 @@ def validate_member_mapping(v2: dict[str, Any], v3: dict[str, Any], b0_root: Pat
         "split": {"acceptedGovernanceRevision": ["acceptedRequirementRevision", "governancePolicyRevision"]},
         "v2Bound": sorted(V2_BOUND),
         "v3Bound": sorted(V3_BOUND),
+        "v3EvidenceBound": sorted(V3_EVIDENCE_BOUND),
         "v3Derived": sorted(V3_DERIVED),
+        "evidenceInput": evidence_identity,
     }
 
 
-def rejects(v2: dict[str, Any], v3: dict[str, Any], b0: Path, b1: Path, mutate) -> bool:
+def reseal(value: dict[str, Any]) -> None:
+    value["memberDigest"] = member_digest(value)
+
+
+def rejects(
+    v2: dict[str, Any],
+    v3: dict[str, Any],
+    b0: Path,
+    b1: Path,
+    evidence_input: Path,
+    mutate: Callable[[dict[str, Any]], None],
+) -> bool:
     candidate = copy.deepcopy(v3)
     mutate(candidate)
+    reseal(candidate)
     try:
-        validate_member_mapping(v2, candidate, b0, b1)
+        validate_member_mapping(v2, candidate, b0, b1, evidence_input)
     except SystemExit:
         return True
     return False
@@ -290,12 +362,13 @@ def rejects(v2: dict[str, Any], v3: dict[str, Any], b0: Path, b1: Path, mutate) 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    for name in ("b0", "b1", "member", "out"):
+    for name in ("b0", "b1", "member", "evidence-input", "out"):
         parser.add_argument("--" + name, required=True)
     args = parser.parse_args()
     b0_root = Path(args.b0)
     b0 = b0_root / "ops-bundle"
     b1 = Path(args.b1)
+    evidence_input = Path(args.evidence_input)
     paths0 = {x.relative_to(b0).as_posix() for x in b0.rglob("*") if x.is_file()}
     paths1 = {x.relative_to(b1).as_posix() for x in b1.rglob("*") if x.is_file()}
     if paths0 != paths1:
@@ -367,12 +440,20 @@ def main() -> None:
 
     v2 = read(b0_root / "package-contract-member.json")
     v3 = read(Path(args.member))
-    mapping = validate_member_mapping(v2, v3, b0_root, b1)
+    mapping = validate_member_mapping(v2, v3, b0_root, b1, evidence_input)
+
+    def change_executor(value: dict[str, Any]) -> None:
+        value["evidenceExecutor"] = {**value["evidenceExecutor"], "operation": "wrong"}
+
     negatives = {
-        "memberExtraFieldRejected": rejects(v2, v3, b0_root, b1, lambda value: value.__setitem__("unexpected", True)),
-        "memberMissingFieldRejected": rejects(v2, v3, b0_root, b1, lambda value: value.pop("targetId")),
-        "memberMappedFieldDriftRejected": rejects(v2, v3, b0_root, b1, lambda value: value.__setitem__("targetCandidate", "0" * 40)),
-        "memberBoundFieldDriftRejected": rejects(v2, v3, b0_root, b1, lambda value: value.__setitem__("evidenceDigest", DIGEST_PREFIX + "0" * 64)),
+        "memberExtraFieldRejected": rejects(v2, v3, b0_root, b1, evidence_input, lambda value: value.__setitem__("unexpected", True)),
+        "memberMissingFieldRejected": rejects(v2, v3, b0_root, b1, evidence_input, lambda value: value.pop("targetId")),
+        "memberMappedFieldDriftRejected": rejects(v2, v3, b0_root, b1, evidence_input, lambda value: value.__setitem__("targetCandidate", "0" * 40)),
+        "memberBoundFieldDriftRejected": rejects(v2, v3, b0_root, b1, evidence_input, lambda value: value.__setitem__("evidenceDigest", DIGEST_PREFIX + "0" * 64)),
+        "memberEvidenceInputDigestDriftRejected": rejects(v2, v3, b0_root, b1, evidence_input, lambda value: value.__setitem__("evidenceInputDigest", DIGEST_PREFIX + "0" * 64)),
+        "memberEvidenceInputFilesDriftRejected": rejects(v2, v3, b0_root, b1, evidence_input, lambda value: value.__setitem__("evidenceInputFilesVerified", value["evidenceInputFilesVerified"] + 1)),
+        "memberEvidenceInputModeDriftRejected": rejects(v2, v3, b0_root, b1, evidence_input, lambda value: value.__setitem__("evidenceInputMode", "exact-existing-release")),
+        "memberEvidenceExecutorDriftRejected": rejects(v2, v3, b0_root, b1, evidence_input, change_executor),
     }
     need(all(negatives.values()), "member-negative-suite")
 
@@ -389,6 +470,7 @@ def main() -> None:
         "lowerProofPreservedForOps": True,
         "fieldUniverseClosed": True,
         "fieldClassificationClosed": True,
+        "evidenceInputBound": True,
         "memberMapping": mapping,
         "changedFiles": sorted(changed),
         **negatives,
