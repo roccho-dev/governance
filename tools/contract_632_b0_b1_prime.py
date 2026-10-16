@@ -3,9 +3,14 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+DIGEST_PREFIX = "sha256:"
+STATUS_EXIT = {"CLOSED": 0, "OPEN": 2, "INVALID": 3, "UNKNOWN": 4}
 
 
 def canonical(value: Any) -> str:
@@ -19,6 +24,15 @@ def read(path: Path) -> Any:
 def fail(code: str, detail: Any = None) -> None:
     suffix = "" if detail is None else ":" + canonical(detail)
     raise SystemExit(code + suffix)
+
+
+def need(ok: bool, code: str, detail: Any = None) -> None:
+    if not ok:
+        fail(code, detail)
+
+
+def sha256(path: Path) -> str:
+    return DIGEST_PREFIX + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def deep_diff(left: Any, right: Any, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]]:
@@ -46,33 +60,6 @@ def require_diff(path: str, left: Any, right: Any, allowed: set[tuple[str, ...]]
     actual = deep_diff(left, right)
     if actual != allowed:
         fail("unexpected-pointer-delta:" + path, {"actual": sorted(actual), "allowed": sorted(allowed)})
-
-
-def normalize(value: Any, manifest: bool = False) -> Any:
-    if isinstance(value, dict):
-        out: dict[str, Any] = {}
-        observer = value.get("repository") == "roccho-dev/governance" and value.get("path") in {
-            "tools/check-package-contract-closure-bundle.py",
-            "tools/package_contract_targets/ops.py",
-        }
-        for key, item in value.items():
-            if observer and key in {"revision", "path", "digest"}:
-                out[key] = "<observer-" + key + ">"
-            elif key in {"observerRevision", "observerPath", "observerDigest"}:
-                out[key] = "<" + key + ">"
-            elif key in {"input_manifest_digest", "inputManifestDigest"}:
-                out[key] = "<rebound-manifest>"
-            else:
-                out[key] = normalize(item, manifest)
-        return out
-    if isinstance(value, list):
-        rows = [normalize(item, manifest) for item in value]
-        if manifest:
-            for row in rows:
-                if isinstance(row, dict) and row.get("path") in EXPECTED_CHANGED:
-                    row["sha256"] = "<rebound-file>"
-        return rows
-    return value
 
 
 EXPECTED_CHANGED = {
@@ -104,12 +91,210 @@ STABLE = {
 SOURCE_FIELDS = {("revision",), ("path",), ("digest",)}
 
 
+def normalize(value: Any, manifest: bool = False) -> Any:
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        observer = value.get("repository") == "roccho-dev/governance" and value.get("path") in {
+            "tools/check-package-contract-closure-bundle.py",
+            "tools/package_contract_targets/ops.py",
+        }
+        for key, item in value.items():
+            if observer and key in {"revision", "path", "digest"}:
+                out[key] = "<observer-" + key + ">"
+            elif key in {"observerRevision", "observerPath", "observerDigest"}:
+                out[key] = "<" + key + ">"
+            elif key in {"input_manifest_digest", "inputManifestDigest"}:
+                out[key] = "<rebound-manifest>"
+            else:
+                out[key] = normalize(item, manifest)
+        return out
+    if isinstance(value, list):
+        rows = [normalize(item, manifest) for item in value]
+        if manifest:
+            for row in rows:
+                if isinstance(row, dict) and row.get("path") in EXPECTED_CHANGED:
+                    row["sha256"] = "<rebound-file>"
+        return rows
+    return value
+
+
+V2_FIELDS = {
+    "kind", "status", "authority", "adoption", "releasePublished", "claimCeiling",
+    "scopeId", "obligationId", "opsCandidate", "governanceCandidate",
+    "acceptedRequirementDigest", "contractDiffStatus", "negativeStatus",
+    "scopeDigest", "evidenceDigest", "remaining", "evidenceBound",
+    "observerMeaningVerified", "evidenceReconstructed",
+    "opsCandidateSourceClosureVerified", "opsCandidateSourcesVerified",
+    "sourceBytesVerified", "receiptReplayed", "comparatorReplayed",
+    "opsVerifierPath", "opsVerifierDigest", "observerPath", "observerDigest",
+    "acceptedGovernanceRevision", "bundleManifestDigest", "memberDigest",
+}
+V3_FIELDS = {
+    "kind", "status", "authority", "adoption", "releasePublished", "claimCeiling",
+    "targetId", "logicalRepository", "providerRepository", "scopeId", "obligationId",
+    "targetCandidate", "governanceCandidate", "acceptedRequirementDigest",
+    "acceptedRequirementRevision", "governancePolicyRevision",
+    "contractRuntimeRepository", "contractRuntimeRevision", "contractDiffStatus",
+    "contractDiffExit", "negativeStatus", "negativeExit", "scopeDigest", "evidenceDigest",
+    "evidenceInputVerified", "evidenceInputMode", "evidenceInputDigest",
+    "evidenceInputFilesVerified", "evidenceExecutor", "remaining", "evidenceBound",
+    "observerMeaningVerified", "evidenceReconstructed", "targetSourceClosureVerified",
+    "targetSourcesVerified", "targetNativeSourcesVerified", "runtimeSourcesVerified",
+    "sourceBytesVerified", "receiptReplayed", "comparatorReplayed", "lowerProofMode",
+    "lowerVerifierPath", "lowerVerifierDigest", "adapterPath", "adapterDigest",
+    "targetBindingPath", "targetBindingDigest", "commonCheckerPath", "commonCheckerDigest",
+    "bundleManifestDigest", "memberDigest",
+}
+DIRECT = {
+    "status", "authority", "adoption", "releasePublished", "claimCeiling", "scopeId",
+    "obligationId", "acceptedRequirementDigest", "contractDiffStatus", "negativeStatus",
+    "remaining", "evidenceBound", "observerMeaningVerified", "evidenceReconstructed",
+    "sourceBytesVerified", "receiptReplayed", "comparatorReplayed",
+}
+RENAMED = {
+    "opsCandidate": "targetCandidate",
+    "opsCandidateSourceClosureVerified": "targetSourceClosureVerified",
+    "opsCandidateSourcesVerified": "targetSourcesVerified",
+    "opsVerifierPath": "lowerVerifierPath",
+    "opsVerifierDigest": "lowerVerifierDigest",
+    "observerPath": "commonCheckerPath",
+}
+V2_BOUND = {
+    "governanceCandidate", "scopeDigest", "evidenceDigest", "observerDigest",
+    "bundleManifestDigest", "memberDigest",
+}
+V3_BOUND = {
+    "governanceCandidate", "scopeDigest", "evidenceDigest", "commonCheckerDigest",
+    "bundleManifestDigest", "memberDigest",
+}
+V3_DERIVED = {
+    "targetId", "logicalRepository", "providerRepository", "contractRuntimeRepository",
+    "contractRuntimeRevision", "contractDiffExit", "negativeExit", "evidenceInputVerified",
+    "evidenceInputMode", "evidenceInputDigest", "evidenceInputFilesVerified",
+    "evidenceExecutor", "targetNativeSourcesVerified", "runtimeSourcesVerified",
+    "lowerProofMode", "adapterPath", "adapterDigest", "targetBindingPath",
+    "targetBindingDigest",
+}
+
+
+def valid_hex40(value: Any) -> bool:
+    return isinstance(value, str) and len(value) == 40 and all(c in "0123456789abcdef" for c in value)
+
+
+def valid_digest(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 71
+        and value.startswith(DIGEST_PREFIX)
+        and all(c in "0123456789abcdef" for c in value[7:])
+    )
+
+
+def member_digest(value: dict[str, Any]) -> str:
+    body = {key: item for key, item in value.items() if key != "memberDigest"}
+    return DIGEST_PREFIX + hashlib.sha256(canonical(body).encode()).hexdigest()
+
+
+def validate_classification() -> None:
+    v2_groups = [DIRECT, set(RENAMED), {"acceptedGovernanceRevision"}, {"kind"}, V2_BOUND]
+    v3_groups = [DIRECT, set(RENAMED.values()), {"acceptedRequirementRevision", "governancePolicyRevision"}, {"kind"}, V3_BOUND, V3_DERIVED]
+    need(set().union(*v2_groups) == V2_FIELDS, "v2-field-classification")
+    need(sum(len(group) for group in v2_groups) == len(V2_FIELDS), "v2-field-classification-overlap")
+    need(set().union(*v3_groups) == V3_FIELDS, "v3-field-classification")
+    need(sum(len(group) for group in v3_groups) == len(V3_FIELDS), "v3-field-classification-overlap")
+
+
+def validate_member_mapping(v2: dict[str, Any], v3: dict[str, Any], b0_root: Path, b1: Path) -> dict[str, Any]:
+    need(set(v2) == V2_FIELDS, "v2-field-universe", {"missing": sorted(V2_FIELDS - set(v2)), "extra": sorted(set(v2) - V2_FIELDS)})
+    need(set(v3) == V3_FIELDS, "v3-field-universe", {"missing": sorted(V3_FIELDS - set(v3)), "extra": sorted(set(v3) - V3_FIELDS)})
+    validate_classification()
+    for key in sorted(DIRECT):
+        need(v2[key] == v3[key], "member-direct-drift:" + key)
+    for old, new in RENAMED.items():
+        need(v2[old] == v3[new], "member-mapped-drift:" + old + "->" + new)
+    accepted = v2["acceptedGovernanceRevision"]
+    need(v3["acceptedRequirementRevision"] == accepted, "member-accepted-revision")
+    need(v3["governancePolicyRevision"] == accepted, "member-policy-revision")
+    need(v2["kind"] == "governance.packageContractClosureMember.v2", "v2-kind")
+    need(v3["kind"] == "governance.packageContractClosureMember.v3", "v3-kind")
+
+    binding_path = ROOT / "tools/package_contract_targets/ops.target.json"
+    binding = read(binding_path)
+    roots = binding["sourceRoots"]
+    target_count = sum(root == "target" for root in roots.values())
+    runtime_count = sum(root == "runtime" for root in roots.values())
+    accepted_count = len(binding["acceptedRequirementSource"]["allowedPaths"])
+    expected = {
+        "targetId": binding["targetId"],
+        "logicalRepository": binding["logicalRepository"],
+        "providerRepository": binding["providerRepository"],
+        "contractRuntimeRepository": binding["contractRuntimeSource"]["repository"],
+        "contractRuntimeRevision": binding["contractRuntimeSource"]["revision"],
+        "contractDiffExit": STATUS_EXIT[v3["contractDiffStatus"]],
+        "negativeExit": {name: STATUS_EXIT[status] for name, status in v3["negativeStatus"].items()},
+        "evidenceInputVerified": True,
+        "evidenceInputMode": binding["evidenceExecutor"]["kind"],
+        "evidenceInputFilesVerified": 1,
+        "evidenceExecutor": binding["evidenceExecutor"],
+        "targetNativeSourcesVerified": target_count,
+        "runtimeSourcesVerified": runtime_count,
+        "lowerProofMode": "target-verifier+common-reconstruction",
+        "adapterPath": binding["adapterPath"],
+        "targetBindingPath": "tools/package_contract_targets/ops.target.json",
+    }
+    for key, value in expected.items():
+        need(v3[key] == value, "member-derived-drift:" + key)
+    need(binding["lowerVerifier"]["mode"] == "required", "member-lower-verifier-mode")
+    need(v3["targetSourcesVerified"] == target_count + runtime_count, "member-source-partition")
+    need(v3["sourceBytesVerified"] == len(roots) + accepted_count + 1, "member-source-total")
+
+    b0 = b0_root / "ops-bundle"
+    need(valid_hex40(v2["governanceCandidate"]), "v2-governance-candidate")
+    need(valid_hex40(v3["governanceCandidate"]), "v3-governance-candidate")
+    need(v2["governanceCandidate"] != v3["governanceCandidate"], "governance-candidate-not-rebound")
+    need(v2["scopeDigest"] == sha256(b0 / "run-scope.json"), "v2-scope-digest")
+    need(v3["scopeDigest"] == sha256(b1 / "run-scope.json"), "v3-scope-digest")
+    need(v2["scopeDigest"] == v3["scopeDigest"], "member-scope-drift")
+    need(v2["evidenceDigest"] == sha256(b0 / "phase4-evidence.json"), "v2-evidence-digest")
+    need(v3["evidenceDigest"] == sha256(b1 / "phase4-evidence.json"), "v3-evidence-digest")
+    need(v2["observerDigest"] == sha256(b0 / "sources/observer/source"), "v2-observer-digest")
+    need(v2["bundleManifestDigest"] == sha256(b0 / "bundle-manifest.json"), "v2-bundle-manifest-digest")
+    need(v3["bundleManifestDigest"] == sha256(b1 / "bundle-manifest.json"), "v3-bundle-manifest-digest")
+    need(v3["adapterDigest"] == sha256(ROOT / v3["adapterPath"]), "v3-adapter-digest")
+    need(v3["targetBindingDigest"] == sha256(binding_path), "v3-target-binding-digest")
+    need(v3["commonCheckerDigest"] == sha256(ROOT / v3["commonCheckerPath"]), "v3-common-checker-digest")
+    need(valid_digest(v3["evidenceInputDigest"]), "v3-evidence-input-digest")
+    need(v2["memberDigest"] == member_digest(v2), "v2-member-digest")
+    need(v3["memberDigest"] == member_digest(v3), "v3-member-digest")
+    return {
+        "v2FieldCount": len(V2_FIELDS),
+        "v3FieldCount": len(V3_FIELDS),
+        "direct": sorted(DIRECT),
+        "renamed": RENAMED,
+        "split": {"acceptedGovernanceRevision": ["acceptedRequirementRevision", "governancePolicyRevision"]},
+        "v2Bound": sorted(V2_BOUND),
+        "v3Bound": sorted(V3_BOUND),
+        "v3Derived": sorted(V3_DERIVED),
+    }
+
+
+def rejects(v2: dict[str, Any], v3: dict[str, Any], b0: Path, b1: Path, mutate) -> bool:
+    candidate = copy.deepcopy(v3)
+    mutate(candidate)
+    try:
+        validate_member_mapping(v2, candidate, b0, b1)
+    except SystemExit:
+        return True
+    return False
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ("b0", "b1", "member", "out"):
         parser.add_argument("--" + name, required=True)
     args = parser.parse_args()
-    b0 = Path(args.b0) / "ops-bundle"
+    b0_root = Path(args.b0)
+    b0 = b0_root / "ops-bundle"
     b1 = Path(args.b1)
     paths0 = {x.relative_to(b0).as_posix() for x in b0.rglob("*") if x.is_file()}
     paths1 = {x.relative_to(b1).as_posix() for x in b1.rglob("*") if x.is_file()}
@@ -130,9 +315,8 @@ def main() -> None:
         "negative-missing-admission-input.json",
     ]
     for path in input_paths:
-        left, right = read(b0 / path), read(b1 / path)
         allowed = {("observations", "source") + item for item in SOURCE_FIELDS}
-        require_diff(path, left, right, allowed)
+        require_diff(path, read(b0 / path), read(b1 / path), allowed)
 
     admission_paths = [
         "contract-diff-admission.json",
@@ -177,49 +361,20 @@ def main() -> None:
     manifest_changed = {path for path in rows0 if rows0[path] != rows1[path]}
     if manifest_changed != EXPECTED_CHANGED - {"bundle-manifest.json"}:
         fail("manifest-delta", {"actual": sorted(manifest_changed)})
-
     for path in sorted(changed - {"sources/observer/source"}):
         if normalize(read(b0 / path), path == "bundle-manifest.json") != normalize(read(b1 / path), path == "bundle-manifest.json"):
             fail("unexpected-semantic-delta:" + path)
 
-    v2 = read(Path(args.b0) / "package-contract-member.json")
+    v2 = read(b0_root / "package-contract-member.json")
     v3 = read(Path(args.member))
-    keys = (
-        "status",
-        "authority",
-        "adoption",
-        "releasePublished",
-        "claimCeiling",
-        "scopeId",
-        "obligationId",
-        "acceptedRequirementDigest",
-        "contractDiffStatus",
-        "negativeStatus",
-        "remaining",
-        "evidenceBound",
-        "observerMeaningVerified",
-        "evidenceReconstructed",
-        "sourceBytesVerified",
-        "receiptReplayed",
-        "comparatorReplayed",
-    )
-    for key in keys:
-        if v2[key] != v3[key]:
-            fail("semantic-member-drift:" + key)
-    if (
-        v2["opsCandidate"] != v3["targetCandidate"]
-        or v2["opsCandidateSourcesVerified"] != v3["targetSourcesVerified"]
-        or v2["acceptedGovernanceRevision"] != v3["acceptedRequirementRevision"]
-    ):
-        fail("semantic-member-mapping")
-    if (
-        v3.get("contractRuntimeRepository") != "roccho-org/ops"
-        or v3.get("contractRuntimeRevision") != "5eb98c82417b399978c1e38aebab5e3fb39752d4"
-        or v3.get("runtimeSourcesVerified") != 2
-        or v3.get("lowerProofMode") != "target-verifier+common-reconstruction"
-        or v3.get("evidenceInputVerified") is not True
-    ):
-        fail("corrected-port-member")
+    mapping = validate_member_mapping(v2, v3, b0_root, b1)
+    negatives = {
+        "memberExtraFieldRejected": rejects(v2, v3, b0_root, b1, lambda value: value.__setitem__("unexpected", True)),
+        "memberMissingFieldRejected": rejects(v2, v3, b0_root, b1, lambda value: value.pop("targetId")),
+        "memberMappedFieldDriftRejected": rejects(v2, v3, b0_root, b1, lambda value: value.__setitem__("targetCandidate", "0" * 40)),
+        "memberBoundFieldDriftRejected": rejects(v2, v3, b0_root, b1, lambda value: value.__setitem__("evidenceDigest", DIGEST_PREFIX + "0" * 64)),
+    }
+    need(all(negatives.values()), "member-negative-suite")
 
     report = {
         "kind": "governance.contract632.b0B1PrimePortEquivalence.v2",
@@ -232,7 +387,11 @@ def main() -> None:
         "manifestDeltaClosed": True,
         "runtimeSeparated": True,
         "lowerProofPreservedForOps": True,
+        "fieldUniverseClosed": True,
+        "fieldClassificationClosed": True,
+        "memberMapping": mapping,
         "changedFiles": sorted(changed),
+        **negatives,
     }
     Path(args.out).write_text(canonical(report) + "\n", encoding="utf-8")
 
