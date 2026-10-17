@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -38,7 +39,16 @@ _source3.apps_preflight_binding = apps_preflight_binding
 
 def load_target(target_id):
     _common.TARGET_DIR = TARGET_DIR
-    return _common.load_target(target_id)
+    acquire_before = _acquire.verify_release_evidence
+    main = sys.modules.get("__main__")
+    canonical_before = getattr(main, "canonical", None) if main is not None else None
+    result = _common.load_target(target_id)
+    need(_acquire.verify_release_evidence is acquire_before, "target-import-acquire-side-effect")
+    need(
+        (getattr(main, "canonical", None) if main is not None else None) is canonical_before,
+        "target-import-final-canonical-side-effect",
+    )
+    return result
 
 
 def discover_targets():
@@ -67,6 +77,55 @@ def _closed(target_source: Path):
         )
 
     return verify
+
+
+def _prepare_target_evidence(
+    target_id: str,
+    binding: dict[str, Any],
+    target_source: Path,
+    destination: Path,
+) -> None:
+    executor = binding.get("evidenceExecutor", {})
+    if target_id != "apps" or executor.get("kind") != "exact-existing-release":
+        _source3.prepare_target_evidence(_acquire, target_id, binding, target_source, destination)
+        return
+
+    expected = apps_preflight_binding()
+    need(binding.get("evidenceMaterial") == expected["evidenceMaterial"], "prepared-evidence-material")
+    need(binding.get("targetSource", {}).get("revision") == expected["targetSource"]["revision"], "prepared-evidence-candidate")
+    need(executor == expected["evidenceExecutor"], "prepared-evidence-executor")
+
+    source = Path("_preflight/evidence").resolve()
+    source_full = _source3.full_material_root(source)
+    if not source.is_dir() or not source_full.is_dir():
+        _source3.prepare_target_evidence(_acquire, target_id, binding, target_source, destination)
+        return
+
+    destination = destination.resolve()
+    destination_full = _source3.full_material_root(destination)
+    if destination.exists():
+        shutil.rmtree(destination)
+    if destination_full.exists():
+        shutil.rmtree(destination_full)
+    shutil.copytree(source, destination)
+    shutil.copytree(source_full, destination_full)
+
+    evidence_path = destination / "evidence.json"
+    evidence = read_object(evidence_path, "prepared-release-evidence")
+    need(evidence.get("targetId") == expected["targetId"], "prepared-release-source-target")
+    need(evidence.get("candidate") == expected["targetSource"]["revision"], "prepared-release-source-candidate")
+    need(evidence.get("executor") == expected["evidenceExecutor"], "prepared-release-source-executor")
+    receipt = evidence.get("receipt")
+    need(isinstance(receipt, dict), "prepared-release-receipt")
+    need(receipt.get("provider") == expected["evidenceMaterial"]["provider"], "prepared-release-provider")
+
+    evidence["targetId"] = target_id
+    evidence["candidate"] = binding["targetSource"]["revision"]
+    evidence["executor"] = binding["evidenceExecutor"]
+    receipt["targetId"] = target_id
+    receipt["provider"] = binding["evidenceMaterial"]["provider"]
+    evidence_path.write_text(canonical(evidence) + "\n", encoding="utf-8")
+    need((destination_full / _source3.FULL_ASSET_NAME).is_file(), "prepared-release-full-asset")
 
 
 def verify_bundle(
@@ -112,7 +171,7 @@ def produce_bundle(
     if evidence_input is None:
         raise ValueError("package-contract-bundle:evidence-input-root")
     _, binding, _ = load_target(target_id)
-    _source3.prepare_target_evidence(_acquire, target_id, binding, target_source, evidence_input)
+    _prepare_target_evidence(target_id, binding, target_source, evidence_input)
     previous = _cli.verify_evidence_input
     _cli.verify_evidence_input = _closed(target_source)
     try:
@@ -160,6 +219,7 @@ def cross_target_preflight(
         **report,
         "evidenceMaterialClosed": True,
         "genericEvidencePreparation": True,
+        "targetImportBoundaryVerified": True,
         "manifestFilesVerified": binding["evidenceMaterial"]["manifest"]["fileCount"],
         **negatives,
     }
