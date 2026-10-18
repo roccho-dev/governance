@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +75,36 @@ def workflow_outputs(value: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _source_files(root: Path) -> list[Path]:
+    """Return repository-owned source files, not untracked generated reports.
+
+    Git checkouts use the index as the source boundary. Exported source trees do
+    not have an index, so they fall back to the previous recursive scan; those
+    exports contain repository source only.
+    """
+    process = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    if process.returncode == 0:
+        paths: list[Path] = []
+        for raw in process.stdout.split(b"\0"):
+            if not raw:
+                continue
+            try:
+                relative = Path(raw.decode("utf-8"))
+            except UnicodeDecodeError:
+                continue
+            path = root / relative
+            if path.is_file():
+                paths.append(path)
+        return sorted(paths)
+    return sorted(path for path in root.rglob("*") if path.is_file())
+
+
 def duplicate_identity_literals(root: Path = ROOT) -> list[dict[str, str]]:
     identity = load_identity()
     values = {
@@ -83,8 +114,8 @@ def duplicate_identity_literals(root: Path = ROOT) -> list[dict[str, str]]:
     }
     findings: list[dict[str, str]] = []
     allowed = {IDENTITY_PATH.resolve()}
-    for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.resolve() in allowed:
+    for path in _source_files(root):
+        if path.resolve() in allowed:
             continue
         relative = path.relative_to(root)
         if any(part in GENERATED_PARTS for part in relative.parts):

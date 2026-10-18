@@ -1,0 +1,131 @@
+{
+  "acceptedRequirementSource": {
+    "accessClass": "adrs-reader-v1",
+    "allowedPaths": {
+      "acceptedDecision": {
+        "gitBlob": "c760b881f2c66b7538b2ac0e9a5250658cda2aa9",
+        "path": "decisions/apps-voice-ui-artifact-auth-requirement-261015.jsonl"
+      },
+      "acceptedRollout": {
+        "gitBlob": "c760b881f2c66b7538b2ac0e9a5250658cda2aa9",
+        "path": "decisions/apps-voice-ui-artifact-auth-requirement-261015.jsonl"
+      }
+    },
+    "repository": "roccho-dev/adrs",
+    "revision": "862313008ad19a743034599792d9a8b6e470e4cf"
+  },
+  "adapterPath": "tools/package_contract_targets/apps.py",
+  "claimCeiling": "APPS_ARTIFACT_DECLARATION_AND_EXACT_BUILD_PROJECTION_ONLY",
+  "contractRuntimeSource": {
+    "accessClass": "public-read",
+    "allowedPaths": {
+      "comparatorCli": {
+        "gitBlob": "e06a74b4323f2772fbbb69fac9ba543c4326b97b",
+        "path": "packages/contract-diff/bin/contract-diff.py"
+      },
+      "comparatorCore": {
+        "gitBlob": "9613c92deb6ee12b335863a36261268976ad9cc5",
+        "path": "packages/contract-diff/core.py"
+      }
+    },
+    "repository": "roccho-org/ops",
+    "revision": "5eb98c82417b399978c1e38aebab5e3fb39752d4"
+  },
+  "evidenceExecutor": {
+    "grade": "source",
+    "kind": "exact-existing-release",
+    "operation": "nix-build-voice-ui-dist",
+    "readback": true
+  },
+  "evidenceMaterial": {
+    "source": {
+      "path": "packages/voice-ui/artifact.jsonl",
+      "gitBlob": "44c7f74fb5d6b44d3415079b0e542c6866c86fea",
+      "sha256": "sha256:0f79ee6819cb68140360b97c27486f2365a7a0ac849ef81702f0ff2536485d82"
+    },
+    "manifest": {
+      "schema": "voice-ui-dist/2",
+      "sourceKey": "apps",
+      "authPath": ".envs/artifact.jsonl",
+      "sha256": "sha256:c7e77a89cc911e7337f30779f6badb1b8be560c77aac688703ab0bee3a12cae7",
+      "fileCount": 288
+    },
+    "provenance": {
+      "schema": "roccho.voice-ui-dist.release-provenance/2",
+      "workflowPath": ".github/workflows/voice-ui-release.yml",
+      "workflowGitBlob": "745fcda9d4204f846f5c5768e4f9863b26082337",
+      "workflowRef": "roccho-dev/apps/.github/workflows/voice-ui-release.yml@refs/heads/proposals",
+      "workflowSha256": "sha256:9ab58d5017e46fefff613ed16146977425c67e32b06d3244031fa9bfa7748f10",
+      "inputs": {
+        "flake.lock": {
+          "path": "flake.lock",
+          "gitBlob": "c5cd1da48fe662b28676f9ae9c76c520d21d74c6",
+          "sha256": "sha256:ae08fcfa07459cda5ddaf69c480af1b51b2351b73195b5263fc006ada181970e"
+        }
+      },
+      "artifact": {
+        "name": "voice-ui-dist.zip",
+        "bytes": 62585992,
+        "sha256": "a15f4a0c481048e22461d815ead48790ba741d42e619c0088436de85f1dc2417"
+      }
+    },
+    "proof": {
+      "prNumber": 91,
+      "base": "proposals",
+      "tree": "f0c9f85240d37cf14e78bda93619d71280527c58"
+    },
+    "provider": {
+      "repository": "roccho-dev/apps",
+      "releaseId": 411224075,
+      "releaseTag": "voice-ui-dist-71409fa013b6cb681c0a80b4c377e4685685b690",
+      "targetCommitish": "71409fa013b6cb681c0a80b4c377e4685685b690",
+      "runId": "38339283395",
+      "runAttempt": "2",
+      "artifactId": 11787016196,
+      "artifactDigest": "sha256:f9eb3f7ec6f8ef1643c86ca8d88d069c7b8b7e08b386d203afee18ea37e9b208",
+      "assets": {
+        "voice-ui-dist.zip": {
+          "id": 635746304,
+          "bytes": 62585992,
+          "sha256": "sha256:a15f4a0c481048e22461d815ead48790ba741d42e619c0088436de85f1dc2417"
+        },
+        "provenance.json": {
+          "id": 635746309,
+          "bytes": 36366,
+          "sha256": "sha256:43867c3dd595b30375194418e4ed0e27531ef3d0a326f96e865e80a2ad6fd615"
+        },
+        "merged-pr-proof.json": {
+          "id": 635746325,
+          "bytes": 434,
+          "sha256": "sha256:50370f82881b04ebe475afc31a9310065c6e305193a1a726497fdb1b7215f9cc"
+        }
+      }
+    }
+  },
+  "expectedSourceBytesVerified": 8,
+  "governancePolicySource": {
+    "accessClass": "adrs-reader-v1",
+    "repository": "roccho-dev/adrs",
+    "revision": "862313008ad19a743034599792d9a8b6e470e4cf"
+  },
+  "kind": "governance.packageContractTarget.v1",
+  "logicalRepository": "roccho-dev/apps",
+  "lowerVerifier": {
+    "mode": "none"
+  },
+  "obligationId": "apps.voice-ui-artifact-auth.v1",
+  "providerRepository": "roccho-dev/apps",
+  "sourceRoots": {
+    "providerClaim": "target",
+    "receiptProducer": "target",
+    "buildInput": "target",
+    "comparatorCli": "runtime",
+    "comparatorCore": "runtime"
+  },
+  "targetId": "apps",
+  "targetSource": {
+    "accessClass": "public-read",
+    "repository": "roccho-dev/apps",
+    "revision": "71409fa013b6cb681c0a80b4c377e4685685b690"
+  }
+}
