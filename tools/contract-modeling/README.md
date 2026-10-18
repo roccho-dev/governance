@@ -293,9 +293,15 @@ the existing two target source/bundle/evidence roots and fixed Cold source.
 It contains no admission overrides. `COLD_INPUT_PROOF_OUTPUT` retains the actual
 derived records and test counts. The existing phase4 CI supplies these locations,
 requires both targets and zero skipped tests, and transports the result with its
-ordinary evidence artifact. Its exact stacked base is Gov220 head
-`3b9246ff1b4bb0211508213ac714ab460f3801dc`; prior Gov/Ops/Apps source and finite
-acceptance remain preserved.
+ordinary evidence artifact. The Cold addition was originally stacked on Gov220
+head `3b9246ff1b4bb0211508213ac714ab460f3801dc`; its complete finite proof at
+`86f9730c2dff4c3a09657f297802b0f2f567a214` remains preserved. For source integration,
+the final PR targets `proposals` at exact base
+`5b26984eb59e4c03f9d0fe34891fea5e4a436a16`, including the reviewed Gov219/Gov220
+ancestor commits. The integration change updates the exact base guard and this
+description; meaning, adapters and consumers retain the previously reviewed bytes.
+The integrated candidate still requires its own exact-head CI/readback. Source
+integration does not publish a Gov Release or adopt operational state.
 
 The tests include a real historical boundary: the actual first parent of PR642,
 `896851b2e21451d2f5d4999f6687a6be387a747c`, lacks this Requirement and cannot reuse
