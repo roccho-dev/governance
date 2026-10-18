@@ -117,8 +117,8 @@ The CI intent delta changes only the description, not admission or the real gate
 
 Exact fixture-only changes run `synthetic contract input fixtures` using public
 Gov and fixed public Ops objects, with no App token, private source checkout or
-artifact upload. Real jobs are not run. Their gate is named
-`real-data gate not evaluated`, so the stable real `gate` identity is absent.
+artifact upload. Real jobs are not run. The skipped gate's conditional name can
+appear as an unevaluated expression; the stable real `gate` identity is absent.
 The synthetic log explicitly reports `authority=false`, `releaseEligible=false`,
 `releaseEligibilityEvaluated=false`, and `realEvidenceNotEvaluated=true`.
 GitHub can display skipped jobs as successful checks: neither that display nor
@@ -146,7 +146,7 @@ flowchart TD
 
 ## Publication and claim boundary
 
-This work is local and fixture-only. Existing source/final/Cold implementations,
+This is a fixture-only source slice. Existing source/final/Cold implementations,
 admitted meanings, previous finite proofs, and unrelated worktrees remain intact.
 It does not make the entire existing Gov final path provider independent: that
 path still accepts filesystem bundles and obtains some real evidence through
