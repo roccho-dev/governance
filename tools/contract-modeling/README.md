@@ -171,3 +171,142 @@ are non-authoritative and effect-free. Existing governance gates still own final
 grade/residual/closure. The separate live-selected-consumer Red and ADRS #443
 real provider/readback/application-acceptance work remain required overall and
 are not hidden by this source check.
+
+## Fixed Cold record to the same contract result
+
+This slice starts at the **existing Git Cold JSONL recording path**. It adds no
+recording API, Hot reader, admission writer, meaning ledger, comparator or Atlas
+requirement. The existing package-contract entry has one additional command,
+`cold-check`, which selects a fixed Cold record and returns its derived result.
+The record's `Accepted` label, file presence or a caller flag never grants
+admission. The existing target binding must lead back to the actual adopted
+original and its native Git bytes.
+
+The common selector takes a holding ref, exact commit, path and immutable record
+ID, with an optional preserved-original object ID. It handles the existing direct
+JSONL object and `source_content` preservation formats using the existing ADRS
+materializer. Record IDs, package names and source paths do not dispatch product
+code. Its executable codec is separately pinned to ADRS
+`a6284e58ed99243447e135828d983fc07d2d363e:tools/materialize.py`, Git blob
+`f861d0019667ee679da3d374dac8e117adae05d0`; a selected Cold data revision cannot
+provide executable transform code.
+
+The supported meaning/admission families remain the existing two target bindings,
+not arbitrary Cold kinds or all obligations in a record. The finite proof inputs
+are independently selected from those bindings:
+
+| Input | Actual adopted source | Existing consumer scope |
+| --- | --- | --- |
+| Apps direct Requirement JSONL | ADRS PR642 merge `862313008ad19a743034599792d9a8b6e470e4cf` | Apps artifact declaration and exact build projection |
+| Preserved CI-topology contract | ADRS PR233 merge `a8fc9e8e04d53f1d783317059e4421c8dc724d01`, equal to the preserved original at `97335ac08a0be2d759703b426a3183c43ee8b6a1` | Ops self-diff consumed, not organization admission |
+
+Neither observed target enumeration nor a new caller-supplied admission file
+defines the required universe. The source's raw digest, canonical meaning digest
+and derived obligation digest retain their distinct roles. Required is derived
+from the trusted accepted source; Provided remains the Repo's declaration;
+Observation and Receipt remain evidence of the actual candidate and operation.
+`cold-check` calls the existing final **`check-package`** entry, which loads the
+corrected canonical checker, import guards, full material/body verification,
+comparator replay and required negative checks. It does not bypass these through
+the lower verifier, and it does not claim a new full-organization/current-provider
+final, release or operational adoption.
+
+The returned `adr_raw_event.v1` Fact is a disposable, non-authoritative result
+projection. It references the selected record with its fixed repository,
+commit/tree/blob/path, actual adopted source, target/candidate, obligation,
+transform identity and actual consumer report. Its coverage is explicitly the
+selected binding. Missing/unverified inputs return `UNKNOWN` with incomplete
+coverage; malformed/conflicting input returns `INVALID`. The existing comparator's
+`CLOSED/OPEN/INVALID/UNKNOWN` and exit `0/2/3/4` are preserved; the Cold selector
+does not invent an OPEN bundle or turn an unverified input into a closed member.
+`--cold-result` first recomputes the result and compares the entire stored record;
+changing a stored result and rehashing it does not replace recomputation.
+
+### Execution and failure closure
+
+```mermaid
+flowchart TD
+  A[P fixes adopted source, two supported bindings and required evidence] --> B[sub retains ref, commit, tree, blob and selects Cold record]
+  B --> C[sub verifies original context and actual admission through existing binding]
+  C --> D[sub derives Required and calls existing canonical final check-package]
+  D --> E[sub reads same-record derived JSONL and exact result binding]
+  E --> T[sub proves both origins, real source history, boundaries and regressions]
+  T --> R[P independently reads source and actual results with existing acceptance]
+  R -->|required finite evidence complete| Z[Finite Cold connection complete with explicit coverage]
+  B -->|failure| F[P and sub identify first invalid edge and responsible actor]
+  C -->|failure| F
+  D -->|failure| F
+  E -->|failure| F
+  T -->|failure| F
+  R -->|counterexample| F
+  F -->|meaning or admission change| A
+  F -->|meaning unchanged source defect| K[same sub minimally fixes and checks]
+  K -->|source identity or selection changed| B
+  K -->|new fix and readback, selection unchanged| D
+  F -->|input acquisition deficit| I[P obtains or corrects actual material]
+  I -->|new valid input read back| B
+  F -->|authority, capability or necessary input unavailable| U[P states deficit, owner and concrete reentry; unmet stop]
+  I -->|operation unavailable or same failure| U
+  U -->|concrete reentry actually established| A
+```
+
+The diagram describes execution responsibilities, not a promise that drawing an
+edge makes its operation available. Existing successful evidence is reused where
+it meets the same-version condition; old successful CI is not rerun merely to
+populate this graph. Meaning changes return to P to refix the expected contract.
+Meaning-invariant source corrections remain with the same implementation actor.
+They do not wait for a fresh P instruction on each ordinary failure. Only checks
+affected by the new fix are repeated at D/E/T; unchanged source acquisition and
+successful unrelated checks are reused. Meaning or authority changes require P's
+decision before execution.
+
+### Reproduce
+
+Run through the canonical entry, supplying the same native source roots and
+evidence material required by its existing `check`/`check-package` commands:
+
+```text
+python3 tools/check-package-contract-closure-bundle.py cold-check \
+  --target-id TARGET --bundle BUNDLE --target-source TARGET_ROOT \
+  --accepted-requirement-source ACCEPTED_ROOT --governance-policy-source POLICY_ROOT \
+  --contract-runtime-source RUNTIME_ROOT --evidence-input EVIDENCE_ROOT \
+  --governance-candidate GOVERNANCE_SHA \
+  --cold-source ADRS_NATIVE_ROOT --cold-code-source TRUSTED_CODEC_NATIVE_ROOT \
+  --cold-ref HEAD --cold-revision COLD_SHA \
+  --cold-path decisions/RECORDS.jsonl --cold-record-id RAW_ID --out RESULT.jsonl
+```
+
+On Windows `--git-executable` must name the absolute existing native Git program.
+Native roots must have the exact heads required by the existing bindings. A
+retained commit is checked against a literal holding ref; `refs/...~0` and reflog
+expressions are not holding refs. Source paths must be regular native blobs, not
+symlinks or traversal paths. An explicitly supplied `--target-candidate` must
+equal the trusted binding's candidate.
+
+```text
+python3 tools/contract-modeling/tests/test_cold_contract_input.py -v
+```
+
+Always-on native boundary tests need no network. The real proof uses
+`COLD_INPUT_PROOF_CONFIG`, a JSON file containing **location arguments only** for
+the existing two target source/bundle/evidence roots and fixed Cold source.
+It contains no admission overrides. `COLD_INPUT_PROOF_OUTPUT` retains the actual
+derived records and test counts. The existing phase4 CI supplies these locations,
+requires both targets and zero skipped tests, and transports the result with its
+ordinary evidence artifact. Its exact stacked base is Gov220 head
+`3b9246ff1b4bb0211508213ac714ab460f3801dc`; prior Gov/Ops/Apps source and finite
+acceptance remain preserved.
+
+The tests include a real historical boundary: the actual first parent of PR642,
+`896851b2e21451d2f5d4999f6687a6be387a747c`, lacks this Requirement and cannot reuse
+the later CLOSED packet; the adopted source can. This does not claim arbitrary
+purpose edits or new adoption. A synthetic unadmitted preservation delta separately
+proves that another immutable record ID can reference the same original without
+changing Required, and that a proposal cannot admit itself. Synthetic boundary
+inputs are not actual adopted meaning.
+
+Local Windows evidence is reported separately from Linux CI: the unchanged Ops
+receipt producer writes native newlines, so its exact Linux-byte replay is skipped
+on Windows and remains required in phase4 CI. No old source or original packet is
+normalized to force a local pass. Fixed historical source/build proof and current
+retrieval are not promoted to present operational fitness or timeless freshness.

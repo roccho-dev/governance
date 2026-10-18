@@ -178,7 +178,7 @@ def main() -> int:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["discover", "plan", "produce", "check", "preflight"],
+        choices=["discover", "plan", "produce", "check", "cold-check", "preflight"],
         default="check",
     )
     parser.add_argument("--target-id")
@@ -195,7 +195,17 @@ def main() -> int:
     parser.add_argument("--preflight-accepted-source", type=Path)
     parser.add_argument("--preflight-evidence-input", type=Path)
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--cold-source", type=Path)
+    parser.add_argument("--cold-code-source", type=Path)
+    parser.add_argument("--cold-ref")
+    parser.add_argument("--cold-revision")
+    parser.add_argument("--cold-path")
+    parser.add_argument("--cold-record-id")
+    parser.add_argument("--cold-object-id")
+    parser.add_argument("--cold-result", type=Path, help="Recompute and compare a prior derived same-record result")
+    parser.add_argument("--git-executable", default="git")
     args = parser.parse_args()
+    exit_code = 0
     if args.command == "discover":
         report = {"kind": "governance.packageContractTargets.v1", "targets": discover_targets()}
     elif args.command == "preflight":
@@ -226,7 +236,9 @@ def main() -> int:
             )
             if any(value is None for value in required):
                 parser.error("produce/check require bundle, target, accepted, policy, runtime, evidence and Governance candidate")
-            _, binding, _ = load_target(args.target_id)
+            binding = None
+            if args.command != "cold-check":
+                _, binding, _ = load_target(args.target_id)
             if args.command == "produce":
                 report = produce_bundle(
                     target_id=args.target_id,
@@ -238,6 +250,45 @@ def main() -> int:
                     contract_runtime_source=args.contract_runtime_source,
                     evidence_input=args.evidence_input,
                 )
+            elif args.command == "cold-check":
+                from tools.package_contract_port_cold import ColdInputError, check_cold_record, readback_result
+                cold = (args.cold_source, args.cold_code_source, args.cold_ref, args.cold_revision,
+                        args.cold_path, args.cold_record_id)
+                if any(value is None for value in cold):
+                    parser.error("cold-check requires Cold source, holding ref, revision, path and record ID")
+                try:
+                    report = check_cold_record(
+                        cold_root=args.cold_source, code_root=args.cold_code_source, git=args.git_executable, cold_ref=args.cold_ref,
+                        cold_revision=args.cold_revision, cold_path=args.cold_path,
+                        record_id=args.cold_record_id, object_id=args.cold_object_id,
+                        target_id=args.target_id, bundle=args.bundle, target_source=args.target_source,
+                        accepted_requirement_source=args.accepted_requirement_source,
+                        governance_policy_source=args.governance_policy_source,
+                        contract_runtime_source=args.contract_runtime_source,
+                        evidence_input=args.evidence_input, governance_candidate=args.governance_candidate,
+                        target_candidate=args.target_candidate,
+                    )
+                    if args.cold_result is not None:
+                        readback_result(report, args.cold_result)
+                except ColdInputError as error:
+                    status = getattr(error, "status", "UNKNOWN")
+                    requested_source = {"repository": "roccho-dev/adrs", "holdingRef": args.cold_ref,
+                        "revision": args.cold_revision, "path": args.cold_path,
+                        "raw_id": args.cold_record_id, "object_id": args.cold_object_id}
+                    report = {
+                        "schema": "adr_raw_event.v1", "kind": "fact", "authority": False,
+                        "raw_id": "derived.contract-result." + digest({"source": requested_source,
+                            "target": args.target_id, "error": str(error)})[7:],
+                        "status": status,
+                        "relations": [{"kind": "references", "raw_id": args.cold_record_id}],
+                        "payload": {"reason": str(error), "coldRevision": args.cold_revision,
+                            "requestedColdSource": requested_source,
+                            "coverage": {"scope": "selected target binding not fully verified",
+                                         "expectedTargets": [args.target_id], "checkedTargets": [],
+                                         "missingTargets": [args.target_id]}},
+                        "admission_boundary": "Unverified input is not admitted or completed.",
+                    }
+                    exit_code = STATUS_EXIT[status]
             else:
                 report = verify_bundle(
                     args.bundle,
@@ -255,7 +306,7 @@ def main() -> int:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text, encoding="utf-8")
     print(text, end="")
-    return 0
+    return exit_code
 
 
 if __name__ == "__main__":
