@@ -150,7 +150,9 @@ def select_cold_record(*, root: Path, code_root: Path, git: str, reference: str,
                     for rel in source.get("relations", []) if isinstance(rel, dict)), "cold-original-relation")
         try:
             answer = codec.query(source, original_id=object_id)
-        except (codec.MaterializationError, UnicodeError) as error:
+        except (json.JSONDecodeError, UnicodeError) as error:
+            raise ColdInputError("invalid-cold-original-format", "INVALID") from error
+        except codec.MaterializationError as error:
             raise ColdInputError("cold-object-selection:" + str(error)) from error
         value = answer["objects"]
     else:
@@ -257,6 +259,11 @@ def check_cold_record(*, cold_root: Path, code_root: Path, git: str, cold_ref: s
         if not str(error).startswith(("package-contract:", "package-contract-bundle:")):
             raise  # An unexpected programming failure must remain a failure.
         raise ColdInputError("existing-final:" + str(error)) from error
+    except OSError as error:
+        # The existing consumer reads caller-owned bundle/source/Receipt bodies.
+        # Missing or unreadable material is acquisition failure, not completion.
+        # Logic errors are deliberately outside this narrowly scoped boundary.
+        raise ColdInputError("existing-final-input-unreadable:" + type(error).__name__) from error
     member = final_result["packageContractClosure"]
     require(member["obligationId"] == binding["obligationId"]
             and member["acceptedRequirementDigest"] == required["obligation_digest"], "consumer-required-binding")

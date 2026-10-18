@@ -293,6 +293,33 @@ class ActualColdPath(unittest.TestCase):
                 with self.assertRaises(cold.ColdInputError):
                     self.check("ops", **selected)
 
+    def test_preserved_format_mismatch_is_structured_invalid_input(self):
+        reader = cold.GitReader(Path(self.config["coldRoot"]), GIT)
+        raw = reader.file(self.config["coldRevision"], "README.md")[0]
+        record_id = "preserved.markdown-misdeclared-as-json"
+        source = {"schema": "adr_raw_event.v1", "raw_id": record_id, "kind": "source_content",
+                  "provenance": {"repo": "roccho-dev/adrs", "commit": self.config["coldRevision"],
+                                 "original_path": "README.md", "mode": "100644"},
+                  "content": {"encoding": "utf-8", "media_type": "application/json",
+                              "blocks": [{"id": "section", "statement": raw.decode("utf-8")}]},
+                  "relations": [{"kind": "preserves_original", "repo": "roccho-dev/adrs",
+                                 "commit": self.config["coldRevision"], "path": "README.md"}]}
+        path = "decisions/format-boundary.jsonl"
+        selected = self.edited({path: (canonical(source) + "\n").encode()})
+        with self.assertRaises(cold.ColdInputError) as caught:
+            self.check("apps", **selected, cold_path=path, record_id=record_id)
+        self.assertEqual(caught.exception.status, "INVALID")
+
+    def test_missing_original_evidence_body_is_unknown(self):
+        source = Path(self.config["targets"]["apps"]["evidenceInput"])
+        evidence = self.root / "evidence"
+        shutil.copytree(source, evidence)
+        shutil.copytree(source.parent / (source.name + "-full"), self.root / "evidence-full")
+        (evidence / "source-artifact.jsonl").unlink()
+        with self.assertRaises(cold.ColdInputError) as caught:
+            self.check("apps", evidence_input=evidence)
+        self.assertEqual(caught.exception.status, "UNKNOWN")
+
     def test_stored_self_rehashed_result_cannot_replace_recomputation(self):
         actual = self.baselines["apps"]
         altered = copy.deepcopy(actual)
