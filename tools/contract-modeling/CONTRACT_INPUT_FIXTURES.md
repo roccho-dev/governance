@@ -87,7 +87,9 @@ it; it does not fetch dependencies or inspect private ADRS data.
 ```powershell
 $env:CONTRACT_INPUT_GIT = '<existing absolute native git executable>'
 $env:CONTRACT_INPUT_RUNTIME_ROOT = '<public Ops fixed read view>'
+$env:PYTHONDONTWRITEBYTECODE = '1'
 python -m unittest discover -s tools/contract-modeling/tests -p test_contract_input.py -v
+python -m unittest discover -s tools/contract-modeling/tests -p test_contract_input_scope.py -v
 ```
 
 The tests require that explicit runtime source; missing setup fails rather than
@@ -97,8 +99,50 @@ of comparator results, while acquisition/retention readbacks intentionally diffe
 
 Local validation on 2026-10-18: all 11 fixture tests passed without skips, including
 the existing CLI's four exit states. The unchanged public Ops core/edge suite also
-passed all 33 tests without skips. These are local synthetic proofs, not public CI
-or private real-input validation.
+passed all 33 tests without skips. The routing suite passed 16 tests, and all 14
+existing Gov release/owner boundary tests passed. These are local synthetic
+proofs, not public CI or private real-input validation.
+
+## Exact synthetic CI scope
+
+The existing Normal workflow first compares immutable event base/head commits.
+It executes the router from the base object; the first installation instead
+checks the candidate router against the exact reviewed bootstrap blob in the
+workflow. That bootstrap is a reviewed code pin, not self-admission by input.
+Subsequent input cannot choose a different routing policy. The literal allowlist
+is only this fixture module, its tests/documentation, and their exact CI wiring.
+The workflow wiring must round-trip to unchanged legacy job bytes, apart from
+routing and the fixed public Ops runtime checkout/environment needed for tests.
+The CI intent delta changes only the description, not admission or the real gate.
+
+Exact fixture-only changes run `synthetic contract input fixtures` using public
+Gov and fixed public Ops objects, with no App token, private source checkout or
+artifact upload. Real jobs are not run. Their gate is named
+`real-data gate not evaluated`, so the stable real `gate` identity is absent.
+The synthetic log explicitly reports `authority=false`, `releaseEligible=false`,
+`releaseEligibilityEvaluated=false`, and `realEvidenceNotEvaluated=true`.
+GitHub can display skipped jobs as successful checks: neither that display nor
+the workflow conclusion establishes release eligibility. The existing real
+provider still requires its exact candidate-bound artifact and body evidence.
+
+Mixed/other source changes and explicit dispatch retain the real path. Deletion,
+unrelated or missing base, invalid event, changed router policy, or unapproved
+workflow/intent edits fail classification rather than activating private jobs.
+This does not migrate the legacy real path to private execution or remove its
+existing Release/Actions evidence dependencies. No schedule or new workflow is
+introduced.
+
+```mermaid
+flowchart TD
+  A[Immutable base and head; trusted router pin] --> S{Exact delta verified?}
+  S -->|Only approved synthetic paths and wiring| F[Public synthetic tests; no private inputs or uploads]
+  S -->|Other source or explicit dispatch| R[Existing real checks and actual evidence gate]
+  S -->|Invalid or unverified| U[Fail scope; private jobs not started]
+  F --> P[P independently checks diff and fixture results]
+  P -->|Necessary synthetic checks pass| Z[Fixture integration only; real eligibility not evaluated]
+  P -->|Concrete source defect| W[Same writer fixes first invalid boundary]
+  W -->|Actual corrected source| A
+```
 
 ## Publication and claim boundary
 
@@ -109,9 +153,10 @@ path still accepts filesystem bundles and obtains some real evidence through
 Release/Actions artifacts. Real evidence-to-native-Git retention and real consumer
 binding require separate work and proof.
 
-No new workflow or provider effect is added. Current public Normal CI can acquire
-and upload private ADRS source. Therefore remote push, PR creation and CI execution
-are deliberately outside this slice until their publication boundary is reviewed;
-a future public synthetic runner must not stand in for necessary private-data
-verification. Local fixture success is never reported as a real-data, Git-only,
-all-provider, whole-foundation or adoption success.
+The initial local fixture proof is complete. The added routing is the bounded
+integration change needed before publishing this slice: public PR/merge CI is
+still pending independent source review and actual job/artifact readback. Other
+Normal scopes can still acquire and upload private ADRS sources, so this is not a
+claim that all public CI is safe for real private inputs. A synthetic runner never
+stands in for necessary real-data verification. Fixture success is never reported
+as a real-data, Git-only, all-provider, whole-foundation or adoption success.

@@ -15,7 +15,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # BEGIN synthetic input routing
+  input_scope:
+    name: exact input scope
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.scope.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use immutable base policy or the reviewed bootstrap blob
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ && "$BASE_SHA" != 0000000000000000000000000000000000000000 ]]
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          git cat-file -e "$BASE_SHA^{commit}"
+          policy="$RUNNER_TEMP/contract-input-fixture-ci.py"
+          if git cat-file -e "$BASE_SHA:tools/contract-input-fixture-ci.py" 2>/dev/null; then
+            git show "$BASE_SHA:tools/contract-input-fixture-ci.py" > "$policy"
+          else
+            test "$(git rev-parse "$HEAD_SHA:tools/contract-input-fixture-ci.py")" = b8543b41e29e24f51905b35fc570087ed5354a41
+            git show "$HEAD_SHA:tools/contract-input-fixture-ci.py" > "$policy"
+          fi
+          python3 "$policy" --root "$PWD" --event "$EVENT" --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
+
+  input-fixtures:
+    name: synthetic contract input fixtures
+    needs: input_scope
+    if: needs.input_scope.outputs.mode == 'fixture-only'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read the fixed public comparator
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-org/ops
+          ref: 5eb98c82417b399978c1e38aebab5e3fb39752d4
+          path: _fixture-public-ops
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run synthetic input and routing proofs
+        env:
+          CONTRACT_INPUT_RUNTIME_ROOT: ${{ github.workspace }}/_fixture-public-ops
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tools/contract-modeling/tests -p test_contract_input.py -v
+          python3 -m unittest discover -s tools/contract-modeling/tests -p test_contract_input_scope.py -v
+          (cd _fixture-public-ops && python3 -m unittest discover -s packages/contract-diff/tests -p 'test_*.py' -v)
+          echo '{"authority":false,"releaseEligible":false,"releaseEligibilityEvaluated":false,"realEvidenceNotEvaluated":true,"grade":"fixture"}'
+          echo 'Synthetic fixture proof only. Legacy gate was not evaluated; release eligibility and adoption are not established.' >> "$GITHUB_STEP_SUMMARY"
+
+  # END synthetic input routing
   capture:
+    needs: input_scope
+    if: needs.input_scope.outputs.mode == 'real'
     name: current decision and release identity capture
     runs-on: ubuntu-latest
     outputs:
@@ -62,7 +128,8 @@ jobs:
 
   source-capture:
     name: accepted and candidate ADRS source capture
-    needs: capture
+    needs: [input_scope, capture]
+    if: needs.input_scope.outputs.mode == 'real'
     runs-on: ubuntu-latest
     steps:
       - name: Validate ADRS reader
@@ -183,6 +250,8 @@ jobs:
           if-no-files-found: error
 
   live-consumers:
+    needs: input_scope
+    if: needs.input_scope.outputs.mode == 'real'
     name: live selected consumer capture
     runs-on: ubuntu-latest
     steps:
@@ -240,6 +309,8 @@ jobs:
           grep -q '"receiptCandidateShaBound":true' live-selected-consumers.json
 
   control-plane-observation:
+    needs: input_scope
+    if: needs.input_scope.outputs.mode == 'real'
     name: informational control-plane diagnostic
     continue-on-error: true
     runs-on: ubuntu-latest
@@ -263,7 +334,8 @@ jobs:
 
   regression:
     name: exact-candidate regression
-    needs: source-capture
+    needs: [input_scope, source-capture]
+    if: needs.input_scope.outputs.mode == 'real'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -336,8 +408,17 @@ jobs:
             --override-input uiLib "github:roccho-dev/ui/362f72d2a5be33dd8fcd96d6e1db1cfbe51d4579"
           nix flake check -L "path:$PWD/evidence/candidate-adrs"
           (cd evidence/candidate-adrs && bash ci/check-recursive-contract-modeling-v1-static.sh)
+      - name: Read public fixed Ops runtime for input regression
+        uses: actions/checkout@v4
+        with:
+          repository: roccho-org/ops
+          ref: 5eb98c82417b399978c1e38aebab5e3fb39752d4
+          path: _fixture-public-ops
+          fetch-depth: 0
+          persist-credentials: false
       - name: Run Python, contract-modeling, and gov release regression
         env:
+          CONTRACT_INPUT_RUNTIME_ROOT: ${{ github.workspace }}/_fixture-public-ops
           CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
@@ -393,8 +474,9 @@ jobs:
           if-no-files-found: error
 
   gate:
-    name: gate
-    needs: [capture, regression, live-consumers]
+    name: ${{ needs.input_scope.outputs.mode == 'real' && 'gate' || 'real-data gate not evaluated' }}
+    needs: [input_scope, capture, regression, live-consumers]
+    if: needs.input_scope.outputs.mode == 'real'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -456,8 +538,8 @@ jobs:
 
   post-effect:
     name: transport-only merge readback
-    if: github.event_name == 'push' && github.ref == 'refs/heads/proposals'
-    needs: gate
+    if: needs.input_scope.outputs.mode == 'real' && github.event_name == 'push' && github.ref == 'refs/heads/proposals'
+    needs: [input_scope, gate]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
