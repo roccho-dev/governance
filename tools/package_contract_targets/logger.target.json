@@ -37,7 +37,7 @@
     "operation": "logger-language-neutral-establishment",
     "readback": true
   },
-  "expectedSourceBytesVerified": 7,
+  "expectedSourceBytesVerified": 9,
   "governancePolicySource": {
     "accessClass": "same-repo-read",
     "repository": "roccho-dev/governance",
@@ -54,12 +54,14 @@
     "comparatorCli": "runtime",
     "comparatorCore": "runtime",
     "independentJudgment": "target",
+    "independentJudgmentOriginal": "target",
+    "retainedArtifact": "target",
     "retainedManifest": "target"
   },
   "targetId": "logger",
   "targetSource": {
     "accessClass": "public-read",
     "repository": "roccho-org/ops",
-    "revision": "e51bc708070c9b7126b3bca8ae95ae7031c509f8"
+    "revision": "4a51dedd84adffd2486b9e1629ea03b02059ffd0"
   }
 }
