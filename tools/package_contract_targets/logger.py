@@ -45,6 +45,32 @@ for _name in dir(_impl):
     if not _name.startswith("__"):
         globals()[_name] = getattr(_impl, _name)
 
+
+def _strict_checks(raw: bytes) -> dict[str, str]:
+    output: dict[str, str] = {}
+    for line in raw.decode("utf-8").splitlines():
+        _impl._need(
+            len(line) > 68 and line[64:68] == "  ./",
+            "k-checksum-row",
+            line[:80],
+        )
+        digest, name = line[:64], line[68:]
+        _impl._safe(name)
+        _impl._need(
+            len(digest) == 64
+            and all(character in "0123456789abcdef" for character in digest)
+            and name not in output,
+            "k-checksum",
+        )
+        output[name] = "sha256:" + digest
+    return output
+
+
+# The retained producer emitted ordinary `sha256sum` rows (`<64hex>  ./path`).
+# Keep the old implementation byte-identical and correct only its four-byte separator
+# interpretation at the source-bound W adapter.
+_impl._checks = _strict_checks
+
 _BASE_PRODUCE = _impl.produce
 _BASE_EXPECTED_EVIDENCE = _impl.expected_evidence
 
@@ -65,6 +91,7 @@ def _implementation_proof(bundle: Path, revision: str) -> dict[str, Any]:
         "bundlePath": _BUNDLE_IMPL,
         "loadedBy": "tools/package_contract_targets/logger.py",
         "coldCodeRoot": "_cold/adrs",
+        "checksumRowFormat": "<64hex><two spaces>./<path>",
     }
 
 
