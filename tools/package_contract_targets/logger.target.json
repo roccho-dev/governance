@@ -37,7 +37,7 @@
     "operation": "logger-language-neutral-establishment",
     "readback": true
   },
-  "expectedSourceBytesVerified": 9,
+  "expectedSourceBytesVerified": 16,
   "governancePolicySource": {
     "accessClass": "same-repo-read",
     "repository": "roccho-dev/governance",
@@ -51,17 +51,24 @@
   "obligationId": "ops.logger-language-neutral-design.v1",
   "providerRepository": "roccho-org/ops",
   "sourceRoots": {
+    "admissionSourceDecisionOriginal": "target",
+    "aggregateRejectionOriginal": "target",
+    "baselineMetadata": "target",
+    "baselineSha256sums": "target",
+    "canonicalEffectDecisionOriginal": "target",
     "comparatorCli": "runtime",
     "comparatorCore": "runtime",
     "independentJudgment": "target",
     "independentJudgmentOriginal": "target",
+    "materialityDecisionOriginal": "target",
     "retainedArtifact": "target",
-    "retainedManifest": "target"
+    "retainedManifest": "target",
+    "retainedSupplement": "target"
   },
   "targetId": "logger",
   "targetSource": {
     "accessClass": "public-read",
     "repository": "roccho-org/ops",
-    "revision": "4a51dedd84adffd2486b9e1629ea03b02059ffd0"
+    "revision": "6147688457f47b63e71c2ee43817b4d6918e5cfd"
   }
 }
