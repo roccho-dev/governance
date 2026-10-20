@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-unknown","decision_type":"architecture","event_id":"unknown-kind","kind":"approve","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Unknown kind must fail","title":"Unknown kind"}

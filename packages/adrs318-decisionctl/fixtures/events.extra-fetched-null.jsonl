@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-fetched-null","decision_type":"architecture","event_id":"fetched-null","fetched_at":null,"kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Null fetched timestamp excluded","title":"Null fetched timestamp excluded"}

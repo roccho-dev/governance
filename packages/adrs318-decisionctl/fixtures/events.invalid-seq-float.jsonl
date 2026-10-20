@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-seq-float","decision_type":"architecture","event_id":"seq-float","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1.5,"summary":"Float sequence must fail","title":"Sequence float"}

@@ -1,0 +1,1 @@
+{"actor":"author","comment_id":123,"decision_id":"ADR-extra-provider","decision_type":"architecture","etag":"abc","event_id":"extra-provider","fetched_at":"2026-08-26T00:00:00Z","kind":"propose","page":9,"schema":"adrs.lifecycleEvent.v1","seq":1,"source_url":"https://example.invalid","summary":"Transport fields excluded","title":"Transport fields excluded"}
