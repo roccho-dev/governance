@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$HEAD_SHA"
-          test "$BASE_SHA" = 5b26984eb59e4c03f9d0fe34891fea5e4a436a16
+          test "$BASE_SHA" = 692013f50581437fb9004cdedafedbb4a7a271de
           python3 tools/contract_632_phase4_acquire.py discover --out target-discovery.json
           jq -e '.kind=="governance.packageContractTargets.v1" and (.targets|index("ops"))!=null and (.targets|length)>0' target-discovery.json >/dev/null
 

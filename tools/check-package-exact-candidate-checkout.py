@@ -10,6 +10,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github/workflows/gov-final-scope-purpose-join.yml"
 CANDIDATE_EXPRESSION = "${{ github.event.pull_request.head.sha || github.sha }}"
+STABLE_GATE_NAME = "name: ${{ needs.input_scope.outputs.mode == 'real' && 'gate' || 'real-data gate not evaluated' }}"
 
 
 def canonical(value: Any) -> str:
@@ -48,7 +49,7 @@ def check(path: Path = WORKFLOW) -> dict[str, Any]:
         findings.append("checkout-credentials-persisted")
     if "contents: write" in text:
         findings.append("write-permission")
-    if "name: gate" not in text:
+    if STABLE_GATE_NAME not in text:
         findings.append("stable-gate-name")
 
     return {
@@ -74,6 +75,7 @@ def selftest(path: Path = WORKFLOW) -> dict[str, Any]:
         ("wrong-env", "exact-candidate-env-mismatch", base.replace(f"CANDIDATE_SHA: {CANDIDATE_EXPRESSION}", "CANDIDATE_SHA: ${{ github.sha }}", 1)),
         ("unsafe-event", "unsafe-pull-request-target", base.replace("pull_request:", "pull_request_target:")),
         ("write-permission", "write-permission", base.replace("contents: read", "contents: write")),
+        ("gate-name", "stable-gate-name", base.replace(STABLE_GATE_NAME, "name: gate-drift", 1)),
     ]
     results = []
     with tempfile.TemporaryDirectory() as temp_dir:

@@ -13,9 +13,11 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 POLICY = ROOT / "tools/contract-input-fixture-ci.py"
-BASE = "0655461237d5094abee60ec78eb33d6cc7dca1a2"
 GIT = os.environ.get("CONTRACT_INPUT_GIT", shutil.which("git") or "git")
 OWNED = ROOT / ".artifacts/fixture-scope-tests"
+WORKFLOW_BLOB = "020cc9704beda23f313ee1dd39d6debec979b5c4"
+INTENT_BLOB = "f27da44e1a3283e2ca93865688f577ef683cb48a"
+POLICY_BLOB = "b8543b41e29e24f51905b35fc570087ed5354a41"
 spec = importlib.util.spec_from_file_location("fixture_scope", POLICY)
 scope = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(scope)
@@ -41,15 +43,51 @@ def commit(root, files):
     return git(root, "rev-parse", "HEAD").decode().strip()
 
 
+def unwire_intent(raw):
+    rows = raw.splitlines(keepends=True)
+    matched = 0
+    for index, line in enumerate(rows):
+        value = json.loads(line)
+        if value.get("path") != scope.WORKFLOW:
+            continue
+        matched += 1
+        entrypoint = value["entrypoint"]
+        if not entrypoint.endswith(scope.SUFFIX):
+            raise AssertionError("current intent is not the exact routed projection")
+        legacy = entrypoint[:-len(scope.SUFFIX)]
+        rows[index] = line.replace(
+            json.dumps(entrypoint, ensure_ascii=False),
+            json.dumps(legacy, ensure_ascii=False),
+            1,
+        )
+    if matched != 1:
+        raise AssertionError("current intent must contain exactly one routed workflow row")
+    return "".join(rows)
+
+
 class FixtureScope(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # Native fixed public Gov objects, not a candidate-generated oracle.
-        cls.original = git(ROOT, "show", BASE + ":" + scope.WORKFLOW).decode()
-        cls.intent = git(ROOT, "show", BASE + ":" + scope.INTENT).decode()
+        # Fixed current public Gov objects are present in every shallow checkout.
+        # Their pinned Git blobs prevent a candidate-generated workflow/intent oracle.
+        actual = {
+            "workflow": git(ROOT, "rev-parse", "HEAD:" + scope.WORKFLOW).decode().strip(),
+            "intent": git(ROOT, "rev-parse", "HEAD:" + scope.INTENT).decode().strip(),
+            "policy": git(ROOT, "rev-parse", "HEAD:" + scope.POLICY).decode().strip(),
+        }
+        expected = {"workflow": WORKFLOW_BLOB, "intent": INTENT_BLOB, "policy": POLICY_BLOB}
+        if actual != expected:
+            raise AssertionError("fixed public routing source drift:" + json.dumps(actual, sort_keys=True))
+
         cls.policy = POLICY.read_bytes()
+        current_workflow = (ROOT / scope.WORKFLOW).read_text(encoding="utf-8")
+        current_intent = (ROOT / scope.INTENT).read_text(encoding="utf-8")
+        cls.original = scope.legacy_workflow(current_workflow, scope.blob(cls.policy))
+        cls.intent = unwire_intent(current_intent)
         cls.wired = scope.wire_workflow(cls.original, scope.blob(cls.policy))
         cls.routed_intent = scope.wire_intent(cls.intent)
+        if cls.wired != current_workflow or cls.routed_intent != current_intent:
+            raise AssertionError("current public routing projection is not reversible")
 
     def setUp(self):
         OWNED.mkdir(parents=True, exist_ok=True)

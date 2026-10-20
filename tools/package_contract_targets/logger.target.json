@@ -1,0 +1,74 @@
+{
+  "acceptedRequirementSource": {
+    "accessClass": "adrs-reader-v1",
+    "allowedPaths": {
+      "acceptedDecision": {
+        "gitBlob": "9371fed680451f58976a00fda0a71e4fbb54f68f",
+        "path": "decisions/logger-language-neutral-contract-admission-261020.jsonl"
+      },
+      "acceptedRollout": {
+        "gitBlob": "9371fed680451f58976a00fda0a71e4fbb54f68f",
+        "path": "decisions/logger-language-neutral-contract-admission-261020.jsonl"
+      }
+    },
+    "repository": "roccho-dev/adrs",
+    "revision": "6e4abcd22dbee397105625b6041ce1a0d4720182"
+  },
+  "adapterPath": "tools/package_contract_targets/logger.py",
+  "claimCeiling": "LOGGER_SELECTED_SCOPE_ESTABLISHED_NOT_OPERATIONAL_ADOPTION",
+  "contractRuntimeSource": {
+    "accessClass": "public-read",
+    "allowedPaths": {
+      "comparatorCli": {
+        "gitBlob": "e06a74b4323f2772fbbb69fac9ba543c4326b97b",
+        "path": "packages/contract-diff/bin/contract-diff.py"
+      },
+      "comparatorCore": {
+        "gitBlob": "9613c92deb6ee12b335863a36261268976ad9cc5",
+        "path": "packages/contract-diff/core.py"
+      }
+    },
+    "repository": "roccho-org/ops",
+    "revision": "5eb98c82417b399978c1e38aebab5e3fb39752d4"
+  },
+  "evidenceExecutor": {
+    "grade": "real",
+    "kind": "adapter",
+    "operation": "logger-language-neutral-establishment",
+    "readback": true
+  },
+  "expectedSourceBytesVerified": 16,
+  "governancePolicySource": {
+    "accessClass": "same-repo-read",
+    "repository": "roccho-dev/governance",
+    "revision": "692013f50581437fb9004cdedafedbb4a7a271de"
+  },
+  "kind": "governance.packageContractTarget.v1",
+  "logicalRepository": "roccho-org/ops+roccho-dev/apps",
+  "lowerVerifier": {
+    "mode": "none"
+  },
+  "obligationId": "ops.logger-language-neutral-design.v1",
+  "providerRepository": "roccho-org/ops",
+  "sourceRoots": {
+    "admissionSourceDecisionOriginal": "target",
+    "aggregateRejectionOriginal": "target",
+    "baselineMetadata": "target",
+    "baselineSha256sums": "target",
+    "canonicalEffectDecisionOriginal": "target",
+    "comparatorCli": "runtime",
+    "comparatorCore": "runtime",
+    "independentJudgment": "target",
+    "independentJudgmentOriginal": "target",
+    "materialityDecisionOriginal": "target",
+    "retainedArtifact": "target",
+    "retainedManifest": "target",
+    "retainedSupplement": "target"
+  },
+  "targetId": "logger",
+  "targetSource": {
+    "accessClass": "public-read",
+    "repository": "roccho-org/ops",
+    "revision": "c0570843efd1b84e8afaa308ffe8fff9d86b16f3"
+  }
+}
