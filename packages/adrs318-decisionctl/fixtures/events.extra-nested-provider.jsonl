@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-nested-provider","decision_type":"architecture","event_id":"nested-provider","kind":"propose","provider":{"nested":{"comment_id":1,"page":1}},"schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Nested provider object excluded","title":"Nested provider object excluded"}

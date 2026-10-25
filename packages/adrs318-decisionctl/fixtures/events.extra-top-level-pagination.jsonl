@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-top-pagination","decision_type":"architecture","event_id":"top-pagination","kind":"propose","page":77,"page_index":76,"schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Pagination fields excluded","title":"Pagination fields excluded"}

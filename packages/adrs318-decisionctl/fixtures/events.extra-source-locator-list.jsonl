@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-source-locator-list","decision_type":"architecture","event_id":"source-locator-list","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"source_locator":["github",318],"summary":"Source locator list excluded","title":"Source locator list excluded"}

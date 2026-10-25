@@ -1,0 +1,5 @@
+{"actor":"author","decision_id":"ADR-old","decision_type":"architecture","event_id":"old-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Old decision","title":"Old decision"}
+{"actor":"owner","decision_id":"ADR-old","decision_type":"architecture","event_id":"old-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Old decision","title":"Old decision"}
+{"actor":"author","decision_id":"ADR-new","decision_type":"architecture","event_id":"new-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":3,"summary":"New decision","title":"New decision"}
+{"actor":"owner","decision_id":"ADR-new","decision_type":"architecture","event_id":"new-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":4,"summary":"New decision","title":"New decision"}
+{"actor":"owner","decision_id":"ADR-new","decision_type":"architecture","event_id":"new-supersede","kind":"supersede","schema":"adrs.lifecycleEvent.v1","seq":5,"summary":"New decision","supersedes_decision_id":"ADR-old","title":"New decision"}

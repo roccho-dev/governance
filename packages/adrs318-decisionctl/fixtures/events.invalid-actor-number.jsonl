@@ -1,0 +1,1 @@
+{"actor":1,"decision_id":"ADR-actor-number","decision_type":"architecture","event_id":"actor-number","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Numeric actor must fail","title":"Actor number"}
