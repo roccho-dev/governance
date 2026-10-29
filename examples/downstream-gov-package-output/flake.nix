@@ -2,8 +2,8 @@
   description = ''Downstream govPackageOutput producer example'';
 
   inputs = {
-    nixpkgs.url = ''github:NixOS/nixpkgs/nixos-unstable'';
-    governance.url = ''github:roccho-dev/governance/proposals'';
+    nixpkgs.url = ''github:NixOS/nixpkgs/a799d3e3886da994fa307f817a6bc705ae538eeb'';
+    governance.url = ''github:roccho-dev/governance/22f00fdebb2ea405f63991c8a7d15d4056488b80'';
   };
 
   outputs = { self, nixpkgs, governance }:
