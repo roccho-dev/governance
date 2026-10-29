@@ -62,3 +62,7 @@ If a module cannot support a required receipt or projection row, the gap must re
 - Accepted: `roccho-dev/adrs#106` README projection plane and gov package output plane, merged as `96b6fdcd02f4c8bee10a4b08a2c9a5d9dad91803`.
 
 This README is an accepted ADRS projection surface for the `modules/` package. It remains non-authority evidence and must not be treated as an accepted decision record.
+
+## Bounded contract trace (batch 32)
+
+[Source-backed operation trace](../docs/contract-trace-20261029/contract-batch-32/modules/trace.jsonl) records the purpose and four identified Nix operations, their exported symbols, source blob revisions, observation class and unresolved execution work. `SOURCE_PRESENT_RUNTIME_UNOBSERVED` does **not** indicate a passing Nix build, full module inventory, or final ADRS admission. The package's checks remain evidence producers rather than decision authority.
