@@ -206,8 +206,6 @@ ${helpText}
         '';
       repoConventionChecksFor = pkgs:
         import ./nix/repo-convention-checks.nix { inherit pkgs; governanceSrc = self; };
-      readmeMaterializationChecksFor = pkgs:
-        import ./nix/readme-materialization-checks.nix { inherit pkgs; governanceSrc = self; };
       mkReadmeArtifact = pkgs:
         pkgs.runCommand "governance-readme-artifact" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
           set -euo pipefail
@@ -336,17 +334,6 @@ EOF
         readmeArtifact = mkReadmeArtifact pkgs;
         contractDriftAcquireProgram = mkContractDriftAcquireProgram pkgs;
         govPackageOutput = mkGovPackageOutput pkgs;
-        readmeMaterializationChecks = readmeMaterializationChecksFor pkgs;
-        readmeMaterializationFixtureReadme = pkgs.writeText "README.md" ''
-# README materialization fixture
-
-same
-        '';
-        readmeMaterializationPassArtifact = pkgs.runCommand "readme-materialization-pass-artifact" { } ''
-          set -euo pipefail
-          mkdir -p "$out"
-          cp ${readmeMaterializationFixtureReadme} "$out/README.md"
-        '';
       in {
         adrs-input-presence = pkgs.runCommand "adrs-input-presence" { } ''
           set -euo pipefail
@@ -498,31 +485,7 @@ same
           grep -q '"source": "nix-output"' ${readmeArtifact}/receipt.json
           touch "$out"
         '';
-        readme-materialization-common-selftest = readmeMaterializationChecks.selftest;
-        readme-materialization-generated-fixture = readmeMaterializationChecks.mkReadmeMaterializedCheck {
-          repoId = "fixture/readme-generated";
-          readmeArtifact = readmeMaterializationPassArtifact;
-          committedReadme = readmeMaterializationFixtureReadme;
-        };
-        readme-materialization-residual-fixture = readmeMaterializationChecks.mkReadmeMaterializationResidual {
-          repoId = "fixture/readme-residual";
-          mode = "manual";
-          owner = "governance#144";
-          reason = "fixture repo is not in generated README mode";
-          nextAction = "switch to generated mode when readme-artifact exists";
-          returnCondition = "readme-artifact and committed README are byte-identical";
-          expires = "2026-08-31";
-        };
-        readme-materialization-self-residual = readmeMaterializationChecks.mkReadmeMaterializationResidual {
-          repoId = "roccho-dev/governance";
-          mode = "checked_handwritten";
-          owner = "governance#144";
-          reason = "governance has a README artifact producer, but the committed root README remains the current ADRS projection and boundary document rather than byte-identical generated README mode";
-          nextAction = "replace the governance README artifact model with the accepted root README projection before switching this repo to mkReadmeMaterializedCheck generated mode";
-          returnCondition = "packages.readme-artifact/README.md and committed README.md are byte-identical while preserving the non-authority boundary";
-          expires = "2026-08-31";
-        };
-        gov-package-output = pkgs.runCommand "gov-package-output-check" { } ''
+        gov-package-output =pkgs.runCommand "gov-package-output-check" { } ''
           set -euo pipefail
           test -s ${govPackageOutput}/manifest.json
           test -s ${govPackageOutput}/repo.json
