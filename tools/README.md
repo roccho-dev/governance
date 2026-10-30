@@ -131,17 +131,3 @@ This is org-join precursor evidence only. It is not branch protection authority 
 - Accepted: `roccho-dev/adrs#106` README projection plane and gov package output plane, merged as `96b6fdcd02f4c8bee10a4b08a2c9a5d9dad91803`.
 
 This README is an accepted ADRS projection surface for the `tools/` package. It remains non-authority evidence and must not be treated as an accepted decision record.
-
-## Contract trace: package-contract-expansion-20261029-v2
-
-This section is a package-local contract refinement, not a new ADRS decision. Accepted ADRS remains the meaning authority; the package exposes implementation responsibilities and observations separately.
-
-| Internal operation | Required behavior | Provided / observed at this revision | Limit |
-|---|---|---|---|
-| `project` | accepted ADRS-derived inputs to deterministic projections | Existing package README states this responsibility; source/API/runtime behavior is not established by the README alone | Unverified implementation |
-| `validate` | run explicit-input checks and return diagnostic findings | Existing package README states this responsibility; source/API/runtime behavior is not established by the README alone | Unverified implementation |
-| `receipt` | produce digest-linked non-authoritative receipts and gate inputs | Existing package README states this responsibility; source/API/runtime behavior is not established by the README alone | Unverified implementation |
-
-**Evidence boundary:** the required behavior is documented, but reading this README is only document-level Observation. It cannot prove executable behavior, source integration, complete adherence, or production use. Required/Provided/Observation joins must pin their inputs and public revision; unmatched requirements remain explicitly open.
-
-**Open observations:** No tools executable run observed; No final gate or provider cutover observed. The observations above are not runtime tests and are not PASS receipts.
