@@ -1,24 +1,17 @@
 #!/usr/bin/env python3
-"""Aggregate repo convention checks for README and provider CI adapters."""
+"""Aggregate repo convention checks for provider CI adapters.
+
+README files are handwritten and are not checked here (roccho-dev/adrs#731); readme_mode stays a
+validated manifest field for compatibility with existing manifests.
+"""
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import re
-import subprocess
-import sys
 from datetime import date
 from pathlib import Path
 from typing import Any
-
-README_CHECK_PATH = Path(__file__).with_name("check-readme-artifact.py")
-README_CHECK_SPEC = importlib.util.spec_from_file_location("check_readme_artifact", README_CHECK_PATH)
-if README_CHECK_SPEC is None or README_CHECK_SPEC.loader is None:
-    raise RuntimeError(f"cannot load README check helper: {README_CHECK_PATH}")
-README_CHECK_MODULE = importlib.util.module_from_spec(README_CHECK_SPEC)
-README_CHECK_SPEC.loader.exec_module(README_CHECK_MODULE)
-check_readme = README_CHECK_MODULE.check_readme
 
 VALID_SEVERITIES = {"report_only", "warning", "blocking"}
 VALID_README_MODES = {"checked_handwritten", "managed_block", "generated"}
@@ -249,16 +242,6 @@ def check_ci(repo_root: Path, ci_path: Path) -> list[dict[str, Any]]:
     return findings
 
 
-def check_readme_govlib_contract(repo_root: Path) -> list[dict[str, Any]]:
-    script = repo_root / "tools" / "check-readme-govlib-contract.py"
-    if not script.exists():
-        return [finding("readme-govlib-contract-missing", "README gov-lib contract check is missing", path=str(script))]
-    result = subprocess.run([sys.executable, str(script)], cwd=repo_root, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-    if result.returncode == 0:
-        return []
-    return [finding("readme-govlib-contract-failed", "README gov-lib contract check failed", stdout=result.stdout, stderr=result.stderr)]
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, required=True)
@@ -268,11 +251,8 @@ def main(argv: list[str] | None = None) -> int:
     manifest_path = args.manifest if args.manifest.is_absolute() else repo_root / args.manifest
     manifest = read_json(manifest_path)
     findings = validate_manifest(manifest)
-    readme_path = repo_root / manifest.get("readme_path", "README.md")
     ci_path = repo_root / manifest.get("ci_intent_path", "ci.intent.v1.jsonl")
-    findings.extend(check_readme(readme_path, manifest.get("readme_mode", "")))
     findings.extend(check_ci(repo_root, ci_path))
-    findings.extend(check_readme_govlib_contract(repo_root))
     severity = manifest.get("severity", "blocking")
     status = "pass" if not findings else "fail" if severity == "blocking" else "warn"
     report = {
