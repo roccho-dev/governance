@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-seq-type","decision_type":"architecture","event_id":"seq-type","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":"1","summary":"Non-integer sequence must fail","title":"Sequence type"}

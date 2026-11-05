@@ -1,0 +1,1 @@
+{"authority":false,"cases":["accepted","proposed","rejected","revoked","accepted-with-pending-amendment","conflict","superseded","unauthorized","provider-invariance","legacy-schema-rejection"],"schema":"adrs.decisionFixtureSet.v1"}

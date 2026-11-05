@@ -1,0 +1,1 @@
+{"actor":"bad actor","decision_id":"ADR-actor","decision_type":"architecture","event_id":"invalid-actor","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Invalid actor must fail","title":"Invalid actor"}

@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-invalid","decision_type":"architecture","event_id":"invalid-schema","kind":"propose","schema":"decisionEvent.v1","seq":1,"summary":"Must fail closed","title":"Must fail closed"}

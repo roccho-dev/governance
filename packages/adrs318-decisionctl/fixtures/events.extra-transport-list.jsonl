@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-transport-list","decision_type":"architecture","event_id":"transport-list","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Transport list excluded","title":"Transport list excluded","transport":["github",1]}

@@ -1,0 +1,2 @@
+{"actor":"author","decision_id":"ADR-transition","decision_type":"architecture","event_id":"transition-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Transition fixture","title":"Transition fixture"}
+{"actor":"owner","decision_id":"ADR-transition","decision_type":"architecture","event_id":"transition-revoke","kind":"revoke","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Revoke before accept must fail","title":"Transition fixture"}

@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-page-null","decision_type":"architecture","event_id":"page-null","kind":"propose","page":null,"schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Null page excluded","title":"Null page excluded"}

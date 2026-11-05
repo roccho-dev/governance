@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-provider-pagination","decision_type":"architecture","event_id":"provider-pagination","kind":"propose","provider":{"page":10,"page_index":9},"schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Pagination metadata excluded","title":"Pagination metadata excluded"}

@@ -1,0 +1,2 @@
+{"actor":"author","decision_id":"ADR-ref","decision_type":"architecture","event_id":"ref-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Reference fixture","title":"Reference fixture"}
+{"actor":"owner","decision_id":"ADR-ref","decision_type":"architecture","event_id":"ref-supersede","kind":"supersede","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Missing target must fail","supersedes_decision_id":"ADR-missing","title":"Reference fixture"}

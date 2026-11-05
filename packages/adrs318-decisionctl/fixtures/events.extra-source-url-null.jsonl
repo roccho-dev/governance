@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-source-url-null","decision_type":"architecture","event_id":"source-url-null","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"source_url":null,"summary":"Null source URL excluded","title":"Null source URL excluded"}

@@ -1,0 +1,6 @@
+{"actor":"author","decision_id":"ADR-cycle-a","decision_type":"architecture","event_id":"cycle-a-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Cycle A","title":"Cycle A"}
+{"actor":"author","decision_id":"ADR-cycle-b","decision_type":"architecture","event_id":"cycle-b-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Cycle B","title":"Cycle B"}
+{"actor":"owner","decision_id":"ADR-cycle-a","decision_type":"architecture","event_id":"cycle-a-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":3,"summary":"Cycle A","title":"Cycle A"}
+{"actor":"owner","decision_id":"ADR-cycle-b","decision_type":"architecture","event_id":"cycle-b-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":4,"summary":"Cycle B","title":"Cycle B"}
+{"actor":"owner","decision_id":"ADR-cycle-a","decision_type":"architecture","event_id":"cycle-a-supersede","kind":"supersede","schema":"adrs.lifecycleEvent.v1","seq":5,"summary":"Cycle A","supersedes_decision_id":"ADR-cycle-b","title":"Cycle A"}
+{"actor":"owner","decision_id":"ADR-cycle-b","decision_type":"architecture","event_id":"cycle-b-supersede","kind":"supersede","schema":"adrs.lifecycleEvent.v1","seq":6,"summary":"Cycle B","supersedes_decision_id":"ADR-cycle-a","title":"Cycle B"}

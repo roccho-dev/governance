@@ -1,0 +1,3 @@
+{"actor":"author","decision_id":"ADR-reject-transition","decision_type":"architecture","event_id":"reject-transition-propose","kind":"propose","schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Reject transition fixture","title":"Reject transition"}
+{"actor":"owner","decision_id":"ADR-reject-transition","decision_type":"architecture","event_id":"reject-transition-accept","kind":"accept","schema":"adrs.lifecycleEvent.v1","seq":2,"summary":"Reject transition fixture","title":"Reject transition"}
+{"actor":"owner","decision_id":"ADR-reject-transition","decision_type":"architecture","event_id":"reject-transition-reject","kind":"reject","schema":"adrs.lifecycleEvent.v1","seq":3,"summary":"Reject after accept must fail","title":"Reject transition"}

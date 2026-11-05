@@ -1,0 +1,1 @@
+{"actor":"author","decision_id":"ADR-provider","decision_type":"architecture","event_id":"provider-propose","kind":"propose","provider":{"comment_id":999,"page":42,"redirect":"https://example.invalid"},"schema":"adrs.lifecycleEvent.v1","seq":1,"summary":"Provider invariant","title":"Provider invariant"}
