@@ -81,7 +81,9 @@ def check_help(help_text: str) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    # --help is the existing input-file port, not argparse's help action.
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("-h", action="help", help="show this help message and exit")
     parser.add_argument("--flake", required=True)
     parser.add_argument("--help", required=True)
     args = parser.parse_args()

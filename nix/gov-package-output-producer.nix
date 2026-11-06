@@ -35,13 +35,13 @@ let
     };
   };
   mkGovPackageOutput = args:
-    let config = builtins.toJSON (mkConfig args); in
+    let
+      config = builtins.toJSON (mkConfig args);
+      configPath = args.pkgs.writeText "gov-package-output-config.json" (config + "\n");
+    in
     args.pkgs.runCommand ''gov-package-output'' { nativeBuildInputs = [ args.pkgs.python3 ]; } ''
       set -euo pipefail
-      cat > config.json <<'EOF'
-${config}
-EOF
-      python3 ${self}/tools/check-package-gov-package-output-provenance.py build --config config.json --out $out
+      python3 ${self}/tools/check-package-gov-package-output-provenance.py build --config ${configPath} --out $out
     '';
   mkGovPackageOutputCheck = args:
     let
