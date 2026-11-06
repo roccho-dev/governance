@@ -26,7 +26,7 @@ def odig(d):
   return h(b''.join(b))
 def build(config,out):
   c=j(config); base=config.parent; rows=[]; texts={}
-  rows.append({'kind':'govPackageInputSource.v1','role':'producerConfig','sourceClass':'path','path':config.name,'digest':h(config.read_text()),'required':True})
+  rows.append({'kind':'govPackageInputSource.v1','role':'producerConfig','sourceClass':'path','path':str(config.resolve()),'digest':h(nl(config.read_text())),'required':True})
   meta={'repoId':c['repoId'],'repoClass':c['repoClass'],'projectionMode':c.get('projectionMode','proposal-preview')}
   rows.append({'kind':'govPackageInputSource.v1','role':'repoMetadata','sourceClass':'derived-config','path':'<derived:repoMetadata>','digest':h(can(meta)+'\n'),'required':True})
   for role,file in REQ.items():
