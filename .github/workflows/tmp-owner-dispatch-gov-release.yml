@@ -1,0 +1,111 @@
+name: temporary owner dispatch gov release
+
+on:
+  pull_request:
+    branches:
+      - proposals
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  dispatch:
+    if: ${{ github.actor == github.repository_owner }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean incomplete drafts, dispatch release, and verify canary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          ENGINE_SHA: 42d0bf9de25161fb5f6c2a1538fc61ec1f55650b
+          RELEASE_ID: company-operating-contract-v0.2.0
+          AUTHORIZATION_COMMENT_ID: '5014929837'
+        run: |
+          set -euo pipefail
+
+          gh api "repos/$REPOSITORY/releases?per_page=100" --paginate > releases.jsonl
+          python3 - <<'PY' > stale-drafts.json
+          import json
+          from pathlib import Path
+          text=Path('releases.jsonl').read_text().strip(); rows=[]
+          if text:
+              decoder=json.JSONDecoder(); index=0
+              while index < len(text):
+                  while index < len(text) and text[index].isspace(): index += 1
+                  if index>=len(text): break
+                  page,index=decoder.raw_decode(text,index); rows.extend(page)
+          stale=[{'id':r['id'],'tag':r.get('tag_name','')} for r in rows if r.get('draft') is True and (r.get('name')=='company-operating-contract-v0.2.0' or r.get('tag_name','').startswith('gov-release/company-operating-contract-v0.2.0/'))]
+          print(json.dumps(stale,separators=(',',':')))
+          PY
+          python3 - <<'PY' | while IFS=$'\t' read -r release_id tag; do
+          import json
+          for row in json.load(open('stale-drafts.json')):
+              print(f"{row['id']}\t{row['tag']}")
+          PY
+            gh api --method DELETE "repos/$REPOSITORY/releases/$release_id"
+            if test -n "$tag"; then
+              encoded=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1],safe=""))' "$tag")
+              gh api --method DELETE "repos/$REPOSITORY/git/refs/tags/$encoded" >/dev/null 2>&1 || true
+            fi
+          done
+
+          wait_for_exact_run() {
+            workflow="$1"
+            event="$2"
+            branch="$3"
+            exact_sha="$4"
+            excluded_file="$5"
+            for attempt in $(seq 1 180); do
+              gh api "repos/$REPOSITORY/actions/workflows/$workflow/runs?event=$event&branch=$branch&per_page=100" > runs.json
+              run_id=$(python3 - "$exact_sha" "$excluded_file" <<'PY'
+          import json,sys
+          exact_sha=sys.argv[1]
+          excluded_path=sys.argv[2]
+          excluded=set()
+          if excluded_path != '-' and __import__('pathlib').Path(excluded_path).exists(): excluded=set(json.load(open(excluded_path)))
+          runs=json.load(open('runs.json')).get('workflow_runs',[])
+          matches=[run for run in runs if run.get('head_sha')==exact_sha and int(run.get('id',0)) not in excluded]
+          print(max((int(run['id']) for run in matches),default=''))
+          PY
+              )
+              if test -n "$run_id"; then
+                state=$(gh api "repos/$REPOSITORY/actions/runs/$run_id" --jq '.status + " " + (.conclusion // "")')
+                case "$state" in
+                  completed\ success) printf '%s\n' "$run_id"; return 0 ;;
+                  completed\ *) echo "$workflow run $run_id failed: $state" >&2; return 1 ;;
+                esac
+              fi
+              sleep 10
+            done
+            echo "$workflow exact run timeout" >&2
+            return 1
+          }
+
+          default_gate_run=$(wait_for_exact_run gov-final-scope-purpose-join.yml push proposals "$ENGINE_SHA" -)
+
+          gh api "repos/$REPOSITORY/actions/workflows/gov-release.yml/runs?event=workflow_dispatch&branch=proposals&per_page=100" --jq '[.workflow_runs[].id]' > before-release.json
+          gh api --method POST "repos/$REPOSITORY/actions/workflows/gov-release.yml/dispatches" \
+            -f ref=proposals \
+            -f "inputs[release_id]=$RELEASE_ID" \
+            -f 'inputs[sequence]=0' \
+            -f 'inputs[previous_release_digest]=null' \
+            -f 'inputs[supersedes_release_digest]=null' \
+            -f "inputs[owner_authorization_comment_id]=$AUTHORIZATION_COMMENT_ID"
+          release_run=$(wait_for_exact_run gov-release.yml workflow_dispatch proposals "$ENGINE_SHA" before-release.json)
+
+          gh api "repos/$REPOSITORY/actions/workflows/gov-canary.yml/runs?event=workflow_dispatch&branch=proposals&per_page=100" --jq '[.workflow_runs[].id]' > before-canary.json
+          gh api --method POST "repos/$REPOSITORY/actions/workflows/gov-canary.yml/dispatches" -f ref=proposals
+          canary_run=$(wait_for_exact_run gov-canary.yml workflow_dispatch proposals "$ENGINE_SHA" before-canary.json)
+
+          python3 - <<PY
+          import json
+          value={'kind':'temporaryGovReleaseDispatchReceipt.v3','status':'pass','engineSha':'$ENGINE_SHA','releaseId':'$RELEASE_ID','authorizationCommentId':int('$AUTHORIZATION_COMMENT_ID'),'defaultGateRunId':int('$default_gate_run'),'releaseRunId':int('$release_run'),'canaryRunId':int('$canary_run'),'operationalAdoptionEffect':True,'authority':False}
+          open('dispatch-receipt.json','w').write(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n')
+          print(json.dumps(value,sort_keys=True,separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: temporary-gov-release-dispatch-receipt
+          path: dispatch-receipt.json
+          if-no-files-found: error
