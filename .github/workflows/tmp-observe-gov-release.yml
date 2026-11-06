@@ -1,0 +1,23 @@
+name: temporary observe gov release
+
+on:
+  pull_request:
+    branches:
+      - proposals
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract failed canary ADRS observer error
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPOSITORY/actions/jobs/88171395531/logs" > failed.log
+          grep -n -B 20 -A 8 -E '##\[error\]|Traceback|AssertionError|No such file|not found|Not Found|Process completed with exit code' failed.log | tail -n 80
